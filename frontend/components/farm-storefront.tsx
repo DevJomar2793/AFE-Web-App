@@ -1,5 +1,14 @@
+"use client";
+
 import Image from "next/image";
-import type { CSSProperties } from "react";
+import {
+  type CSSProperties,
+  type FocusEvent,
+  type FormEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Reveal } from "@/components/reveal";
 
 type Product = {
@@ -15,6 +24,12 @@ type PromiseItem = {
   title: string;
   text: string;
   icon: "hen" | "grain" | "barn";
+};
+
+type Testimonial = {
+  quote: string;
+  author: string;
+  detail: string;
 };
 
 const products: Product[] = [
@@ -62,12 +77,35 @@ const promises: PromiseItem[] = [
   },
 ];
 
+const testimonials: Testimonial[] = [
+  {
+    quote:
+      "The yolks are vibrant, the cartons arrive fresh, and the taste changed our weekend breakfasts completely.",
+    author: "Sarah J.",
+    detail: "Weekly subscriber",
+  },
+  {
+    quote:
+      "We switched to Adamos for the delivery window, but stayed for the flavor and the consistency.",
+    author: "Miguel R.",
+    detail: "Neighborhood pickup",
+  },
+  {
+    quote:
+      "The eggs hold up in baking and the farm updates make it feel like we know exactly where our food comes from.",
+    author: "Alina P.",
+    detail: "Home baker",
+  },
+];
+
 const navItems = [
   { label: "Our Eggs", href: "#products" },
   { label: "Farm Life", href: "#farm" },
   { label: "Promise", href: "#promise" },
   { label: "Contact", href: "#contact" },
 ];
+
+const contactEmail = "jomarcerrado2793@gmail.com";
 
 export function FarmStorefront() {
   return (
@@ -368,49 +406,244 @@ function FarmLifeSection() {
 function TestimonialSection() {
   return (
     <section className="bg-[#f4eddc] px-5 py-24 sm:px-8">
-      <Reveal className="mx-auto max-w-4xl rounded-lg border border-[#e1d3b7] bg-[#fffaf0]/72 px-6 py-12 text-center shadow-[0_24px_70px_rgba(75,55,27,0.1)] backdrop-blur-md sm:px-12">
-        <p className="text-sm font-black uppercase tracking-[0.2em] text-[#b86728]">
-          Customer testimonial
-        </p>
-        <blockquote className="mt-5 text-3xl font-black leading-tight text-[#1d331f] [text-wrap:balance] sm:text-4xl">
-          &ldquo;The yolks are vibrant, the cartons arrive fresh, and the taste changed our weekend
-          breakfasts completely.&rdquo;
-        </blockquote>
-        <p className="mt-6 text-base font-bold text-[#69624d]">Sarah J., weekly subscriber</p>
-      </Reveal>
+      <TestimonialCarousel />
     </section>
+  );
+}
+
+function TestimonialCarousel() {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const pauseTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    const updatePreference = () => {
+      setPrefersReducedMotion(mediaQuery.matches);
+    };
+
+    updatePreference();
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", updatePreference);
+      return () => mediaQuery.removeEventListener("change", updatePreference);
+    }
+
+    mediaQuery.addListener(updatePreference);
+    return () => mediaQuery.removeListener(updatePreference);
+  }, []);
+
+  useEffect(() => {
+    if (prefersReducedMotion || isPaused) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % testimonials.length);
+    }, 5500);
+
+    return () => window.clearInterval(interval);
+  }, [isPaused, prefersReducedMotion]);
+
+  useEffect(() => {
+    return () => {
+      if (pauseTimerRef.current !== null) {
+        window.clearTimeout(pauseTimerRef.current);
+      }
+    };
+  }, []);
+
+  const goToSlide = (index: number) => {
+    setActiveIndex(index);
+  };
+
+  const goToPrevious = () => {
+    setActiveIndex((current) => (current - 1 + testimonials.length) % testimonials.length);
+  };
+
+  const goToNext = () => {
+    setActiveIndex((current) => (current + 1) % testimonials.length);
+  };
+
+  const pauseAutoplay = () => {
+    setIsPaused(true);
+    if (pauseTimerRef.current !== null) {
+      window.clearTimeout(pauseTimerRef.current);
+      pauseTimerRef.current = null;
+    }
+  };
+
+  const resumeAutoplay = () => {
+    if (prefersReducedMotion) {
+      return;
+    }
+
+    if (pauseTimerRef.current !== null) {
+      window.clearTimeout(pauseTimerRef.current);
+    }
+
+    pauseTimerRef.current = window.setTimeout(() => {
+      setIsPaused(false);
+      pauseTimerRef.current = null;
+    }, 900);
+  };
+
+  const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      return;
+    }
+
+    resumeAutoplay();
+  };
+
+  return (
+    <Reveal className="mx-auto max-w-4xl">
+      <div
+        className="rounded-lg border border-[#e1d3b7] bg-[#fffaf0]/72 px-6 py-12 shadow-[0_24px_70px_rgba(75,55,27,0.1)] backdrop-blur-md sm:px-12"
+        onBlur={handleBlur}
+        onFocusCapture={pauseAutoplay}
+        onMouseLeave={resumeAutoplay}
+        onMouseEnter={pauseAutoplay}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowLeft") {
+            event.preventDefault();
+            goToPrevious();
+          }
+
+          if (event.key === "ArrowRight") {
+            event.preventDefault();
+            goToNext();
+          }
+        }}
+        tabIndex={0}
+      >
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.2em] text-[#b86728]">
+              Customer testimonial
+            </p>
+            <p className="mt-2 text-sm font-medium text-[#7a6d55]">
+              Auto-rotating reviews from nearby customers
+            </p>
+          </div>
+          <div className="hidden items-center gap-2 sm:flex">
+            <button
+              type="button"
+              className="grid size-10 place-items-center rounded-full border border-[#d8c9ab] bg-white/70 text-[#263b23] transition hover:border-[#c06f26] hover:text-[#b45f1e] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c06f26]"
+              onClick={goToPrevious}
+              aria-label="Previous testimonial"
+            >
+              <span aria-hidden="true">‹</span>
+            </button>
+            <button
+              type="button"
+              className="grid size-10 place-items-center rounded-full border border-[#d8c9ab] bg-white/70 text-[#263b23] transition hover:border-[#c06f26] hover:text-[#b45f1e] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c06f26]"
+              onClick={goToNext}
+              aria-label="Next testimonial"
+            >
+              <span aria-hidden="true">›</span>
+            </button>
+          </div>
+        </div>
+
+        <div
+          className="relative mt-8 min-h-[16rem] overflow-hidden"
+          aria-live="polite"
+          aria-roledescription="carousel"
+        >
+          {testimonials.map((testimonial, index) => {
+            const isActive = index === activeIndex;
+            const isBefore = index < activeIndex;
+            const translateClass = isActive
+              ? "translate-x-0 opacity-100"
+              : isBefore
+                ? "-translate-x-8 opacity-0"
+                : "translate-x-8 opacity-0";
+
+            return (
+              <article
+                aria-hidden={!isActive}
+                className={`absolute inset-0 flex items-center justify-center transition-all duration-700 ease-out ${
+                  prefersReducedMotion ? "transition-none" : ""
+                } ${translateClass}`}
+                key={testimonial.author}
+              >
+                <div className="max-w-3xl text-center">
+                  <blockquote className="text-3xl font-black leading-tight text-[#1d331f] [text-wrap:balance] sm:text-4xl">
+                    &ldquo;{testimonial.quote}&rdquo;
+                  </blockquote>
+                  <p className="mt-6 text-base font-bold text-[#69624d]">
+                    {testimonial.author}, {testimonial.detail}
+                  </p>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+
+        <div className="mt-8 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            {testimonials.map((testimonial, index) => (
+              <button
+                key={testimonial.author}
+                type="button"
+                className={`h-2.5 rounded-full transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c06f26] ${
+                  index === activeIndex ? "w-8 bg-[#b86728]" : "w-2.5 bg-[#d8c9ab]"
+                }`}
+                onClick={() => goToSlide(index)}
+                aria-label={`Show testimonial ${index + 1}`}
+                aria-pressed={index === activeIndex}
+              />
+            ))}
+          </div>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#8b7d62]">
+            {String(activeIndex + 1).padStart(2, "0")} / {String(testimonials.length).padStart(2, "0")}
+          </p>
+        </div>
+      </div>
+    </Reveal>
   );
 }
 
 function SiteFooter() {
   return (
     <footer id="contact" className="bg-[#102819] px-5 py-14 text-[#dfead7] sm:px-8">
-      <Reveal className="mx-auto grid max-w-7xl gap-10 md:grid-cols-[1.2fr_0.8fr_0.8fr_1fr]">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-full bg-[#f4eddc] text-[#173b24]">
-              <BrandMark />
-            </span>
+      <Reveal className="mx-auto max-w-7xl">
+        <div className="grid gap-10 lg:grid-cols-[1fr_1.1fr]">
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-1">
             <div>
-              <p className="font-black uppercase tracking-[0.14em] text-white">Adamos</p>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#f5bd78]">
-                Fresh Eggs
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 place-items-center rounded-full bg-[#f4eddc] text-[#173b24]">
+                  <BrandMark />
+                </span>
+                <div>
+                  <p className="font-black uppercase tracking-[0.14em] text-white">Adamos</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#f5bd78]">
+                    Fresh Eggs
+                  </p>
+                </div>
+              </div>
+              <p className="mt-5 max-w-sm text-sm leading-6 text-[#b9c9af]">
+                Pasture-raised eggs gathered with care for neighbors, home cooks, and breakfast people.
               </p>
             </div>
+
+            <div className="grid gap-10 sm:grid-cols-2">
+              <FooterColumn title="Navigate" items={["Our Eggs", "Farm Life", "Promise", "Contact"]} />
+              <FooterColumn title="Market" items={["Pickup", "Delivery", "Subscriptions", "Wholesale"]} />
+            </div>
+
+            <address className="space-y-2 text-sm not-italic text-[#b9c9af] lg:mt-auto">
+              <h3 className="text-sm font-black uppercase tracking-[0.18em] text-white">Contact</h3>
+              <p>{contactEmail}</p>
+              <p>(555) 203-1936</p>
+              <p>725 Adamos Farm Road</p>
+            </address>
           </div>
-          <p className="mt-5 max-w-sm text-sm leading-6 text-[#b9c9af]">
-            Pasture-raised eggs gathered with care for neighbors, home cooks, and breakfast people.
-          </p>
-        </div>
-        <FooterColumn title="Navigate" items={["Our Eggs", "Farm Life", "Promise", "Contact"]} />
-        <FooterColumn title="Market" items={["Pickup", "Delivery", "Subscriptions", "Wholesale"]} />
-        <div>
-          <h3 className="text-sm font-black uppercase tracking-[0.18em] text-white">Contact</h3>
-          <address className="mt-4 space-y-2 text-sm not-italic text-[#b9c9af]">
-            <p>hello@adamosfresh.test</p>
-            <p>(555) 203-1936</p>
-            <p>725 Adamos Farm Road</p>
-          </address>
+
+          <ContactForm />
         </div>
       </Reveal>
       <div className="mx-auto mt-12 flex max-w-7xl flex-col gap-4 border-t border-white/10 pt-6 text-xs font-bold text-[#8fa186] sm:flex-row sm:items-center sm:justify-between">
@@ -481,6 +714,80 @@ function FooterColumn({ title, items }: { title: string; items: string[] }) {
         ))}
       </ul>
     </div>
+  );
+}
+
+function ContactForm() {
+  const [name, setName] = useState("");
+  const [message, setMessage] = useState("");
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const trimmedName = name.trim() || "Website visitor";
+    const trimmedMessage = message.trim() || "No message provided.";
+    const subject = encodeURIComponent(`Message from ${trimmedName}`);
+    const body = encodeURIComponent(`Name: ${trimmedName}\n\nMessage:\n${trimmedMessage}`);
+
+    window.location.href = `mailto:${contactEmail}?subject=${subject}&body=${body}`;
+  };
+
+  return (
+    <section className="rounded-lg border border-white/12 bg-[#173b24] p-6 shadow-[0_24px_70px_rgba(5,17,9,0.22)] sm:p-7">
+      <div className="flex flex-col gap-3 border-b border-white/10 pb-5">
+        <p className="text-sm font-black uppercase tracking-[0.2em] text-[#f5bd78]">Send a message</p>
+        <h3 className="text-2xl font-black leading-tight text-white">Write directly to {contactEmail}</h3>
+        <p className="max-w-xl text-sm leading-6 text-[#d7e4cf]">
+          Add your name and message, then your email app opens with everything ready to send.
+        </p>
+      </div>
+
+      <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+        <div>
+          <label className="mb-2 block text-sm font-bold text-[#eaf4de]" htmlFor="contact-name">
+            Name
+          </label>
+          <input
+            id="contact-name"
+            name="name"
+            type="text"
+            autoComplete="name"
+            required
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            className="h-12 w-full rounded-lg border border-white/12 bg-white/6 px-4 text-sm text-white outline-none transition placeholder:text-[#91a38b] focus:border-[#f5bd78] focus:bg-white/10"
+            placeholder="Your name"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-bold text-[#eaf4de]" htmlFor="contact-message">
+            Message
+          </label>
+          <textarea
+            id="contact-message"
+            name="message"
+            required
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            className="min-h-36 w-full resize-y rounded-lg border border-white/12 bg-white/6 px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-[#91a38b] focus:border-[#f5bd78] focus:bg-white/10"
+            placeholder="Write your message"
+          />
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs font-medium leading-5 text-[#aec0a4]">
+            This uses your default email app and keeps the message on your device until you send it.
+          </p>
+          <button
+            type="submit"
+            className="inline-flex h-12 shrink-0 items-center justify-center rounded-full bg-[#f5bd78] px-5 text-sm font-black text-[#173b24] transition duration-300 hover:-translate-y-0.5 hover:bg-[#ffd59b] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f5bd78]"
+          >
+            Send message
+          </button>
+        </div>
+      </form>
+    </section>
   );
 }
 
