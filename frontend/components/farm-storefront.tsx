@@ -109,23 +109,176 @@ const contactEmail = "jomarcerrado2793@gmail.com";
 
 export function FarmStorefront() {
   return (
-    <main className="min-h-screen overflow-hidden bg-[#fbfaf3] text-[#172516]">
+    <main className="min-h-screen overflow-hidden bg-[#fbfaf3] pt-20 text-[#172516]">
       <SiteHeader />
       <HeroSection />
+      <SectionBreak />
       <PromiseSection />
       <ProductsSection />
       <FarmLifeSection />
       <TestimonialSection />
       <SiteFooter />
+      <BackToTopButton />
     </main>
   );
 }
 
-function SiteHeader() {
+function BackToTopButton() {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsVisible(window.scrollY > 420);
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
-    <header className="sticky top-0 z-50 border-b border-[#e8ddc7]/80 bg-[#fbfaf3]/82 shadow-[0_10px_40px_rgba(47,36,18,0.06)] backdrop-blur-2xl">
+    <button
+      type="button"
+      aria-label="Back to top"
+      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+      className={`fixed bottom-5 left-1/2 z-40 grid size-12 place-items-center rounded-full border border-[#f5bd78]/35 bg-[#173b24] text-[#fff8e8] shadow-[0_18px_44px_rgba(13,37,20,0.28)] transition duration-300 hover:bg-[#1f4b2e] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#f5bd78] ${
+        isVisible
+          ? "-translate-x-1/2 translate-y-0 opacity-100 hover:-translate-y-1"
+          : "pointer-events-none -translate-x-1/2 translate-y-4 opacity-0"
+      }`}
+    >
+      <svg aria-hidden="true" viewBox="0 0 24 24" className="size-5" fill="none">
+        <path
+          d="m6 14 6-6 6 6M12 9v8"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
+  );
+}
+
+function SiteHeader() {
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [activeHref, setActiveHref] = useState<string | null>(null);
+  const frameRef = useRef<number | null>(null);
+  const hasInteractedRef = useRef(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 8);
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const sections = navItems
+      .map((item) => document.querySelector<HTMLElement>(item.href))
+      .filter((section): section is HTMLElement => Boolean(section));
+
+    if (sections.length === 0) {
+      return;
+    }
+
+    const updateActiveHref = () => {
+      if (!hasInteractedRef.current) {
+        setActiveHref(null);
+        return;
+      }
+
+      const headerHeight = 80;
+      const activeLine = headerHeight + 24;
+      let bestSection: { id: string; score: number; top: number } | null = null;
+
+      for (const section of sections) {
+        const rect = section.getBoundingClientRect();
+        const viewportTop = activeLine;
+        const viewportBottom = window.innerHeight;
+        const visibleTop = Math.max(rect.top, viewportTop);
+        const visibleBottom = Math.min(rect.bottom, viewportBottom);
+        const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+
+        if (visibleHeight <= 0) {
+          continue;
+        }
+
+        const score = visibleHeight / Math.max(rect.height, 1);
+        const top = Math.abs(rect.top - activeLine);
+
+        if (!bestSection || score > bestSection.score || (score === bestSection.score && top < bestSection.top)) {
+          bestSection = { id: section.id, score, top };
+        }
+      }
+
+      setActiveHref(bestSection ? `#${bestSection.id}` : null);
+    };
+
+    const scheduleUpdate = () => {
+      hasInteractedRef.current = true;
+
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current);
+      }
+
+      frameRef.current = window.requestAnimationFrame(() => {
+        updateActiveHref();
+        frameRef.current = null;
+      });
+    };
+
+    const initializeActiveHref = () => {
+      hasInteractedRef.current = false;
+      scheduleUpdate();
+      window.requestAnimationFrame(() => {
+        scheduleUpdate();
+      });
+      window.setTimeout(scheduleUpdate, 0);
+    };
+
+    initializeActiveHref();
+    window.addEventListener("load", initializeActiveHref);
+    window.addEventListener("pageshow", initializeActiveHref);
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+
+    return () => {
+      window.removeEventListener("load", initializeActiveHref);
+      window.removeEventListener("pageshow", initializeActiveHref);
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current);
+      }
+    };
+  }, []);
+
+  return (
+    <header
+      className={`fixed inset-x-0 top-0 z-50 border-b backdrop-blur-2xl transition-[background-color,border-color,box-shadow] duration-300 ${
+        isScrolled
+          ? "border-[#d9c8a8]/90 bg-[#fbfaf3]/96 shadow-[0_16px_50px_rgba(47,36,18,0.12)]"
+          : "border-[#e8ddc7]/80 bg-[#fbfaf3]/82 shadow-[0_10px_40px_rgba(47,36,18,0.06)]"
+      }`}
+    >
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 sm:px-8">
-        <a href="#" className="group flex items-center gap-3" aria-label="Adamos Fresh Eggs home">
+        <a
+          href="#"
+          className="group flex items-center gap-3"
+          aria-label="Adamos Fresh Eggs home"
+          onClick={(event) => {
+            event.preventDefault();
+            hasInteractedRef.current = true;
+            setActiveHref(null);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        >
           <span className="grid size-11 place-items-center rounded-full bg-[#173b24] text-[#fff8e8] shadow-sm transition duration-300 group-hover:rotate-6 group-hover:scale-105">
             <BrandMark />
           </span>
@@ -142,6 +295,7 @@ function SiteHeader() {
         <nav className="hidden items-center gap-8 text-sm font-semibold text-[#314430] md:flex">
           {navItems.map((item) => (
             <a
+              aria-current={activeHref === item.href ? "location" : undefined}
               className="nav-link transition hover:text-[#c06f26] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c06f26]"
               href={item.href}
               key={item.href}
@@ -230,31 +384,82 @@ function HeroSection() {
   );
 }
 
+function SectionBreak() {
+  return (
+    <div aria-hidden="true" className="bg-[#fbfaf3] px-5 py-8 sm:px-8">
+      <div className="mx-auto flex max-w-7xl items-center gap-4">
+        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#d7c6a1] to-transparent" />
+        <span className="text-xs font-black uppercase tracking-[0.24em] text-[#8f7d57]">
+          Our promise
+        </span>
+        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#d7c6a1] to-transparent" />
+      </div>
+    </div>
+  );
+}
+
 function PromiseSection() {
   return (
-    <section id="promise" className="relative bg-[#f4eddc] px-5 py-24 sm:px-8">
+    <section id="promise" className="relative scroll-mt-32 border-t border-[#e1d3b7] bg-[#f7f1e2] px-5 py-20 sm:px-8 sm:py-24">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#d7c6a1] to-transparent" />
       <div className="mx-auto max-w-7xl">
-        <Reveal>
-          <SectionHeading
-            eyebrow="Our promise"
-            title="Better eggs start with better care."
-            text="The difference shows up in the yolk, the shell, and the way your breakfast tastes."
-          />
-        </Reveal>
-        <div className="mt-12 grid gap-4 md:grid-cols-3">
+        <div className="grid gap-10 lg:grid-cols-[1fr_auto] lg:items-end">
+          <Reveal>
+            <div className="max-w-3xl">
+              <p className="text-sm font-black uppercase tracking-[0.22em] text-[#b86728]">
+                Our promise
+              </p>
+              <h2 className="mt-3 text-4xl font-black leading-tight text-[#1d331f] sm:text-5xl">
+                Better eggs start with better care.
+              </h2>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-[#5d5b49] sm:text-lg sm:leading-8">
+                Pasture, feed, and handling all shape what reaches your table. We keep those steps
+                simple, visible, and consistent so the end result tastes clean and feels reliable.
+              </p>
+            </div>
+          </Reveal>
+
+          <Reveal delay={80} variant="scale">
+            <div className="rounded-lg border border-[#e1d3b7] bg-[#fffaf0] px-5 py-4 shadow-sm">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8f7d57]">
+                What to expect
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-[#3b4a33]">
+                Rotated pasture, clean feed, and local packing without the noise.
+              </p>
+            </div>
+          </Reveal>
+        </div>
+
+        <div className="mt-12 grid gap-5 md:grid-cols-3">
           {promises.map((item, index) => (
             <Reveal
               as="article"
-              className="group rounded-lg border border-[#e1d3b7] bg-[#fffaf0] p-7 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-[#d5b77d] hover:shadow-[0_22px_50px_rgba(75,55,27,0.12)]"
+              className="group relative overflow-hidden rounded-lg border border-[#dccdaa] bg-[#fffaf0] p-6 shadow-[0_18px_48px_rgba(75,55,27,0.08)] transition duration-300 hover:-translate-y-1 hover:border-[#d2b67c] hover:shadow-[0_26px_60px_rgba(75,55,27,0.14)] sm:p-7"
               delay={index * 90}
               key={item.title}
             >
-              <span className="mb-6 grid size-14 place-items-center rounded-full bg-[#e8f0df] text-[#173b24] transition duration-300 group-hover:rotate-6 group-hover:scale-105 group-hover:bg-[#173b24] group-hover:text-[#fff8e8]">
-                <PromiseIcon name={item.icon} />
-              </span>
-              <h3 className="text-xl font-black text-[#1c331f]">{item.title}</h3>
-              <p className="mt-3 text-base leading-7 text-[#5d5b49]">{item.text}</p>
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#f5bd78] via-[#d7c6a1] to-[#173b24]/65" />
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <span className="grid size-12 shrink-0 place-items-center rounded-full bg-[#e8f0df] text-[#173b24] transition duration-300 group-hover:scale-105 group-hover:bg-[#173b24] group-hover:text-[#fff8e8]">
+                    <PromiseIcon name={item.icon} />
+                  </span>
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.18em] text-[#8f7d57]">
+                      0{index + 1}
+                    </p>
+                    <h3 className="mt-1 text-xl font-black text-[#1c331f]">{item.title}</h3>
+                  </div>
+                </div>
+              </div>
+              <p className="mt-5 text-sm leading-7 text-[#5d5b49] sm:text-base">
+                {item.text}
+              </p>
+              <div className="mt-6 flex items-center gap-2 border-t border-[#e6dcc7] pt-5 text-xs font-black uppercase tracking-[0.16em] text-[#7a6d55]">
+                <span className="inline-flex size-2 rounded-full bg-[#f5bd78]" />
+                Consistent quality
+              </div>
             </Reveal>
           ))}
         </div>
@@ -265,7 +470,7 @@ function PromiseSection() {
 
 function ProductsSection() {
   return (
-    <section id="products" className="relative bg-[#fbfaf3] px-5 py-24 sm:px-8">
+    <section id="products" className="relative scroll-mt-24 bg-[#fbfaf3] px-5 py-24 sm:px-8">
       <div className="absolute left-1/2 top-14 -z-0 h-64 w-[38rem] -translate-x-1/2 rounded-full bg-[#f2d9a6]/35 blur-3xl" />
       <div className="mx-auto max-w-7xl">
         <Reveal className="relative z-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
@@ -337,7 +542,10 @@ function ProductCard({ imageDelay, product }: { imageDelay: number; product: Pro
 
 function FarmLifeSection() {
   return (
-    <section id="farm" className="relative overflow-hidden bg-[#173b24] px-5 py-24 text-white sm:px-8">
+    <section
+      id="farm"
+      className="relative scroll-mt-24 overflow-hidden bg-[#173b24] px-5 py-24 text-white sm:px-8"
+    >
       <div className="absolute -left-32 top-24 h-80 w-80 rounded-full bg-[#f5bd78]/12 blur-3xl" />
       <div className="absolute -right-28 bottom-16 h-72 w-72 rounded-full bg-[#e8f0df]/10 blur-3xl" />
       <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[0.9fr_1.1fr]">
@@ -609,7 +817,7 @@ function TestimonialCarousel() {
 
 function SiteFooter() {
   return (
-    <footer id="contact" className="bg-[#102819] px-5 py-14 text-[#dfead7] sm:px-8">
+    <footer id="contact" className="scroll-mt-24 bg-[#102819] px-5 py-14 text-[#dfead7] sm:px-8">
       <Reveal className="mx-auto max-w-7xl">
         <div className="grid gap-10 lg:grid-cols-[1fr_1.1fr]">
           <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-1">

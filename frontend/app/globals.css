@@ -143,6 +143,17 @@ html {
   transform-origin: left;
 }
 
+.nav-link[aria-current="location"] {
+  color: #c06f26;
+  font-weight: 800;
+}
+
+.nav-link[aria-current="location"]::after {
+  transform: scaleX(1);
+  transform-origin: left;
+  height: 3px;
+}
+
 @keyframes hero-ken-burns {
   from {
     transform: scale(1.04) translate3d(-1.2%, 0, 0);
