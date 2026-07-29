@@ -1,8 +1,6 @@
 export type Product = {
   name: string;
-  eyebrow: string;
   description: string;
-  price: string;
   image: string;
   alt: string;
 };
@@ -22,25 +20,19 @@ export type CustomerOrder = {
 export const products: Product[] = [
   {
     name: "Retail and WholeSale Eggs",
-    eyebrow: "Premium Eggs",
     description: "Premium eggs for your cooking needs.",
-    price: "Php 200.00",
     image: "/AFE-Eggs.png",
     alt: "Egg in the eggtray",
   },
   {
     name: "1.5 and 350 Palm Oil",
-    eyebrow: "Cooking favorite",
     description: "Premium palm oil for your cooking needs.",
-    price: "Php 150.00 / Php 40.00",
     image: "/AFE-Oil.png",
     alt: "Palm Oil",
   },
   {
     name: "Bataan Special Tuyo",
-    eyebrow: "Cooking Favorite",
     description: "Premium tuyo for your cooking needs.",
-    price: "Php 250.00",
     image: "/AFE-Tuyo.png",
     alt: "Tuyo",
   },
@@ -48,7 +40,7 @@ export const products: Product[] = [
 
 export const navigationItems: NavigationItem[] = [
   { label: "Mission & Vision", href: "#promise" },
-  { label: "Our eggs", href: "#products" },
+  { label: "Products", href: "#products" },
   { label: "Customer Orders", href: "#orders" },
   { label: "Contact", href: "#contact" },
 ];

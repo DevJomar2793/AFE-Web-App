@@ -1,82 +1,127 @@
 "use client";
 
 import { ArrowRight, Mail, Menu, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { BrandMark } from "@/components/storefront/brand-mark";
+import { useActiveNavigation } from "@/components/storefront/hooks/use-active-navigation";
 import type { NavigationItem } from "@/components/storefront/storefront-data";
 
-export function SiteHeader({ navigationItems }: { navigationItems: NavigationItem[] }) {
+type SiteHeaderProps = {
+  navigationItems: NavigationItem[];
+};
+
+type NavigationLinksProps = {
+  activeHref: string | null;
+  navigationItems: NavigationItem[];
+};
+
+type MobileNavigationProps = NavigationLinksProps & {
+  menuRef: RefObject<HTMLDivElement | null>;
+  onClose: () => void;
+};
+
+function DesktopNavigation({
+  activeHref,
+  navigationItems,
+}: NavigationLinksProps) {
+  return (
+    <nav
+      className="ml-auto hidden items-center gap-7 text-sm font-bold text-[#405142] lg:flex"
+      aria-label="Primary navigation"
+    >
+      {navigationItems.map((item) => (
+        <a
+          className="nav-link hover:text-[#a85620]"
+          href={item.href}
+          key={item.href}
+          aria-current={activeHref === item.href ? "location" : undefined}
+        >
+          {item.label}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
+function MobileNavigation({
+  activeHref,
+  menuRef,
+  navigationItems,
+  onClose,
+}: MobileNavigationProps) {
+  return (
+    <div
+      className="fixed inset-0 top-18 z-50 bg-[#173b24]/40 backdrop-blur-sm lg:hidden"
+      onMouseDown={onClose}
+    >
+      <div
+        id="mobile-navigation"
+        ref={menuRef}
+        className="ml-auto flex h-full w-full max-w-sm flex-col bg-[#f9f7f0] p-6 shadow-2xl"
+        aria-label="Mobile navigation"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <nav className="flex flex-col" aria-label="Mobile navigation links">
+          {navigationItems.map((item) => (
+            <a
+              className="mobile-nav-link flex min-h-15 items-center justify-between border-b border-[#ded9ca] px-3 text-lg font-black text-[#213622]"
+              href={item.href}
+              key={item.href}
+              aria-current={activeHref === item.href ? "location" : undefined}
+              onClick={onClose}
+            >
+              {item.label}
+              <ArrowRight aria-hidden="true" size={18} />
+            </a>
+          ))}
+        </nav>
+
+        <a className="button-primary mt-8 w-full" href="#contact" onClick={onClose}>
+          <Mail aria-hidden="true" size={18} />
+          Write to the farm
+        </a>
+        <p className="mt-auto border-t border-[#ded9ca] pt-6 text-sm leading-6 text-[#687066]">
+          Pasture-raised eggs, gathered and packed with care for nearby tables.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export function SiteHeader({ navigationItems }: SiteHeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [activeHref, setActiveHref] = useState<string | null>(null);
   const headerRef = useRef<HTMLElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const activeHref = useActiveNavigation(navigationItems, headerRef);
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 8);
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    const updateHeaderStyle = () => setIsScrolled(window.scrollY > 8);
+
+    updateHeaderStyle();
+    window.addEventListener("scroll", updateHeaderStyle, { passive: true });
+    return () => window.removeEventListener("scroll", updateHeaderStyle);
   }, []);
-
-  useEffect(() => {
-    const sections = navigationItems.flatMap((item) => {
-      const section = document.getElementById(item.href.replace(/^#/, ""));
-      return section ? [{ href: item.href, section }] : [];
-    });
-    let animationFrameId: number | null = null;
-
-    const updateActiveHref = () => {
-      const activationPoint = (headerRef.current?.getBoundingClientRect().bottom ?? 0) + 1;
-      let nextActiveHref: string | null = null;
-
-      for (const { href, section } of sections) {
-        if (section.getBoundingClientRect().top > activationPoint) break;
-        nextActiveHref = href;
-      }
-
-      setActiveHref((currentHref) =>
-        currentHref === nextActiveHref ? currentHref : nextActiveHref,
-      );
-    };
-
-    const scheduleUpdate = () => {
-      if (animationFrameId !== null) return;
-      animationFrameId = window.requestAnimationFrame(() => {
-        animationFrameId = null;
-        updateActiveHref();
-      });
-    };
-
-    scheduleUpdate();
-    window.addEventListener("scroll", scheduleUpdate, { passive: true });
-    window.addEventListener("resize", scheduleUpdate);
-
-    return () => {
-      window.removeEventListener("scroll", scheduleUpdate);
-      window.removeEventListener("resize", scheduleUpdate);
-      if (animationFrameId !== null) window.cancelAnimationFrame(animationFrameId);
-    };
-  }, [navigationItems]);
 
   useEffect(() => {
     if (!isMenuOpen) return;
 
+    // Prevent background scrolling and return focus to the menu button on Escape.
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     menuRef.current?.querySelector<HTMLAnchorElement>("a")?.focus();
 
-    const handleKeyDown = (event: KeyboardEvent) => {
+    const handleEscapeKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       setIsMenuOpen(false);
       menuButtonRef.current?.focus();
     };
 
-    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleEscapeKey);
     return () => {
       document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keydown", handleEscapeKey);
     };
   }, [isMenuOpen]);
 
@@ -101,27 +146,20 @@ export function SiteHeader({ navigationItems }: { navigationItems: NavigationIte
             <BrandMark />
           </span>
           <span className="truncate font-black uppercase tracking-[0.12em] text-[#18331f] sm:text-lg">
-            Adamos <span className="hidden text-[#8a744a] sm:inline">Fresh Eggs</span>
+            Adamos{" "}
+            <span className="hidden text-[#8a744a] sm:inline">Fresh Eggs</span>
           </span>
         </a>
 
-        <nav
-          className="ml-auto hidden items-center gap-7 text-sm font-bold text-[#405142] lg:flex"
-          aria-label="Primary navigation"
-        >
-          {navigationItems.map((item) => (
-            <a
-              className="nav-link hover:text-[#a85620]"
-              href={item.href}
-              key={item.href}
-              aria-current={activeHref === item.href ? "location" : undefined}
-            >
-              {item.label}
-            </a>
-          ))}
-        </nav>
+        <DesktopNavigation
+          activeHref={activeHref}
+          navigationItems={navigationItems}
+        />
 
-        <a className="button-secondary ml-auto hidden sm:inline-flex lg:ml-3" href="#contact">
+        <a
+          className="button-secondary ml-auto hidden sm:inline-flex lg:ml-3"
+          href="#contact"
+        >
           <Mail aria-hidden="true" size={17} />
           Contact
         </a>
@@ -139,40 +177,12 @@ export function SiteHeader({ navigationItems }: { navigationItems: NavigationIte
       </div>
 
       {isMenuOpen && (
-        <div
-          className="fixed inset-0 top-18 z-50 bg-[#173b24]/40 backdrop-blur-sm lg:hidden"
-          onMouseDown={closeMenu}
-        >
-          <div
-            id="mobile-navigation"
-            ref={menuRef}
-            className="ml-auto flex h-full w-full max-w-sm flex-col bg-[#f9f7f0] p-6 shadow-2xl"
-            aria-label="Mobile navigation"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <nav className="flex flex-col" aria-label="Mobile navigation links">
-              {navigationItems.map((item) => (
-                <a
-                  className="mobile-nav-link flex min-h-15 items-center justify-between border-b border-[#ded9ca] px-3 text-lg font-black text-[#213622]"
-                  href={item.href}
-                  key={item.href}
-                  aria-current={activeHref === item.href ? "location" : undefined}
-                  onClick={closeMenu}
-                >
-                  {item.label}
-                  <ArrowRight aria-hidden="true" size={18} />
-                </a>
-              ))}
-            </nav>
-            <a className="button-primary mt-8 w-full" href="#contact" onClick={closeMenu}>
-              <Mail aria-hidden="true" size={18} />
-              Write to the farm
-            </a>
-            <p className="mt-auto border-t border-[#ded9ca] pt-6 text-sm leading-6 text-[#687066]">
-              Pasture-raised eggs, gathered and packed with care for nearby tables.
-            </p>
-          </div>
-        </div>
+        <MobileNavigation
+          activeHref={activeHref}
+          menuRef={menuRef}
+          navigationItems={navigationItems}
+          onClose={closeMenu}
+        />
       )}
     </header>
   );

@@ -1,8 +1,24 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 
-type RevealElement = "div" | "article" | "figure" | "section" | "footer" | "p" | "h1" | "dl";
+type RevealElement =
+  | "div"
+  | "article"
+  | "figure"
+  | "section"
+  | "footer"
+  | "p"
+  | "h1"
+  | "dl";
+
+type RevealVariant = "up" | "left" | "right" | "fade" | "scale";
 
 type RevealProps = {
   children: ReactNode;
@@ -10,7 +26,7 @@ type RevealProps = {
   className?: string;
   delay?: number;
   once?: boolean;
-  variant?: "up" | "left" | "right" | "fade" | "scale";
+  variant?: RevealVariant;
 };
 
 export function Reveal({

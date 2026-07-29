@@ -1,9 +1,21 @@
 "use client";
 
 import { ArrowRight, Mail } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import {
+  type ChangeEvent,
+  type FormEvent,
+  useState,
+} from "react";
 
-export function ContactForm({ contactEmail }: { contactEmail: string }) {
+const INVALID_FORM_MESSAGE = "Please complete both fields before continuing.";
+const EMAIL_APP_MESSAGE =
+  "Opening your email app with the message ready to review.";
+
+type ContactFormProps = {
+  contactEmail: string;
+};
+
+export function ContactForm({ contactEmail }: ContactFormProps) {
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState("");
@@ -14,23 +26,31 @@ export function ContactForm({ contactEmail }: { contactEmail: string }) {
 
     if (!form.checkValidity()) {
       form.reportValidity();
-      setStatus("Please complete both fields before continuing.");
+      setStatus(INVALID_FORM_MESSAGE);
       return;
     }
 
     const subject = encodeURIComponent(`Farm inquiry from ${name.trim()}`);
-    const body = encodeURIComponent(`${message.trim()}`);
-    setStatus("Opening your email app with the message ready to review.");
+    const body = encodeURIComponent(message.trim());
+    setStatus(EMAIL_APP_MESSAGE);
     window.location.href = `mailto:${contactEmail}?subject=${subject}&body=${body}`;
   };
 
-  const clearStatus = () => setStatus("");
+  const handleNameChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setName(event.target.value);
+    setStatus("");
+  };
+
+  const handleMessageChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    setMessage(event.target.value);
+    setStatus("");
+  };
 
   return (
     <section className="border border-[#d4cbb8] bg-[#fdfbf5] p-6 shadow-[0_20px_50px_rgba(54,48,35,0.08)] sm:p-8">
       <div className="flex items-center gap-3 border-b border-[#ddd5c5] pb-5">
         <span className="grid size-10 place-items-center rounded-full bg-[#e3ebdc] text-[#173b24]">
-          <Mail size={19} />
+          <Mail aria-hidden="true" size={19} />
         </span>
         <div>
           <h3 className="text-xl font-black text-[#18331f]">Write to us</h3>
@@ -51,10 +71,7 @@ export function ContactForm({ contactEmail }: { contactEmail: string }) {
             autoComplete="name"
             required
             value={name}
-            onChange={(event) => {
-              setName(event.target.value);
-              clearStatus();
-            }}
+            onChange={handleNameChange}
             className="form-field"
             placeholder="Your name"
           />
@@ -68,10 +85,7 @@ export function ContactForm({ contactEmail }: { contactEmail: string }) {
             name="message"
             required
             value={message}
-            onChange={(event) => {
-              setMessage(event.target.value);
-              clearStatus();
-            }}
+            onChange={handleMessageChange}
             className="form-field min-h-32 resize-y py-3"
             placeholder="Ask about availability, pickup, or subscriptions"
           />
@@ -85,7 +99,7 @@ export function ContactForm({ contactEmail }: { contactEmail: string }) {
             {status}
           </p>
           <button type="submit" className="button-primary shrink-0">
-            Continue to email <ArrowRight size={17} />
+            Continue to email <ArrowRight aria-hidden="true" size={17} />
           </button>
         </div>
       </form>
