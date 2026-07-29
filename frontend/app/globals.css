@@ -124,23 +124,27 @@ textarea {
   color: #263b29;
   display: block;
   font-size: 0.875rem;
-  font-weight: 800;
-  margin-bottom: 0.5rem;
+  font-weight: 900;
+  margin-bottom: 0.625rem;
 }
 
 .form-field {
-  background: white;
-  border: 1px solid #cfc8b8;
+  background: #fdfcf8;
+  border: 1px solid #c7c0b0;
   color: #18251a;
-  font-size: 0.875rem;
-  height: 3rem;
+  font-size: 1rem;
+  height: 3.5rem;
   outline: none;
-  padding: 0 0.875rem;
-  transition: border-color 180ms ease, box-shadow 180ms ease;
+  padding: 0 1rem;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
   width: 100%;
 }
 
 .form-field:focus {
+  background: white;
   border-color: #a85620;
   box-shadow: 0 0 0 3px rgba(168, 86, 32, 0.14);
 }

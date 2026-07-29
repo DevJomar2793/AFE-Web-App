@@ -42,7 +42,6 @@ export const navigationItems: NavigationItem[] = [
   { label: "Mission & Vision", href: "#promise" },
   { label: "Products", href: "#products" },
   { label: "Customer Orders", href: "#orders" },
-  { label: "Contact", href: "#contact" },
 ];
 
 export const customerOrders: CustomerOrder[] = [

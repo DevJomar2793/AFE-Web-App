@@ -78,7 +78,7 @@ function MobileNavigation({
 
         <a className="button-primary mt-8 w-full" href="#contact" onClick={onClose}>
           <Mail aria-hidden="true" size={18} />
-          Write to the farm
+          Contact
         </a>
         <p className="mt-auto border-t border-[#ded9ca] pt-6 text-sm leading-6 text-[#687066]">
           Pasture-raised eggs, gathered and packed with care for nearby tables.

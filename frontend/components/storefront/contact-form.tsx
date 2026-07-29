@@ -47,22 +47,26 @@ export function ContactForm({ contactEmail }: ContactFormProps) {
   };
 
   return (
-    <section className="border border-[#d4cbb8] bg-[#fdfbf5] p-6 shadow-[0_20px_50px_rgba(54,48,35,0.08)] sm:p-8">
-      <div className="flex items-center gap-3 border-b border-[#ddd5c5] pb-5">
-        <span className="grid size-10 place-items-center rounded-full bg-[#e3ebdc] text-[#173b24]">
-          <Mail aria-hidden="true" size={19} />
+    <section className="border border-white/15 bg-[#fffdf7] p-6 text-[#18331f] shadow-[0_28px_70px_rgba(5,20,10,0.24)] sm:p-8 lg:p-10">
+      <div className="flex items-start gap-4 border-b border-[#ddd5c5] pb-6">
+        <span className="grid size-12 shrink-0 place-items-center bg-[#e3ebdc] text-[#173b24]">
+          <Mail aria-hidden="true" size={21} />
         </span>
         <div>
-          <h3 className="text-xl font-black text-[#18331f]">Write to us</h3>
-          <p className="mt-1 text-sm text-[#697066]">
-            Your email app opens when you continue.
+          <p className="eyebrow">Email inquiry</p>
+          <h3 className="mt-2 text-2xl font-black text-[#18331f]">
+            Tell us what you need.
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-[#697066]">
+            Both fields are required. You can review everything before sending.
           </p>
         </div>
       </div>
-      <form className="mt-6 space-y-5" onSubmit={handleSubmit} noValidate>
+
+      <form className="mt-7 space-y-6" onSubmit={handleSubmit} noValidate>
         <div>
           <label className="form-label" htmlFor="contact-name">
-            Name
+            Name <span className="text-[#a85620]">*</span>
           </label>
           <input
             id="contact-name"
@@ -78,7 +82,7 @@ export function ContactForm({ contactEmail }: ContactFormProps) {
         </div>
         <div>
           <label className="form-label" htmlFor="contact-message">
-            How can we help?
+            How can we help? <span className="text-[#a85620]">*</span>
           </label>
           <textarea
             id="contact-message"
@@ -86,19 +90,20 @@ export function ContactForm({ contactEmail }: ContactFormProps) {
             required
             value={message}
             onChange={handleMessageChange}
-            className="form-field min-h-32 resize-y py-3"
-            placeholder="Ask about availability, pickup, or subscriptions"
+            className="form-field min-h-40 resize-y py-3"
+            placeholder="Tell us which products and quantities you need"
           />
         </div>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+
+        <div className="border-t border-[#ddd5c5] pt-6">
           <p
-            className="min-h-5 text-xs font-semibold text-[#6b7168]"
+            className="mb-4 min-h-5 text-sm font-semibold leading-5 text-[#6b7168]"
             role="status"
             aria-live="polite"
           >
             {status}
           </p>
-          <button type="submit" className="button-primary shrink-0">
+          <button type="submit" className="button-primary w-full sm:w-auto">
             Continue to email <ArrowRight aria-hidden="true" size={17} />
           </button>
         </div>

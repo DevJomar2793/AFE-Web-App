@@ -3,6 +3,8 @@
 import { useEffect, useState, type RefObject } from "react";
 import type { NavigationItem } from "@/components/storefront/storefront-data";
 
+const SECTION_SCROLL_GAP_PX = 24;
+
 type SectionTarget = {
   href: string;
   element: HTMLElement;
@@ -65,9 +67,10 @@ function getSectionTargets(navigationItems: NavigationItem[]) {
 
 function findActiveHref(sectionTargets: SectionTarget[], headerBottom: number) {
   let activeHref: string | null = null;
+  const activationPoint = headerBottom + SECTION_SCROLL_GAP_PX;
 
   for (const target of sectionTargets) {
-    if (target.element.getBoundingClientRect().top > headerBottom + 1) break;
+    if (target.element.getBoundingClientRect().top > activationPoint + 1) break;
     activeHref = target.href;
   }
 
