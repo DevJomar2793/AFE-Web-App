@@ -1,13 +1,15 @@
 import Image from "next/image";
-import { ArrowRight, Check, Mail, Sprout, Wheat } from "lucide-react";
+import { ArrowRight, Check, Eye, Mail, Target } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Reveal } from "@/components/reveal";
 import { BackToTopButton } from "@/components/storefront/back-to-top-button";
 import { BrandMark } from "@/components/storefront/brand-mark";
 import { ContactForm } from "@/components/storefront/contact-form";
+import { CustomerOrdersCarousel } from "@/components/storefront/customer-orders-carousel";
 import { SiteHeader } from "@/components/storefront/site-header";
 import {
   contactEmail,
+  customerOrders,
   navigationItems,
   products,
   type Product,
@@ -20,7 +22,7 @@ export function FarmStorefront() {
       <HeroSection />
       <PromiseSection />
       <ProductsSection />
-      <FarmLifeSection />
+      <CustomerOrdersSection />
       <SiteFooter />
       <BackToTopButton />
     </main>
@@ -49,19 +51,28 @@ function HeroSection() {
             A better morning starts at the farm.
           </h1>
           <p className="mt-5 max-w-xl text-base leading-7 text-[#f6edd9] sm:mt-6 sm:text-xl sm:leading-8">
-            Pasture-raised eggs, gathered with care and packed by a family farm for nearby tables.
+            Pasture-raised eggs, gathered with care and packed by a family farm
+            for nearby tables.
           </p>
           <div className="mt-7 flex flex-col gap-3 sm:mt-8 sm:flex-row">
-            <a className="button-primary" href="#farm">
-              Our farm
+            <a className="button-primary" href="#orders">
+              Customer orders
               <ArrowRight aria-hidden="true" size={18} />
             </a>
-            <a className="button-on-dark" href="#products">View our eggs</a>
+            <a className="button-on-dark" href="#products">
+              View our eggs
+            </a>
           </div>
           <div className="mt-8 flex flex-wrap gap-x-7 gap-y-3 border-t border-white/20 pt-5 text-sm font-bold text-[#f4ead8] sm:mt-12">
-            <span className="inline-flex items-center gap-2"><Check size={16} /> Pasture access</span>
-            <span className="inline-flex items-center gap-2"><Check size={16} /> Clean feed</span>
-            <span className="inline-flex items-center gap-2"><Check size={16} /> Packed on farm</span>
+            <span className="inline-flex items-center gap-2">
+              <Check size={16} /> Pasture access
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <Check size={16} /> Clean feed
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <Check size={16} /> Packed on farm
+            </span>
           </div>
         </div>
       </div>
@@ -70,58 +81,69 @@ function HeroSection() {
 }
 
 function PromiseSection() {
-  const promises = [
-    {
-      icon: Sprout,
-      title: "Room to roam",
-      text: "Our flocks move through open pasture with fresh air, forage, and space to behave naturally.",
-    },
-    {
-      icon: Wheat,
-      title: "Thoughtful feed",
-      text: "Non-GMO grain and seasonal greens support a steady, transparent daily routine.",
-    },
-    {
-      icon: Check,
-      title: "Careful handling",
-      text: "Eggs are gathered, checked, washed, and packed on the farm for local availability.",
-    },
-  ];
-
   return (
     <section id="promise" className="section-shell scroll-mt-24 bg-[#f9f7f0]">
       <div className="mx-auto max-w-7xl">
         <Reveal className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
           <div>
-            <p className="eyebrow">Our promise</p>
-            <h2 className="section-title mt-4">Good eggs begin with how hens are raised.</h2>
+            <p className="eyebrow">Purpose &amp; direction</p>
+            <h2 className="section-title mt-4">
+              Fresh eggs made accessible, today and tomorrow.
+            </h2>
           </div>
           <p className="max-w-2xl text-lg leading-8 text-[#5f675e] lg:justify-self-end">
-            We keep the process close and understandable, from pasture and feed to the carton that
-            reaches your kitchen.
+            Our mission guides how we serve customers today. Our vision shapes
+            how we grow alongside nearby communities.
           </p>
         </Reveal>
-        <div className="mt-12 grid border-y border-[#dcd7ca] md:grid-cols-3">
-          {promises.map((item, index) => {
-            const Icon = item.icon;
-            return (
-              <Reveal
-                as="article"
-                className="border-[#dcd7ca] py-8 md:px-8 md:first:pl-0 md:last:pr-0 md:not-first:border-l"
-                delay={index * 80}
-                key={item.title}
-              >
-                <div className="flex items-center gap-4">
-                  <span className="grid size-11 place-items-center rounded-full bg-[#e3ebdc] text-[#173b24]">
-                    <Icon size={21} />
-                  </span>
-                  <span className="text-xs font-black uppercase text-[#957549]">0{index + 1}</span>
-                </div>
-                <h3 className="mt-6 text-2xl font-black text-[#1c331f]">{item.title}</h3>
-                <p className="mt-3 leading-7 text-[#60685f]">{item.text}</p>
-              </Reveal>
-            );
-          })}
+        <div className="mt-12 grid gap-5 md:grid-cols-2">
+          <Reveal
+            as="article"
+            className="border border-[#dcd7ca] bg-white p-7 sm:p-9"
+          >
+            <div className="flex items-center justify-between gap-4">
+              <span className="grid size-12 place-items-center rounded-full bg-[#e3ebdc] text-[#173b24]">
+                <Target aria-hidden="true" size={23} />
+              </span>
+              <span className="text-xs font-black uppercase tracking-[0.16em] text-[#957549]">
+                01
+              </span>
+            </div>
+            <p className="eyebrow mt-8">What guides us</p>
+            <h3 className="mt-3 text-3xl font-black text-[#1c331f]">
+              Our Mission
+            </h3>
+            <p className="mt-5 text-base leading-8 text-[#60685f] sm:text-lg">
+              Our mission is to provide high-quality eggs at affordable prices
+              through convenient, reliable service. By delivering fresh eggs
+              directly from our farm to your doorstep, we make farm-fresh
+              quality easier to bring to your table.
+            </p>
+          </Reveal>
+
+          <Reveal
+            as="article"
+            className="bg-[#173b24] p-7 text-white sm:p-9"
+            delay={100}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <span className="grid size-12 place-items-center rounded-full bg-[#f5bd78] text-[#173b24]">
+                <Eye aria-hidden="true" size={23} />
+              </span>
+              <span className="text-xs font-black uppercase tracking-[0.16em] text-[#f5bd78]">
+                02
+              </span>
+            </div>
+            <p className="eyebrow mt-8 text-[#f5bd78]">Where we are going</p>
+            <h3 className="mt-3 text-3xl font-black">Our Vision</h3>
+            <p className="mt-5 text-base leading-8 text-[#dce8d5] sm:text-lg">
+              Our vision is to become a trusted fresh-egg supplier for
+              businesses of every size and expand into neighboring towns
+              through additional stores. We aim to make high-quality,
+              affordable eggs more accessible while maintaining excellent
+              customer service and dependable delivery.
+            </p>
+          </Reveal>
         </div>
       </div>
     </section>
@@ -140,7 +162,8 @@ function ProductsSection() {
             <p className="eyebrow">From our farm</p>
             <h2 className="section-title mt-4">Eggs for the way you cook.</h2>
             <p className="mt-4 text-lg leading-8 text-[#62695f]">
-              Everyday dozens, smaller batches, and a recurring option for regular tables.
+              Everyday dozens, smaller batches, and a recurring option for
+              regular tables.
             </p>
           </div>
           <a className="text-link" href="#contact">
@@ -159,7 +182,13 @@ function ProductsSection() {
   );
 }
 
-function ProductCard({ product, imageDelay }: { product: Product; imageDelay: number }) {
+function ProductCard({
+  product,
+  imageDelay,
+}: {
+  product: Product;
+  imageDelay: number;
+}) {
   return (
     <article className="group overflow-hidden border border-[#dedbd2] bg-[#fdfcf8] transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_55px_rgba(30,45,31,0.12)]">
       <div
@@ -179,11 +208,18 @@ function ProductCard({ product, imageDelay }: { product: Product; imageDelay: nu
       </div>
       <div className="p-6">
         <div className="flex items-start justify-between gap-4">
-          <h3 className="text-xl font-black leading-tight text-[#18331f]">{product.name}</h3>
+          <h3 className="text-xl font-black leading-tight text-[#18331f]">
+            {product.name}
+          </h3>
           <p className="shrink-0 font-black text-[#a85620]">{product.price}</p>
         </div>
-        <p className="mt-3 min-h-18 text-sm leading-6 text-[#62695f]">{product.description}</p>
-        <a className="text-link mt-5 border-t border-[#e1ddd2] pt-5" href="#contact">
+        <p className="mt-3 min-h-18 text-sm leading-6 text-[#62695f]">
+          {product.description}
+        </p>
+        <a
+          className="text-link mt-5 border-t border-[#e1ddd2] pt-5"
+          href="#contact"
+        >
           Check availability <ArrowRight size={16} />
         </a>
       </div>
@@ -191,53 +227,24 @@ function ProductCard({ product, imageDelay }: { product: Product; imageDelay: nu
   );
 }
 
-function FarmLifeSection() {
+function CustomerOrdersSection() {
   return (
-    <section id="farm" className="scroll-mt-24 bg-[#173b24] text-white">
-      <div className="mx-auto grid max-w-[1440px] lg:grid-cols-2">
-        <div className="flex items-center px-5 py-20 sm:px-8 lg:px-16 lg:py-24">
-          <Reveal variant="left">
-            <p className="eyebrow text-[#f5bd78]">A visible routine</p>
+    <section id="orders" className="scroll-mt-24 bg-[#173b24] px-5 py-20 text-white sm:px-8 lg:py-24">
+      <div className="mx-auto max-w-7xl">
+        <Reveal className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
+          <div>
+            <p className="eyebrow text-[#f5bd78]">Customer orders</p>
             <h2 className="section-title mt-4 max-w-xl text-white">
-              Close to the flock. Careful with every carton.
+              Fresh eggs chosen by nearby tables.
             </h2>
-            <p className="mt-5 max-w-lg text-lg leading-8 text-[#dce8d5]">
-              Keeping the farm personal means we can watch the details: pasture rotation, clean
-              nesting boxes, careful washing, and dependable local availability.
-            </p>
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
-              {["Rotated pasture", "Clean nesting boxes", "Packed on farm", "Local availability"].map(
-                (item) => (
-                  <span
-                    className="flex items-center gap-3 text-sm font-bold text-[#f6eddb]"
-                    key={item}
-                  >
-                    <Check className="text-[#f5bd78]" size={18} /> {item}
-                  </span>
-                ),
-              )}
-            </div>
-          </Reveal>
-        </div>
-        <Reveal className="grid min-h-[32rem] grid-cols-2" variant="right">
-          <div className="relative">
-            <Image
-              src="/farm-pasture.png"
-              alt="Pasture-raised hens roaming in green grass"
-              fill
-              sizes="(min-width: 1024px) 25vw, 50vw"
-              className="object-cover"
-            />
           </div>
-          <div className="relative">
-            <Image
-              src="/family-farm.png"
-              alt="Family farmers holding a basket of fresh eggs outdoors"
-              fill
-              sizes="(min-width: 1024px) 25vw, 50vw"
-              className="object-cover"
-            />
-          </div>
+          <p className="max-w-2xl text-lg leading-8 text-[#dce8d5] lg:justify-self-end">
+            From households to local businesses, see the egg sizes our
+            customers are ordering from Adamos Fresh Eggs.
+          </p>
+        </Reveal>
+        <Reveal delay={100}>
+          <CustomerOrdersCarousel orders={customerOrders} />
         </Reveal>
       </div>
     </section>
@@ -246,15 +253,20 @@ function FarmLifeSection() {
 
 function SiteFooter() {
   return (
-    <footer id="contact" className="scroll-mt-20 bg-[#f0eadc] px-5 py-20 sm:px-8">
+    <footer
+      id="contact"
+      className="scroll-mt-20 bg-[#f0eadc] px-5 py-20 sm:px-8"
+    >
       <div className="mx-auto max-w-7xl">
         <Reveal className="grid gap-12 lg:grid-cols-[0.75fr_1.25fr] lg:gap-20">
           <div>
             <p className="eyebrow">Contact the farm</p>
-            <h2 className="section-title mt-4">Start a conversation about fresh eggs.</h2>
+            <h2 className="section-title mt-4">
+              Start a conversation about fresh eggs.
+            </h2>
             <p className="mt-5 max-w-md text-lg leading-8 text-[#5f675e]">
-              Ask about current availability, local pickup, delivery, or recurring cartons. We reply
-              directly by email.
+              Ask about current availability, local pickup, delivery, or
+              recurring cartons. We reply directly by email.
             </p>
             <a
               className="mt-7 inline-flex items-center gap-3 font-black text-[#173b24] underline decoration-[#d28a4e] decoration-2 underline-offset-4"
@@ -267,7 +279,7 @@ function SiteFooter() {
         </Reveal>
         <div className="mt-16 flex flex-col gap-5 border-t border-[#d4cbb8] pt-7 text-sm text-[#697066] sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3 font-black uppercase tracking-[0.12em] text-[#18331f]">
-            <span className="grid size-9 place-items-center rounded-full bg-[#173b24] text-white">
+            <span className="grid size-10 place-items-center overflow-hidden rounded-full border border-[#d4cbb8] bg-white">
               <BrandMark />
             </span>
             Adamos Fresh Eggs

@@ -243,9 +243,44 @@ html {
   width: 100%;
 }
 
-.nav-link:hover::after {
+.nav-link:hover::after,
+.nav-link[aria-current="location"]::after {
   transform: scaleX(1);
   transform-origin: left;
+}
+
+.nav-link[aria-current="location"] {
+  color: #a85620;
+}
+
+.mobile-nav-link {
+  position: relative;
+  transition: background-color 180ms ease, color 180ms ease, padding-left 180ms ease;
+}
+
+.mobile-nav-link::before {
+  background: #d27a2f;
+  content: "";
+  inset-block: 0.75rem;
+  left: 0;
+  position: absolute;
+  transform: scaleY(0);
+  transition: transform 180ms ease;
+  width: 3px;
+}
+
+.mobile-nav-link[aria-current="location"] {
+  background: #f0eadc;
+  color: #a85620;
+  padding-left: 1.25rem;
+}
+
+.mobile-nav-link[aria-current="location"]::before {
+  transform: scaleY(1);
+}
+
+.mobile-nav-link[aria-current="location"] svg {
+  color: #a85620;
 }
 
 @keyframes hero-ken-burns {

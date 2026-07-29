@@ -19,7 +19,7 @@ export function ContactForm({ contactEmail }: { contactEmail: string }) {
     }
 
     const subject = encodeURIComponent(`Farm inquiry from ${name.trim()}`);
-    const body = encodeURIComponent(`Name: ${name.trim()}\n\nMessage:\n${message.trim()}`);
+    const body = encodeURIComponent(`${message.trim()}`);
     setStatus("Opening your email app with the message ready to review.");
     window.location.href = `mailto:${contactEmail}?subject=${subject}&body=${body}`;
   };
@@ -34,12 +34,16 @@ export function ContactForm({ contactEmail }: { contactEmail: string }) {
         </span>
         <div>
           <h3 className="text-xl font-black text-[#18331f]">Write to us</h3>
-          <p className="mt-1 text-sm text-[#697066]">Your email app opens when you continue.</p>
+          <p className="mt-1 text-sm text-[#697066]">
+            Your email app opens when you continue.
+          </p>
         </div>
       </div>
       <form className="mt-6 space-y-5" onSubmit={handleSubmit} noValidate>
         <div>
-          <label className="form-label" htmlFor="contact-name">Name</label>
+          <label className="form-label" htmlFor="contact-name">
+            Name
+          </label>
           <input
             id="contact-name"
             name="name"
@@ -56,7 +60,9 @@ export function ContactForm({ contactEmail }: { contactEmail: string }) {
           />
         </div>
         <div>
-          <label className="form-label" htmlFor="contact-message">How can we help?</label>
+          <label className="form-label" htmlFor="contact-message">
+            How can we help?
+          </label>
           <textarea
             id="contact-message"
             name="message"

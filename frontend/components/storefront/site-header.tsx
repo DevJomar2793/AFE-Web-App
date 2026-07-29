@@ -8,6 +8,8 @@ import type { NavigationItem } from "@/components/storefront/storefront-data";
 export function SiteHeader({ navigationItems }: { navigationItems: NavigationItem[] }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [activeHref, setActiveHref] = useState<string | null>(null);
+  const headerRef = useRef<HTMLElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -17,6 +19,46 @@ export function SiteHeader({ navigationItems }: { navigationItems: NavigationIte
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    const sections = navigationItems.flatMap((item) => {
+      const section = document.getElementById(item.href.replace(/^#/, ""));
+      return section ? [{ href: item.href, section }] : [];
+    });
+    let animationFrameId: number | null = null;
+
+    const updateActiveHref = () => {
+      const activationPoint = (headerRef.current?.getBoundingClientRect().bottom ?? 0) + 1;
+      let nextActiveHref: string | null = null;
+
+      for (const { href, section } of sections) {
+        if (section.getBoundingClientRect().top > activationPoint) break;
+        nextActiveHref = href;
+      }
+
+      setActiveHref((currentHref) =>
+        currentHref === nextActiveHref ? currentHref : nextActiveHref,
+      );
+    };
+
+    const scheduleUpdate = () => {
+      if (animationFrameId !== null) return;
+      animationFrameId = window.requestAnimationFrame(() => {
+        animationFrameId = null;
+        updateActiveHref();
+      });
+    };
+
+    scheduleUpdate();
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+
+    return () => {
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      if (animationFrameId !== null) window.cancelAnimationFrame(animationFrameId);
+    };
+  }, [navigationItems]);
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -42,6 +84,7 @@ export function SiteHeader({ navigationItems }: { navigationItems: NavigationIte
 
   return (
     <header
+      ref={headerRef}
       className={`fixed inset-x-0 top-0 z-50 border-b transition duration-300 ${
         isScrolled
           ? "border-[#d9d5c7] bg-[#f9f7f0]/96 shadow-[0_10px_30px_rgba(25,40,27,0.08)] backdrop-blur-xl"
@@ -54,7 +97,7 @@ export function SiteHeader({ navigationItems }: { navigationItems: NavigationIte
           className="group flex min-w-0 items-center gap-3"
           aria-label="Adamos Fresh Eggs home"
         >
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[#173b24] text-[#fff8e8]">
+          <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-full border border-[#d9d5c7] bg-white shadow-sm">
             <BrandMark />
           </span>
           <span className="truncate font-black uppercase tracking-[0.12em] text-[#18331f] sm:text-lg">
@@ -67,7 +110,12 @@ export function SiteHeader({ navigationItems }: { navigationItems: NavigationIte
           aria-label="Primary navigation"
         >
           {navigationItems.map((item) => (
-            <a className="nav-link hover:text-[#a85620]" href={item.href} key={item.href}>
+            <a
+              className="nav-link hover:text-[#a85620]"
+              href={item.href}
+              key={item.href}
+              aria-current={activeHref === item.href ? "location" : undefined}
+            >
               {item.label}
             </a>
           ))}
@@ -105,9 +153,10 @@ export function SiteHeader({ navigationItems }: { navigationItems: NavigationIte
             <nav className="flex flex-col" aria-label="Mobile navigation links">
               {navigationItems.map((item) => (
                 <a
-                  className="flex min-h-15 items-center justify-between border-b border-[#ded9ca] text-lg font-black text-[#213622]"
+                  className="mobile-nav-link flex min-h-15 items-center justify-between border-b border-[#ded9ca] px-3 text-lg font-black text-[#213622]"
                   href={item.href}
                   key={item.href}
+                  aria-current={activeHref === item.href ? "location" : undefined}
                   onClick={closeMenu}
                 >
                   {item.label}
