@@ -16,6 +16,7 @@ type NavigationLinksProps = {
 };
 
 type MobileNavigationProps = NavigationLinksProps & {
+  isOpen: boolean;
   menuRef: RefObject<HTMLDivElement | null>;
   onClose: () => void;
 };
@@ -45,44 +46,62 @@ function DesktopNavigation({
 
 function MobileNavigation({
   activeHref,
+  isOpen,
   menuRef,
   navigationItems,
   onClose,
 }: MobileNavigationProps) {
   return (
     <div
-      className="fixed inset-0 top-18 z-50 bg-[#173b24]/40 backdrop-blur-sm lg:hidden"
+      className={`fixed inset-x-0 bottom-0 top-18 z-50 bg-[#173b24]/45 backdrop-blur-[2px] transition-[opacity,visibility] duration-300 motion-reduce:transition-none lg:hidden ${
+        isOpen
+          ? "visible opacity-100"
+          : "invisible pointer-events-none opacity-0"
+      }`}
+      aria-hidden={!isOpen}
       onMouseDown={onClose}
     >
       <div
         id="mobile-navigation"
         ref={menuRef}
-        className="ml-auto flex h-full w-full max-w-sm flex-col bg-[#f9f7f0] p-6 shadow-2xl"
+        className={`ml-auto flex h-[calc(100dvh-4.5rem)] w-[min(90vw,24rem)] flex-col overflow-hidden border-l border-[#ded9ca] bg-[#f9f7f0] px-5 py-6 shadow-[-18px_0_48px_rgba(16,40,25,0.18)] transition-transform duration-300 ease-out motion-reduce:transition-none sm:px-7 ${
+          isOpen ? "translate-x-0" : "translate-x-full"
+        }`}
         aria-label="Mobile navigation"
         onMouseDown={(event) => event.stopPropagation()}
       >
+        <div className="mb-3 flex items-center gap-3 px-3">
+          <span className="eyebrow">Explore</span>
+          <span className="h-px flex-1 bg-[#ded9ca]" aria-hidden="true" />
+        </div>
+
         <nav className="flex flex-col" aria-label="Mobile navigation links">
           {navigationItems.map((item) => (
             <a
-              className="mobile-nav-link flex min-h-15 items-center justify-between border-b border-[#ded9ca] px-3 text-lg font-black text-[#213622]"
+              className="mobile-nav-link flex min-h-16 items-center justify-between gap-4 border-b border-[#ded9ca] px-3 text-base font-black text-[#213622] sm:text-lg"
               href={item.href}
               key={item.href}
               aria-current={activeHref === item.href ? "location" : undefined}
               onClick={onClose}
             >
-              {item.label}
-              <ArrowRight aria-hidden="true" size={18} />
+              <span>{item.label}</span>
+              <ArrowRight
+                className="shrink-0 transition-transform duration-200"
+                aria-hidden="true"
+                size={18}
+              />
             </a>
           ))}
         </nav>
 
-        <a className="button-primary mt-8 w-full" href="#contact" onClick={onClose}>
+        <a
+          className="button-primary mt-7 w-full shrink-0"
+          href="#contact"
+          onClick={onClose}
+        >
           <Mail aria-hidden="true" size={18} />
           Contact
         </a>
-        <p className="mt-auto border-t border-[#ded9ca] pt-6 text-sm leading-6 text-[#687066]">
-          Pasture-raised eggs, gathered and packed with care for nearby tables.
-        </p>
       </div>
     </div>
   );
@@ -125,7 +144,21 @@ export function SiteHeader({ navigationItems }: SiteHeaderProps) {
     };
   }, [isMenuOpen]);
 
-  const closeMenu = () => setIsMenuOpen(false);
+  useEffect(() => {
+    const desktopNavigation = window.matchMedia("(min-width: 64rem)");
+    const closeAtDesktopBreakpoint = (event: MediaQueryListEvent) => {
+      if (event.matches) setIsMenuOpen(false);
+    };
+
+    desktopNavigation.addEventListener("change", closeAtDesktopBreakpoint);
+    return () =>
+      desktopNavigation.removeEventListener("change", closeAtDesktopBreakpoint);
+  }, []);
+
+  const closeMenu = () => {
+    setIsMenuOpen(false);
+    menuButtonRef.current?.focus();
+  };
 
   return (
     <header
@@ -157,7 +190,7 @@ export function SiteHeader({ navigationItems }: SiteHeaderProps) {
         />
 
         <a
-          className="button-secondary ml-auto hidden sm:inline-flex lg:ml-3"
+          className="button-secondary ml-3 hidden lg:inline-flex"
           href="#contact"
         >
           <Mail aria-hidden="true" size={17} />
@@ -166,7 +199,7 @@ export function SiteHeader({ navigationItems }: SiteHeaderProps) {
         <button
           ref={menuButtonRef}
           type="button"
-          className="icon-button ml-auto inline-flex lg:hidden"
+          className="icon-button ml-auto inline-flex shrink-0 lg:hidden"
           aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
           aria-expanded={isMenuOpen}
           aria-controls="mobile-navigation"
@@ -176,14 +209,13 @@ export function SiteHeader({ navigationItems }: SiteHeaderProps) {
         </button>
       </div>
 
-      {isMenuOpen && (
-        <MobileNavigation
-          activeHref={activeHref}
-          menuRef={menuRef}
-          navigationItems={navigationItems}
-          onClose={closeMenu}
-        />
-      )}
+      <MobileNavigation
+        activeHref={activeHref}
+        isOpen={isMenuOpen}
+        menuRef={menuRef}
+        navigationItems={navigationItems}
+        onClose={closeMenu}
+      />
     </header>
   );
 }

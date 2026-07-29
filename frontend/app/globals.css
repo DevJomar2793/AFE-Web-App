@@ -95,10 +95,23 @@ textarea {
 
 .icon-button {
   align-items: center;
+  background: transparent;
   border: 1px solid #c9c5b9;
+  color: #173b24;
   height: 2.75rem;
   justify-content: center;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
   width: 2.75rem;
+}
+
+.icon-button:hover,
+.icon-button[aria-expanded="true"] {
+  background: #173b24;
+  border-color: #173b24;
+  color: #fffaf0;
 }
 
 .icon-button svg {
@@ -259,7 +272,7 @@ html {
 
 .mobile-nav-link {
   position: relative;
-  transition: background-color 180ms ease, color 180ms ease, padding-left 180ms ease;
+  transition: background-color 180ms ease, color 180ms ease;
 }
 
 .mobile-nav-link::before {
@@ -276,7 +289,6 @@ html {
 .mobile-nav-link[aria-current="location"] {
   background: #f0eadc;
   color: #a85620;
-  padding-left: 1.25rem;
 }
 
 .mobile-nav-link[aria-current="location"]::before {
@@ -285,6 +297,17 @@ html {
 
 .mobile-nav-link[aria-current="location"] svg {
   color: #a85620;
+}
+
+@media (hover: hover) {
+  .mobile-nav-link:hover {
+    background: #f4efe3;
+    color: #a85620;
+  }
+
+  .mobile-nav-link:hover svg {
+    transform: translateX(0.2rem);
+  }
 }
 
 @keyframes hero-ken-burns {
