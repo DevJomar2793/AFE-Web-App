@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Mail, Menu, X } from "lucide-react";
+import { ArrowRight, LayoutDashboard, Mail, Menu, X } from "lucide-react";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { BrandMark } from "@/components/storefront/brand-mark";
 import { useActiveNavigation } from "@/components/storefront/hooks/use-active-navigation";
@@ -102,6 +102,14 @@ function MobileNavigation({
           <Mail aria-hidden="true" size={18} />
           Contact
         </a>
+        <a
+          className="mt-3 flex h-12 w-full shrink-0 items-center justify-center gap-2 border border-[#bdb8aa] text-sm font-black text-[#173b24]"
+          href="/dashboard"
+          onClick={onClose}
+        >
+          <LayoutDashboard aria-hidden="true" size={18} />
+          Operations dashboard
+        </a>
       </div>
     </div>
   );
@@ -196,11 +204,14 @@ export function SiteHeader({ navigationItems }: SiteHeaderProps) {
           <Mail aria-hidden="true" size={17} />
           Contact
         </a>
+
         <button
           ref={menuButtonRef}
           type="button"
           className="icon-button ml-auto inline-flex shrink-0 lg:hidden"
-          aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-label={
+            isMenuOpen ? "Close navigation menu" : "Open navigation menu"
+          }
           aria-expanded={isMenuOpen}
           aria-controls="mobile-navigation"
           onClick={() => setIsMenuOpen((open) => !open)}

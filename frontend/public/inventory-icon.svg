@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Adamos Inventory">
+  <rect width="512" height="512" rx="112" fill="#173b24"/>
+  <path d="M256 84c-72 0-132 78-132 179 0 94 57 165 132 165s132-71 132-165C388 162 328 84 256 84Z" fill="#fff8e9"/>
+  <path d="M181 263h150v93c0 16-13 29-29 29h-92c-16 0-29-13-29-29v-93Z" fill="#e9a45d"/>
+  <path d="M165 242h182c11 0 20 9 20 20s-9 20-20 20H165c-11 0-20-9-20-20s9-20 20-20Z" fill="#f4bd78"/>
+  <path d="M225 303h62M225 333h62" stroke="#173b24" stroke-width="15" stroke-linecap="round"/>
+</svg>
