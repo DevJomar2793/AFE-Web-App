@@ -33,3 +33,17 @@ uvicorn app.main:app --reload
 
 Open `http://127.0.0.1:8000/docs` for interactive API documentation. Check
 service and database availability with `GET http://127.0.0.1:8000/health`.
+
+## Database migrations
+
+Apply all pending schema changes from the `backend/` directory:
+
+```bash
+alembic upgrade head
+```
+
+Create future migrations after importing new models into `app/models/__init__.py`:
+
+```bash
+alembic revision --autogenerate -m "describe the schema change"
+```
