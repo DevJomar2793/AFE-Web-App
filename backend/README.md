@@ -32,7 +32,19 @@ uvicorn app.main:app --reload
 ```
 
 Open `http://127.0.0.1:8000/docs` for interactive API documentation. Check
-service and database availability with `GET http://127.0.0.1:8000/health`.
+service and database availability with
+`GET http://127.0.0.1:8000/api/v1/health`.
+
+Create an inventory item with:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/inventory \
+  -H "Content-Type: application/json" \
+  -d '{"item": "Large eggs", "quantity": 5, "price": "250.00"}'
+```
+
+The database generates the item ID. The optional `status` defaults to
+`in_stock` when quantity is available and `out_of_stock` when quantity is zero.
 
 ## Database migrations
 
@@ -46,4 +58,14 @@ Create future migrations after importing new models into `app/models/__init__.py
 
 ```bash
 alembic revision --autogenerate -m "describe the schema change"
+```
+
+## Tests
+
+Install development dependencies and run the integration tests while `afe_db`
+is available:
+
+```bash
+python -m pip install -r requirements-dev.txt
+pytest
 ```
