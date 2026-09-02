@@ -49,7 +49,7 @@ async def test_create_inventory_item_api() -> None:
             created_ids.append(empty_stock_data["id"])
             assert empty_stock_data["status"] == "out_of_stock"
 
-            inventory_response = await client.get("/api/v1/inventory")
+            inventory_response = await client.get("/api/v1/inventory/all-items")
             assert inventory_response.status_code == 200
             inventory_data = inventory_response.json()
             returned_ids = [item["id"] for item in inventory_data]

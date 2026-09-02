@@ -5,6 +5,7 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Boxes,
+  CheckCircle2,
   CircleDollarSign,
   ClipboardList,
   House,
@@ -21,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { AddInventoryItemSheet } from "@/components/inventory/add-inventory-item-sheet";
 import { useInventoryItems } from "@/components/inventory/use-inventory-items";
 import { BrandMark } from "@/components/storefront/brand-mark";
 import type { InventoryDatabaseStatus } from "@/lib/inventory-api";
@@ -35,6 +37,10 @@ import {
 
 type View = "overview" | "inventory" | "activity";
 type Action = "sale" | "return" | "restock";
+type Notice = {
+  message: string;
+  tone: "success" | "error";
+};
 
 const currency = new Intl.NumberFormat("en-PH", {
   style: "currency",
@@ -372,10 +378,11 @@ export function InventoryApp() {
   const [view, setView] = useState<View>("overview");
   const [action, setAction] = useState<Action | null>(null);
   const [actionItemId, setActionItemId] = useState<string>();
+  const [isAddItemOpen, setIsAddItemOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [hydrated, setHydrated] = useState(false);
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState<Notice | null>(null);
   const {
     items: databaseItems,
     isLoading: isInventoryLoading,
@@ -392,7 +399,10 @@ export function InventoryApp() {
           if (isInventoryState(parsed)) setState(parsed);
         }
       } catch {
-        setNotice("Saved data could not be loaded. Showing starter inventory.");
+        setNotice({
+          message: "Saved data could not be loaded. Showing starter inventory.",
+          tone: "error",
+        });
       } finally {
         setHydrated(true);
       }
@@ -424,7 +434,7 @@ export function InventoryApp() {
 
   useEffect(() => {
     if (!notice) return;
-    const timeout = window.setTimeout(() => setNotice(""), 4000);
+    const timeout = window.setTimeout(() => setNotice(null), 4000);
     return () => window.clearTimeout(timeout);
   }, [notice]);
 
@@ -539,13 +549,15 @@ export function InventoryApp() {
       ),
       transactions: [transaction, ...current.transactions],
     }));
-    setNotice(
-      type === "sale"
-        ? "Sale saved and inventory updated."
-        : type === "return"
-          ? "Return saved and stock restored."
-          : "New stock added to inventory.",
-    );
+    setNotice({
+      message:
+        type === "sale"
+          ? "Sale saved and inventory updated."
+          : type === "return"
+            ? "Return saved and stock restored."
+            : "New stock added to inventory.",
+      tone: "success",
+    });
     return null;
   };
 
@@ -562,6 +574,15 @@ export function InventoryApp() {
   const closeAction = () => {
     setAction(null);
     setActionItemId(undefined);
+  };
+
+  const handleInventoryItemCreated = () => {
+    setIsAddItemOpen(false);
+    retryInventory();
+    setNotice({
+      message: "Item successfully added to inventory.",
+      tone: "success",
+    });
   };
 
   const activityIcon = (type: TransactionType) => {
@@ -899,10 +920,10 @@ export function InventoryApp() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => openAction("restock")}
+                  onClick={() => setIsAddItemOpen(true)}
                   className="flex h-11 items-center justify-center gap-2 rounded-xl border border-[#cfd8cd] bg-white px-4 text-sm font-black text-[#173b24]"
                 >
-                  <PackagePlus size={18} /> Add stock
+                  <PackagePlus size={18} /> Add item
                 </button>
               </div>
               <div className="relative mt-6 max-w-md">
@@ -1067,9 +1088,17 @@ export function InventoryApp() {
       {notice && (
         <div
           role="status"
-          className="fixed left-1/2 top-20 z-80 w-[min(90vw,28rem)] -translate-x-1/2 rounded-xl bg-[#173b24] px-4 py-3 text-center text-sm font-bold text-white shadow-xl"
+          aria-live="polite"
+          className={`fixed left-1/2 top-20 z-80 flex w-[min(90vw,28rem)] -translate-x-1/2 items-center justify-center gap-2 rounded-xl px-4 py-3 text-center text-sm font-bold text-white shadow-xl ${
+            notice.tone === "success" ? "bg-[#28643c]" : "bg-[#9b431f]"
+          }`}
         >
-          {notice}
+          {notice.tone === "success" ? (
+            <CheckCircle2 className="shrink-0" size={18} aria-hidden="true" />
+          ) : (
+            <TriangleAlert className="shrink-0" size={18} aria-hidden="true" />
+          )}
+          <span>{notice.message}</span>
         </div>
       )}
       {action && (
@@ -1079,6 +1108,12 @@ export function InventoryApp() {
           items={state.items}
           onClose={closeAction}
           onSave={saveTransaction}
+        />
+      )}
+      {isAddItemOpen && (
+        <AddInventoryItemSheet
+          onClose={() => setIsAddItemOpen(false)}
+          onCreated={handleInventoryItemCreated}
         />
       )}
     </div>

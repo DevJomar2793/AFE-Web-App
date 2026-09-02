@@ -13,6 +13,12 @@ export type DatabaseInventoryItem = {
   updatedAt: string;
 };
 
+export type CreateInventoryItemInput = {
+  item: string;
+  quantity: number;
+  price: number;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -25,7 +31,7 @@ function isInventoryStatus(value: unknown): value is InventoryDatabaseStatus {
   );
 }
 
-function parseInventoryItem(value: unknown): DatabaseInventoryItem {
+export function parseInventoryItem(value: unknown): DatabaseInventoryItem {
   if (!isRecord(value)) throw new Error("Invalid inventory item");
 
   const price =
