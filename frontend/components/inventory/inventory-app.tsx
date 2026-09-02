@@ -21,7 +21,9 @@ import {
   X,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useInventoryItems } from "@/components/inventory/use-inventory-items";
 import { BrandMark } from "@/components/storefront/brand-mark";
+import type { InventoryDatabaseStatus } from "@/lib/inventory-api";
 import {
   INVENTORY_STORAGE_KEY,
   initialInventoryState,
@@ -158,19 +160,30 @@ function MetricCard({
   );
 }
 
-function StockBadge({ item }: { item: InventoryItem }) {
-  const isLow = item.quantity <= item.reorderLevel;
+const DATABASE_STATUS_LABELS: Record<InventoryDatabaseStatus, string> = {
+  in_stock: "In stock",
+  low_stock: "Low stock",
+  out_of_stock: "Out of stock",
+};
+
+function DatabaseStockBadge({ status }: { status: InventoryDatabaseStatus }) {
+  const statusClasses: Record<InventoryDatabaseStatus, string> = {
+    in_stock: "bg-[#e9f4e8] text-[#28643c]",
+    low_stock: "bg-[#fff0e5] text-[#a44f1f]",
+    out_of_stock: "bg-[#f8e8e8] text-[#9b3f3f]",
+  };
+  const dotClasses: Record<InventoryDatabaseStatus, string> = {
+    in_stock: "bg-[#3d8a53]",
+    low_stock: "bg-[#d46c2c]",
+    out_of_stock: "bg-[#bf5555]",
+  };
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-extrabold ${
-        isLow ? "bg-[#fff0e5] text-[#a44f1f]" : "bg-[#e9f4e8] text-[#28643c]"
-      }`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-extrabold ${statusClasses[status]}`}
     >
-      <span
-        className={`size-1.5 rounded-full ${isLow ? "bg-[#d46c2c]" : "bg-[#3d8a53]"}`}
-      />
-      {isLow ? "Low stock" : "In stock"}
+      <span className={`size-1.5 rounded-full ${dotClasses[status]}`} />
+      {DATABASE_STATUS_LABELS[status]}
     </span>
   );
 }
@@ -363,6 +376,12 @@ export function InventoryApp() {
   const [query, setQuery] = useState("");
   const [hydrated, setHydrated] = useState(false);
   const [notice, setNotice] = useState("");
+  const {
+    items: databaseItems,
+    isLoading: isInventoryLoading,
+    error: inventoryError,
+    retry: retryInventory,
+  } = useInventoryItems(view === "inventory");
 
   useEffect(() => {
     const loadSavedState = () => {
@@ -470,12 +489,9 @@ export function InventoryApp() {
   }, [state]);
   const chartMax = Math.max(...chartDays.map((day) => day.total), 1);
 
-  const filteredItems = state.items.filter((item) => {
+  const filteredDatabaseItems = databaseItems.filter((item) => {
     const search = query.trim().toLowerCase();
-    return (
-      !search ||
-      `${item.name} ${item.sku} ${item.category}`.toLowerCase().includes(search)
-    );
+    return !search || item.item.toLowerCase().includes(search);
   });
 
   const saveTransaction = ({
@@ -878,7 +894,7 @@ export function InventoryApp() {
                 <div>
                   <h2 className="text-2xl font-black">All inventory</h2>
                   <p className="mt-1 text-sm text-[#768178]">
-                    Monitor available quantities and reorder points.
+                    Live inventory records from the database.
                   </p>
                 </div>
                 <button
@@ -898,7 +914,7 @@ export function InventoryApp() {
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   className="inventory-field pl-11"
-                  placeholder="Search item, SKU, or category"
+                  placeholder="Search item"
                   aria-label="Search inventory"
                 />
               </div>
@@ -909,52 +925,76 @@ export function InventoryApp() {
                   <span>Price</span>
                   <span>Status</span>
                 </div>
-                {filteredItems.map((item) => (
+                {isInventoryLoading ? (
                   <div
-                    className="grid gap-3 border-b border-[#edf0eb] p-5 last:border-b-0 md:grid-cols-[1.7fr_.7fr_.7fr_.8fr] md:items-center md:gap-4"
-                    key={item.id}
+                    className="space-y-3 p-5"
+                    role="status"
+                    aria-label="Loading inventory"
                   >
-                    <div>
-                      <p className="font-extrabold">{item.name}</p>
-                      <p className="mt-1 text-xs font-semibold text-[#89928b]">
-                        {item.sku} · {item.category}
-                      </p>
-                    </div>
-                    <div className="flex items-baseline justify-between md:block">
-                      <span className="text-xs font-bold uppercase text-[#929a94] md:hidden">
-                        Available
-                      </span>
-                      <span className="text-lg font-black">
-                        {item.quantity}{" "}
-                        <small className="text-xs font-semibold text-[#838d85]">
-                          {item.unit}s
-                        </small>
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between md:block">
-                      <span className="text-xs font-bold uppercase text-[#929a94] md:hidden">
-                        Price
-                      </span>
-                      <span className="text-sm font-extrabold">
-                        {currency.format(item.price)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <StockBadge item={item} />
-                      <button
-                        type="button"
-                        onClick={() => openAction("restock", item.id)}
-                        className="text-xs font-black text-[#a85620] hover:underline"
-                      >
-                        Add
-                      </button>
-                    </div>
+                    {[0, 1, 2].map((placeholder) => (
+                      <div
+                        className="h-14 animate-pulse rounded-xl bg-[#f0f3ee]"
+                        key={placeholder}
+                      />
+                    ))}
                   </div>
-                ))}
-                {!filteredItems.length && (
-                  <p className="p-10 text-center text-sm font-semibold text-[#7c867e]">
-                    No inventory items match “{query}”.
-                  </p>
+                ) : inventoryError ? (
+                  <div className="p-10 text-center" role="alert">
+                    <p className="text-sm font-semibold text-[#9b3f3f]">
+                      {inventoryError}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={retryInventory}
+                      className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-[#173b24] px-4 text-sm font-black text-white hover:bg-[#245334]"
+                    >
+                      <RotateCcw size={16} aria-hidden="true" /> Try again
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {filteredDatabaseItems.map((item) => (
+                      <div
+                        className="grid gap-3 border-b border-[#edf0eb] p-5 last:border-b-0 md:grid-cols-[1.7fr_.7fr_.7fr_.8fr] md:items-center md:gap-4"
+                        key={item.id}
+                      >
+                        <p className="font-extrabold">{item.item}</p>
+                        <div className="flex items-baseline justify-between md:block">
+                          <span className="text-xs font-bold uppercase text-[#929a94] md:hidden">
+                            Available
+                          </span>
+                          <span className="text-lg font-black">
+                            {item.quantity}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between md:block">
+                          <span className="text-xs font-bold uppercase text-[#929a94] md:hidden">
+                            Price
+                          </span>
+                          <span className="text-sm font-extrabold">
+                            {currency.format(item.price)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <DatabaseStockBadge status={item.status} />
+                          <button
+                            type="button"
+                            onClick={() => openAction("restock")}
+                            className="text-xs font-black text-[#a85620] hover:underline"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {!filteredDatabaseItems.length && (
+                      <p className="p-10 text-center text-sm font-semibold text-[#7c867e]">
+                        {databaseItems.length
+                          ? `No inventory items match “${query}”.`
+                          : "No inventory items are stored in the database."}
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             </section>

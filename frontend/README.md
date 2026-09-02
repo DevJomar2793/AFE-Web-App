@@ -2,7 +2,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+Start the FastAPI backend on `http://127.0.0.1:8000`, then run the frontend:
 
 ```bash
 npm run dev
@@ -15,6 +15,14 @@ bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+The inventory table loads data through the frontend's `/api/v1/inventory`
+proxy. To use a backend at another origin, set the server-only environment
+variable before starting or building the frontend:
+
+```bash
+BACKEND_API_URL=https://api.example.com npm run dev
+```
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
