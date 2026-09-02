@@ -2,6 +2,7 @@ import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +14,25 @@ from app.schemas.inventory import InventoryCreate, InventoryResponse
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/inventory", tags=["inventory"])
 DatabaseSession = Annotated[AsyncSession, Depends(get_database_session)]
+
+
+@router.get(
+    "/all-items",
+    response_model=list[InventoryResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get all inventory items",
+)
+async def get_inventory_items(session: DatabaseSession) -> list[Inventory]:
+    try:
+        result = await session.scalars(select(Inventory).order_by(Inventory.id))
+    except SQLAlchemyError as error:
+        logger.exception("Failed to get inventory items", exc_info=error)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to get inventory items",
+        ) from error
+
+    return list(result.all())
 
 
 @router.post(

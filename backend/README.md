@@ -38,13 +38,19 @@ service and database availability with
 Create an inventory item with:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/v1/inventory \
+curl -X POST http://127.0.0.1:8000/api/v1/inventory/add-stock \
   -H "Content-Type: application/json" \
   -d '{"item": "Large eggs", "quantity": 5, "price": "250.00"}'
 ```
 
 The database generates the item ID. The optional `status` defaults to
 `in_stock` when quantity is available and `out_of_stock` when quantity is zero.
+
+Get all inventory items with:
+
+```bash
+curl http://127.0.0.1:8000/api/v1/inventory
+```
 
 ## Database migrations
 

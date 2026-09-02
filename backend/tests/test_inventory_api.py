@@ -18,7 +18,7 @@ async def test_create_inventory_item_api() -> None:
     try:
         async with AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
-                "/api/v1/inventory",
+                "/api/v1/inventory/add-stock",
                 json={
                     "item": "  __create_inventory_item_test__  ",
                     "quantity": 5,
@@ -37,7 +37,7 @@ async def test_create_inventory_item_api() -> None:
             assert datetime.fromisoformat(data["updated_at"])
 
             empty_stock_response = await client.post(
-                "/api/v1/inventory",
+                "/api/v1/inventory/add-stock",
                 json={
                     "item": "__empty_inventory_item_test__",
                     "quantity": 0,
@@ -48,6 +48,13 @@ async def test_create_inventory_item_api() -> None:
             empty_stock_data = empty_stock_response.json()
             created_ids.append(empty_stock_data["id"])
             assert empty_stock_data["status"] == "out_of_stock"
+
+            inventory_response = await client.get("/api/v1/inventory")
+            assert inventory_response.status_code == 200
+            inventory_data = inventory_response.json()
+            returned_ids = [item["id"] for item in inventory_data]
+            assert returned_ids == sorted(returned_ids)
+            assert set(created_ids).issubset(returned_ids)
 
             invalid_payloads = [
                 {"item": "", "quantity": 1, "price": 10},
@@ -70,7 +77,7 @@ async def test_create_inventory_item_api() -> None:
             ]
             for payload in invalid_payloads:
                 invalid_response = await client.post(
-                    "/api/v1/inventory",
+                    "/api/v1/inventory/add-stock",
                     json=payload,
                 )
                 assert invalid_response.status_code == 422
