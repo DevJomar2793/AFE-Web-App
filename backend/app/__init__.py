@@ -1,0 +1,1 @@
+"""AFE backend application package."""
