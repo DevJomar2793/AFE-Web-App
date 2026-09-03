@@ -17,18 +17,12 @@ DatabaseSession = Annotated[AsyncSession, Depends(get_database_session)]
 
 
 @router.get(
-    "",
+    "/get-item",
     response_model=list[InventoryResponse],
     status_code=status.HTTP_200_OK,
     summary="Get all inventory items",
 )
-@router.get(
-    "/all-items",
-    response_model=list[InventoryResponse],
-    status_code=status.HTTP_200_OK,
-    summary="Get all inventory items (deprecated)",
-    deprecated=True,
-)
+
 async def get_inventory_items(session: DatabaseSession) -> list[Inventory]:
     try:
         return await inventory_service.list_inventory_items(session)
@@ -41,7 +35,7 @@ async def get_inventory_items(session: DatabaseSession) -> list[Inventory]:
 
 
 @router.post(
-    "",
+    "/add-stock",
     response_model=InventoryResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create an inventory item",
@@ -51,18 +45,7 @@ async def get_inventory_items(session: DatabaseSession) -> list[Inventory]:
         },
     },
 )
-@router.post(
-    "/add-stock",
-    response_model=InventoryResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Create an inventory item (deprecated)",
-    deprecated=True,
-    responses={
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {
-            "description": "Invalid inventory item data",
-        },
-    },
-)
+
 async def create_inventory_item(
     item: InventoryCreate,
     session: DatabaseSession,
