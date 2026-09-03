@@ -37,7 +37,7 @@ async def test_create_sale_deducts_inventory(
     inventory_item: Inventory,
 ) -> None:
     response = await client.post(
-        "/api/v1/sales",
+        "/api/v1/sales/add-sales",
         json={
             "inventory_id": inventory_item.id,
             "quantity": 3,
@@ -71,7 +71,7 @@ async def test_sale_of_remaining_stock_marks_item_out_of_stock(
     inventory_item: Inventory,
 ) -> None:
     response = await client.post(
-        "/api/v1/sales",
+        "/api/v1/sales/add-sales",
         json={
             "inventory_id": inventory_item.id,
             "quantity": inventory_item.quantity,
@@ -95,7 +95,7 @@ async def test_list_sales_returns_newest_first_with_item_details(
     inventory_item: Inventory,
 ) -> None:
     first_response = await client.post(
-        "/api/v1/sales",
+        "/api/v1/sales/add-sales",
         json={
             "inventory_id": inventory_item.id,
             "quantity": 1,
@@ -103,7 +103,7 @@ async def test_list_sales_returns_newest_first_with_item_details(
         },
     )
     second_response = await client.post(
-        "/api/v1/sales",
+        "/api/v1/sales/add-sales",
         json={
             "inventory_id": inventory_item.id,
             "quantity": 1,
@@ -113,7 +113,7 @@ async def test_list_sales_returns_newest_first_with_item_details(
     assert first_response.status_code == 201
     assert second_response.status_code == 201
 
-    response = await client.get("/api/v1/sales")
+    response = await client.get("/api/v1/sales/get-sales")
 
     assert response.status_code == 200
     sales = response.json()
@@ -130,7 +130,7 @@ async def test_create_sale_rejects_unknown_inventory_item(
     client: AsyncClient,
 ) -> None:
     response = await client.post(
-        "/api/v1/sales",
+        "/api/v1/sales/add-sales",
         json={
             "inventory_id": 2_147_483_647,
             "quantity": 1,
@@ -148,7 +148,7 @@ async def test_insufficient_stock_does_not_change_inventory(
     inventory_item: Inventory,
 ) -> None:
     response = await client.post(
-        "/api/v1/sales",
+        "/api/v1/sales/add-sales",
         json={
             "inventory_id": inventory_item.id,
             "quantity": inventory_item.quantity + 1,
@@ -185,7 +185,7 @@ async def test_create_sale_rejects_invalid_data(
     client: AsyncClient,
     payload: dict[str, object],
 ) -> None:
-    response = await client.post("/api/v1/sales", json=payload)
+    response = await client.post("/api/v1/sales/add-sales", json=payload)
     assert response.status_code == 422
 
 
@@ -201,8 +201,8 @@ async def test_concurrent_sales_cannot_oversell_inventory(
     }
 
     first_response, second_response = await asyncio.gather(
-        client.post("/api/v1/sales", json=sale_payload),
-        client.post("/api/v1/sales", json=sale_payload),
+        client.post("/api/v1/sales/add-sales", json=sale_payload),
+        client.post("/api/v1/sales/add-sales", json=sale_payload),
     )
 
     assert sorted([first_response.status_code, second_response.status_code]) == [

@@ -45,17 +45,17 @@ The canonical routes are:
 
 ```text
 GET  /api/v1/health
-GET  /api/v1/inventory
-POST /api/v1/inventory
-GET  /api/v1/sales
-POST /api/v1/sales
+GET  /api/v1/inventory/get-item
+POST /api/v1/inventory/add-stock
+GET  /api/v1/sales/get-sales
+POST /api/v1/sales/add-sales
 ```
 
 Create an item without putting an ID in the URL or request body. PostgreSQL
 generates the ID:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/v1/inventory \
+curl -X POST http://127.0.0.1:8000/api/v1/inventory/add-stock \
   -H "Content-Type: application/json" \
   -d '{"item": "Large eggs", "quantity": 5, "price": "250.00"}'
 ```
@@ -67,7 +67,7 @@ Create a sale with the related inventory ID, a positive whole quantity, and a
 customer name:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/v1/sales \
+curl -X POST http://127.0.0.1:8000/api/v1/sales/add-sales \
   -H "Content-Type: application/json" \
   -d '{"inventory_id": 1, "quantity": 2, "customer_name": "Maria Santos"}'
 ```
@@ -80,7 +80,7 @@ simultaneous sales from overselling it.
 List sales, newest first, with:
 
 ```bash
-curl http://127.0.0.1:8000/api/v1/sales
+curl http://127.0.0.1:8000/api/v1/sales/get-sales
 ```
 
 ## Code organization

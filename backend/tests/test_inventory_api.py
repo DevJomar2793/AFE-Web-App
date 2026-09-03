@@ -28,7 +28,7 @@ async def test_create_inventory_item(
     created_inventory_ids: list[int],
 ) -> None:
     response = await client.post(
-        "/api/v1/inventory",
+        "/api/v1/inventory/add-stock",
         json={
             "item": "  __create_inventory_item_test__  ",
             "quantity": 5,
@@ -64,7 +64,7 @@ async def test_zero_quantity_defaults_to_out_of_stock(
     created_inventory_ids: list[int],
 ) -> None:
     response = await client.post(
-        "/api/v1/inventory",
+        "/api/v1/inventory/add-stock",
         json={
             "item": "__empty_inventory_item_test__",
             "quantity": 0,
@@ -84,7 +84,7 @@ async def test_list_inventory_items(
     created_inventory_ids: list[int],
 ) -> None:
     create_response = await client.post(
-        "/api/v1/inventory",
+        "/api/v1/inventory/add-stock",
         json={
             "item": "__list_inventory_items_test__",
             "quantity": 3,
@@ -95,7 +95,7 @@ async def test_list_inventory_items(
     created_id = create_response.json()["id"]
     created_inventory_ids.append(created_id)
 
-    response = await client.get("/api/v1/inventory")
+    response = await client.get("/api/v1/inventory/get-item")
 
     assert response.status_code == 200
     inventory_items = response.json()
@@ -131,7 +131,7 @@ async def test_create_inventory_item_rejects_invalid_data(
     client: AsyncClient,
     payload: dict[str, object],
 ) -> None:
-    response = await client.post("/api/v1/inventory", json=payload)
+    response = await client.post("/api/v1/inventory/add-stock", json=payload)
     assert response.status_code == 422
 
 
@@ -147,7 +147,7 @@ async def test_health_check(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_cors_allows_local_frontend(client: AsyncClient) -> None:
     response = await client.options(
-        "/api/v1/inventory",
+        "/api/v1/inventory/add-stock",
         headers={
             "Origin": "http://localhost:3000",
             "Access-Control-Request-Method": "POST",
@@ -165,7 +165,7 @@ async def test_cors_allows_local_frontend(client: AsyncClient) -> None:
 @pytest.mark.asyncio
 async def test_cors_rejects_unknown_origin(client: AsyncClient) -> None:
     response = await client.options(
-        "/api/v1/inventory",
+        "/api/v1/inventory/add-stock",
         headers={
             "Origin": "https://untrusted.example",
             "Access-Control-Request-Method": "POST",

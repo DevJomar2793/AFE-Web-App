@@ -4,6 +4,7 @@ import { CheckCircle2, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AddInventoryItemSheet } from "@/components/inventory/add-inventory-item-sheet";
 import { useInventoryItems } from "@/components/inventory/hooks/use-inventory-items";
+import { useSales } from "@/components/inventory/hooks/use-sales";
 import { InventoryActivity } from "@/components/inventory/inventory-activity";
 import {
   InventoryBottomNavigation,
@@ -51,6 +52,12 @@ export function InventoryApp() {
     error: inventoryError,
     retry: retryInventory,
   } = useInventoryItems(currentView === "inventory");
+  const {
+    sales: databaseSales,
+    isLoading: areSalesLoading,
+    error: salesError,
+    retry: retrySales,
+  } = useSales(currentView === "activity");
 
   useEffect(() => {
     const loadSavedInventory = () => {
@@ -234,7 +241,12 @@ export function InventoryApp() {
           )}
 
           {currentView === "activity" && (
-            <InventoryActivity state={localInventory} />
+            <InventoryActivity
+              databaseSales={databaseSales}
+              error={salesError}
+              isLoading={areSalesLoading}
+              onRetry={retrySales}
+            />
           )}
         </main>
       </div>

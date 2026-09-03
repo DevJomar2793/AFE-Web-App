@@ -29,18 +29,10 @@ network access when the font files are not already cached.
 ## Inventory API
 
 Browser components use the typed functions in `services/inventory-api.ts`.
-Those functions call the same-origin Next.js route at `/api/v1/inventory`, which
-proxies both `GET` and `POST` requests to FastAPI. Keeping the backend URL in the
-server-side proxy avoids exposing backend configuration to browser code.
+Those functions currently call the FastAPI inventory endpoints directly. The
+configured backend CORS origins must include the frontend origin.
 
-The proxy defaults to `http://127.0.0.1:8000`. Set a different backend with the
-server-only environment variable:
-
-```bash
-BACKEND_API_URL=https://api.example.com npm run dev
-```
-
-API responses are not cached by the proxy or service worker, so inventory rows
+API responses use `cache: "no-store"`, so inventory rows and activity requests
 reflect the latest database response.
 
 ## Frontend organization
@@ -55,3 +47,7 @@ reflect the latest database response.
 The database inventory table is intentionally separate from the browser-local
 overview and transaction activity. See the root README for the current MVP data
 behavior and production limitations.
+
+The Transaction Activity page also loads database sales from
+`GET /api/v1/sales/get-sales` and merges them with activity saved locally on the
+device. The Overview Recent Activity card remains local-only.

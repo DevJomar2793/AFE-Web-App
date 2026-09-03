@@ -24,17 +24,16 @@ frontend/
 ## Data behavior
 
 The inventory table and the Add Item form read and write PostgreSQL through
-`GET /api/v1/inventory` and `POST /api/v1/inventory`.
+`GET /api/v1/inventory/get-item` and `POST /api/v1/inventory/add-stock`.
 
-The backend also stores sales through `GET /api/v1/sales` and
-`POST /api/v1/sales`. Each sale references an inventory item and deducts its
-quantity atomically.
+The backend also stores sales through `GET /api/v1/sales/get-sales` and
+`POST /api/v1/sales/add-sales`. Each sale references an inventory item and
+deducts its quantity atomically.
 
-The current frontend overview, sale form, returns, restocks, and activity feed
-remain part of the original browser-local MVP and are not yet connected to the
-sales API. They are stored under `afe-inventory-v1` in `localStorage` and
-synchronize only between tabs on the same device. Clearing site data resets
-them to the starter state in `frontend/lib/local-inventory.ts`.
+The Transaction Activity page merges database sales with the existing local
+activity. The sale form, returns, restocks, and Overview activity remain part of
+the browser-local MVP. They are stored under `afe-inventory-v1` in
+`localStorage` and synchronize only between tabs on the same device.
 
 This split preserves the current application behavior, but it is not suitable
 for multi-user production use. Authentication and database-backed transaction
