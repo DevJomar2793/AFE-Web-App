@@ -1,7 +1,4 @@
-export type InventoryDatabaseStatus =
-  | "in_stock"
-  | "low_stock"
-  | "out_of_stock";
+export type InventoryDatabaseStatus = "in_stock" | "low_stock" | "out_of_stock";
 
 export type DatabaseInventoryItem = {
   id: number;
@@ -19,7 +16,7 @@ export type CreateInventoryItemInput = {
   price: number;
 };
 
-const INVENTORY_API_ROUTE = "/api/v1/inventory";
+const INVENTORY_API_ROUTE = "http://127.0.0.1:8000/api/v1/inventory";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -27,9 +24,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isInventoryStatus(value: unknown): value is InventoryDatabaseStatus {
   return (
-    value === "in_stock" ||
-    value === "low_stock" ||
-    value === "out_of_stock"
+    value === "in_stock" || value === "low_stock" || value === "out_of_stock"
   );
 }
 
@@ -76,14 +71,16 @@ export function parseInventoryItems(value: unknown): DatabaseInventoryItem[] {
 export async function getInventoryItems(
   signal?: AbortSignal,
 ): Promise<DatabaseInventoryItem[]> {
-  const response = await fetch(INVENTORY_API_ROUTE, {
+  const response = await fetch(`${INVENTORY_API_ROUTE}/get-item`, {
     cache: "no-store",
     signal,
   });
   const responseBody: unknown = await response.json();
 
   if (!response.ok) {
-    throw new Error(getApiErrorMessage(responseBody, "Unable to load inventory."));
+    throw new Error(
+      getApiErrorMessage(responseBody, "Unable to load inventory."),
+    );
   }
 
   return parseInventoryItems(responseBody);
@@ -92,7 +89,7 @@ export async function getInventoryItems(
 export async function createInventoryItem(
   input: CreateInventoryItemInput,
 ): Promise<DatabaseInventoryItem> {
-  const response = await fetch(INVENTORY_API_ROUTE, {
+  const response = await fetch(`${INVENTORY_API_ROUTE}/add-stock`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -101,7 +98,10 @@ export async function createInventoryItem(
 
   if (!response.ok) {
     throw new Error(
-      getApiErrorMessage(responseBody, "The inventory item could not be added."),
+      getApiErrorMessage(
+        responseBody,
+        "The inventory item could not be added.",
+      ),
     );
   }
 

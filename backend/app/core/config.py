@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     database_name: str
     database_user: str
     database_password: SecretStr
+    cors_allowed_origins: str = (
+        "http://localhost:3000,http://127.0.0.1:3000"
+    )
 
     model_config = SettingsConfigDict(
         env_file=BACKEND_DIRECTORY / ".env",
@@ -33,6 +36,14 @@ class Settings(BaseSettings):
             port=self.database_port,
             database=self.database_name,
         )
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [
+            origin.strip()
+            for origin in self.cors_allowed_origins.split(",")
+            if origin.strip()
+        ]
 
 
 @lru_cache

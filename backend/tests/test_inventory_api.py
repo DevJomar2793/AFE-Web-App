@@ -179,3 +179,35 @@ async def test_health_check(client: AsyncClient) -> None:
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
     assert response.json()["database"] == "connected"
+
+
+@pytest.mark.asyncio
+async def test_cors_allows_local_frontend(client: AsyncClient) -> None:
+    response = await client.options(
+        "/api/v1/inventory",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == (
+        "http://localhost:3000"
+    )
+    assert "POST" in response.headers["access-control-allow-methods"]
+
+
+@pytest.mark.asyncio
+async def test_cors_rejects_unknown_origin(client: AsyncClient) -> None:
+    response = await client.options(
+        "/api/v1/inventory",
+        headers={
+            "Origin": "https://untrusted.example",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "access-control-allow-origin" not in response.headers

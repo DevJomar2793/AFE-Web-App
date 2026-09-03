@@ -25,6 +25,11 @@ The file is ignored by Git. If credentials from an earlier example file were
 real, rotate them because removing them from the current file does not remove
 them from Git history.
 
+`CORS_ALLOWED_ORIGINS` is a comma-separated list of frontend origins that may
+call FastAPI directly from a browser. The example permits the local Next.js
+development URLs. Add the exact deployed frontend origin for deployment; do not
+use `*` for a private inventory API.
+
 Apply migrations and start the service:
 
 ```bash
