@@ -18,7 +18,7 @@ class SaleCreate(BaseModel):
 
 class SaleItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-
+    
     id: int
     item: str
 

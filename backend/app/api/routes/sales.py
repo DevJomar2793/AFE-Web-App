@@ -17,7 +17,7 @@ DatabaseSession = Annotated[AsyncSession, Depends(get_database_session)]
 
 
 @router.get(
-    "/get-sales     ",
+    "/get-sales",
     response_model=list[SaleResponse],
     status_code=status.HTTP_200_OK,
     summary="Get all sales",

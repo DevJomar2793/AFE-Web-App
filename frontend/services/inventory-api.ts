@@ -71,7 +71,7 @@ export function parseInventoryItems(value: unknown): DatabaseInventoryItem[] {
 export async function getInventoryItems(
   signal?: AbortSignal,
 ): Promise<DatabaseInventoryItem[]> {
-  const response = await fetch(INVENTORY_API_ROUTE, {
+  const response = await fetch(`${INVENTORY_API_ROUTE}/get-item`, {
     cache: "no-store",
     signal,
   });
@@ -89,7 +89,7 @@ export async function getInventoryItems(
 export async function createInventoryItem(
   input: CreateInventoryItemInput,
 ): Promise<DatabaseInventoryItem> {
-  const response = await fetch(INVENTORY_API_ROUTE, {
+  const response = await fetch(`${INVENTORY_API_ROUTE}/add-stock`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
