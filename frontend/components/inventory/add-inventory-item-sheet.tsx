@@ -3,9 +3,9 @@
 import { FormEvent, useState } from "react";
 import { Plus, X } from "lucide-react";
 import {
-  parseInventoryItem,
+  createInventoryItem,
   type CreateInventoryItemInput,
-} from "@/lib/inventory-api";
+} from "@/services/inventory-api";
 
 const PRICE_PATTERN = /^\d+(?:\.\d{1,2})?$/;
 
@@ -57,18 +57,7 @@ export function AddInventoryItemSheet({
     setError("");
 
     try {
-      const response = await fetch("/api/v1/inventory/add-stock", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const responseBody: unknown = await response.json();
-
-      if (!response.ok) {
-        throw new Error("The inventory item could not be added.");
-      }
-
-      parseInventoryItem(responseBody);
+      await createInventoryItem(payload);
       onCreated();
     } catch (submitError) {
       setError(

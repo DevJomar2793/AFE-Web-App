@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  parseInventoryItems,
+  getInventoryItems,
   type DatabaseInventoryItem,
-} from "@/lib/inventory-api";
+} from "@/services/inventory-api";
 
 export function useInventoryItems(enabled: boolean) {
   const [items, setItems] = useState<DatabaseInventoryItem[]>([]);
@@ -26,15 +26,8 @@ export function useInventoryItems(enabled: boolean) {
       setError("");
 
       try {
-        const response = await fetch("/api/v1/inventory", {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-
-        if (!response.ok) throw new Error("Unable to load inventory");
-
-        const data: unknown = await response.json();
-        setItems(parseInventoryItems(data));
+        const inventoryItems = await getInventoryItems(controller.signal);
+        setItems(inventoryItems);
       } catch (loadError) {
         if (loadError instanceof DOMException && loadError.name === "AbortError") {
           return;

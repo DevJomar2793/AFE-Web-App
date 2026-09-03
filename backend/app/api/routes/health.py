@@ -2,21 +2,15 @@ import logging
 
 from asyncpg import PostgresError
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.db.session import engine
+from app.schemas import HealthResponse
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])
-
-
-class HealthResponse(BaseModel):
-    status: str
-    database: str
-    database_name: str
 
 
 @router.get(

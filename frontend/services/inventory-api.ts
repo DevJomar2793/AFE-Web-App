@@ -19,6 +19,8 @@ export type CreateInventoryItemInput = {
   price: number;
 };
 
+const INVENTORY_API_ROUTE = "/api/v1/inventory";
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -69,4 +71,51 @@ export function parseInventoryItem(value: unknown): DatabaseInventoryItem {
 export function parseInventoryItems(value: unknown): DatabaseInventoryItem[] {
   if (!Array.isArray(value)) throw new Error("Invalid inventory response");
   return value.map(parseInventoryItem);
+}
+
+export async function getInventoryItems(
+  signal?: AbortSignal,
+): Promise<DatabaseInventoryItem[]> {
+  const response = await fetch(INVENTORY_API_ROUTE, {
+    cache: "no-store",
+    signal,
+  });
+  const responseBody: unknown = await response.json();
+
+  if (!response.ok) {
+    throw new Error(getApiErrorMessage(responseBody, "Unable to load inventory."));
+  }
+
+  return parseInventoryItems(responseBody);
+}
+
+export async function createInventoryItem(
+  input: CreateInventoryItemInput,
+): Promise<DatabaseInventoryItem> {
+  const response = await fetch(INVENTORY_API_ROUTE, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const responseBody: unknown = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      getApiErrorMessage(responseBody, "The inventory item could not be added."),
+    );
+  }
+
+  return parseInventoryItem(responseBody);
+}
+
+function getApiErrorMessage(responseBody: unknown, fallback: string) {
+  if (
+    isRecord(responseBody) &&
+    typeof responseBody.detail === "string" &&
+    responseBody.detail.trim()
+  ) {
+    return responseBody.detail;
+  }
+
+  return fallback;
 }

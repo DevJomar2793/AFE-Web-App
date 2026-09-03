@@ -1,44 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AFE Frontend
 
-## Getting Started
+Next.js App Router frontend for the Adamos Fresh Eggs storefront and inventory
+workspace.
 
-Start the FastAPI backend on `http://127.0.0.1:8000`, then run the frontend:
+## Development
+
+Start the FastAPI backend on `http://127.0.0.1:8000`, then run:
 
 ```bash
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000` for the storefront or
+`http://localhost:3000/dashboard` for the inventory workspace.
 
-The inventory table loads data through the frontend's `/api/v1/inventory`
-proxy. To use a backend at another origin, set the server-only environment
-variable before starting or building the frontend:
+Useful commands:
+
+```bash
+npm run lint
+npm run build
+npm run start
+```
+
+The application uses `next/font` with Google fonts. A production build needs
+network access when the font files are not already cached.
+
+## Inventory API
+
+Browser components use the typed functions in `services/inventory-api.ts`.
+Those functions call the same-origin Next.js route at `/api/v1/inventory`, which
+proxies both `GET` and `POST` requests to FastAPI. Keeping the backend URL in the
+server-side proxy avoids exposing backend configuration to browser code.
+
+The proxy defaults to `http://127.0.0.1:8000`. Set a different backend with the
+server-only environment variable:
 
 ```bash
 BACKEND_API_URL=https://api.example.com npm run dev
 ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+API responses are not cached by the proxy or service worker, so inventory rows
+reflect the latest database response.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Frontend organization
 
-## Learn More
+- `app/` contains routes, layouts, global styles, and the API proxy.
+- `components/inventory/` contains the inventory feature UI.
+- `components/inventory/hooks/` contains inventory-specific React hooks.
+- `lib/local-inventory.ts` defines the browser-local transaction state.
+- `services/inventory-api.ts` owns API requests, response validation, and API
+  types.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The database inventory table is intentionally separate from the browser-local
+overview and transaction activity. See the root README for the current MVP data
+behavior and production limitations.

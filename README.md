@@ -1,24 +1,56 @@
 # AFE Web App
 
-Adamos Fresh Eggs combines a public storefront with a responsive inventory and
-sales workspace. Open `/dashboard` to monitor sales, stock quantities, low-stock
-items, returns, and recent inventory activity.
+Adamos Fresh Eggs combines a public Next.js storefront, a responsive inventory
+workspace, and a FastAPI inventory service backed by PostgreSQL.
 
-## Inventory workspace
+## Project structure
 
-- Record sales, returns, and incoming stock from desktop or mobile.
-- See dashboard totals and item quantities update immediately.
-- Search inventory by product name, SKU, or category.
-- Install the dashboard as a standalone mobile Progressive Web App.
-- Continue using previously loaded screens offline.
+```text
+backend/
+  app/api/          FastAPI route registration and route handlers
+  app/models/       SQLAlchemy database models
+  app/schemas/      Pydantic request and response schemas
+  app/services/     Inventory queries and business operations
+  alembic/          Database migrations
+  tests/            API integration tests
+frontend/
+  app/              Next.js pages and server-side API proxy
+  components/       UI components and feature components
+  lib/              Browser-local inventory state and shared utilities
+  services/         Typed frontend API functions
+  public/           Images, manifest, and service worker
+```
 
-The current MVP stores transactions in the browser under `afe-inventory-v1` and
-synchronizes changes between open tabs on the same device. Clearing site data
-resets the workspace to the starter inventory in `frontend/lib/inventory.ts`.
-Multi-user and cross-device synchronization require a shared database before
-production rollout.
+## Data behavior
+
+The inventory table and the Add Item form read and write PostgreSQL through
+`GET /api/v1/inventory` and `POST /api/v1/inventory`.
+
+The overview, sales, returns, restocks, and activity feed remain part of the
+original browser-local MVP. They are stored under `afe-inventory-v1` in
+`localStorage` and synchronize only between tabs on the same device. Clearing
+site data resets them to the starter state in
+`frontend/lib/local-inventory.ts`.
+
+This split preserves the current application behavior, but it is not suitable
+for multi-user production use. Authentication and database-backed transaction
+records should be added before exposing the workspace publicly.
 
 ## Local development
+
+Set up and run the backend first:
+
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements-dev.txt
+cp .env.example .env
+alembic upgrade head
+uvicorn app.main:app --reload
+```
+
+Then run the frontend in a second terminal:
 
 ```bash
 cd frontend
@@ -26,6 +58,23 @@ npm ci
 npm run dev
 ```
 
-Visit `http://localhost:3000` for the storefront or
-`http://localhost:3000/dashboard` for inventory operations. Run `npm run lint`
-and `npm run build` before submitting changes.
+Visit `http://localhost:3000` for the storefront and
+`http://localhost:3000/dashboard` for the inventory workspace.
+
+## Validation
+
+Run these commands before submitting changes:
+
+```bash
+cd backend
+source .venv/bin/activate
+pytest
+alembic check
+
+cd ../frontend
+npm run lint
+npm run build
+```
+
+The Google fonts used by the frontend are downloaded during a production build,
+so `npm run build` needs network access when those fonts are not already cached.

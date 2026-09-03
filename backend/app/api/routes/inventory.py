@@ -2,13 +2,13 @@ import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_database_session
 from app.models import Inventory
 from app.schemas.inventory import InventoryCreate, InventoryResponse
+from app.services import inventory as inventory_service
 
 
 logger = logging.getLogger(__name__)
@@ -17,29 +17,46 @@ DatabaseSession = Annotated[AsyncSession, Depends(get_database_session)]
 
 
 @router.get(
-    "/all-items",
+    "",
     response_model=list[InventoryResponse],
     status_code=status.HTTP_200_OK,
     summary="Get all inventory items",
 )
+@router.get(
+    "/all-items",
+    response_model=list[InventoryResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get all inventory items (deprecated)",
+    deprecated=True,
+)
 async def get_inventory_items(session: DatabaseSession) -> list[Inventory]:
     try:
-        result = await session.scalars(select(Inventory).order_by(Inventory.id))
+        return await inventory_service.list_inventory_items(session)
     except SQLAlchemyError as error:
-        logger.exception("Failed to get inventory items", exc_info=error)
+        logger.exception("Failed to get inventory items")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to get inventory items",
         ) from error
 
-    return list(result.all())
 
-
+@router.post(
+    "",
+    response_model=InventoryResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create an inventory item",
+    responses={
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {
+            "description": "Invalid inventory item data",
+        },
+    },
+)
 @router.post(
     "/add-stock",
     response_model=InventoryResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Create an inventory item",
+    summary="Create an inventory item (deprecated)",
+    deprecated=True,
     responses={
         status.HTTP_422_UNPROCESSABLE_ENTITY: {
             "description": "Invalid inventory item data",
@@ -50,23 +67,11 @@ async def create_inventory_item(
     item: InventoryCreate,
     session: DatabaseSession,
 ) -> Inventory:
-    inventory = Inventory(
-        item=item.item,
-        quantity=item.quantity,
-        price=item.price,
-        status=item.status,
-    )
-    session.add(inventory)
-
     try:
-        await session.commit()
-        await session.refresh(inventory)
+        return await inventory_service.create_inventory_item(session, item)
     except SQLAlchemyError as error:
-        await session.rollback()
-        logger.exception("Failed to create inventory item", exc_info=error)
+        logger.exception("Failed to create inventory item")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to create inventory item",
         ) from error
-
-    return inventory

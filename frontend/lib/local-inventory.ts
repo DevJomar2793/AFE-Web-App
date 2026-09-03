@@ -1,4 +1,4 @@
-export type InventoryItem = {
+export type LocalInventoryItem = {
   id: string;
   name: string;
   sku: string;
@@ -23,14 +23,14 @@ export type InventoryTransaction = {
   note?: string;
 };
 
-export type InventoryState = {
-  items: InventoryItem[];
+export type LocalInventoryState = {
+  items: LocalInventoryItem[];
   transactions: InventoryTransaction[];
 };
 
 export const INVENTORY_STORAGE_KEY = "afe-inventory-v1";
 
-export const initialInventoryState: InventoryState = {
+export const initialLocalInventoryState: LocalInventoryState = {
   items: [
     {
       id: "egg-small",
@@ -138,8 +138,54 @@ export const initialInventoryState: InventoryState = {
   ],
 };
 
-export function isInventoryState(value: unknown): value is InventoryState {
+export function isLocalInventoryState(
+  value: unknown,
+): value is LocalInventoryState {
   if (!value || typeof value !== "object") return false;
-  const candidate = value as Partial<InventoryState>;
-  return Array.isArray(candidate.items) && Array.isArray(candidate.transactions);
+  const candidate = value as Partial<LocalInventoryState>;
+
+  return (
+    Array.isArray(candidate.items) &&
+    candidate.items.every(isLocalInventoryItem) &&
+    Array.isArray(candidate.transactions) &&
+    candidate.transactions.every(isInventoryTransaction)
+  );
+}
+
+function isLocalInventoryItem(value: unknown): value is LocalInventoryItem {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Partial<LocalInventoryItem>;
+
+  return (
+    typeof item.id === "string" &&
+    typeof item.name === "string" &&
+    typeof item.sku === "string" &&
+    typeof item.category === "string" &&
+    typeof item.unit === "string" &&
+    typeof item.price === "number" &&
+    typeof item.cost === "number" &&
+    typeof item.quantity === "number" &&
+    typeof item.reorderLevel === "number"
+  );
+}
+
+function isInventoryTransaction(
+  value: unknown,
+): value is InventoryTransaction {
+  if (!value || typeof value !== "object") return false;
+  const transaction = value as Partial<InventoryTransaction>;
+
+  return (
+    typeof transaction.id === "string" &&
+    (transaction.type === "sale" ||
+      transaction.type === "return" ||
+      transaction.type === "restock") &&
+    typeof transaction.itemId === "string" &&
+    typeof transaction.quantity === "number" &&
+    typeof transaction.amount === "number" &&
+    typeof transaction.createdAt === "string" &&
+    (transaction.customer === undefined ||
+      typeof transaction.customer === "string") &&
+    (transaction.note === undefined || typeof transaction.note === "string")
+  );
 }
