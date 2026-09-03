@@ -3,19 +3,11 @@ from datetime import datetime
 from decimal import Decimal
 
 import pytest
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 from sqlalchemy import delete, select
 
-from app.db.session import async_session_factory, engine
-from app.main import app
+from app.db.session import async_session_factory
 from app.models import Inventory, InventoryStatus
-
-
-@pytest.fixture
-async def client() -> AsyncIterator[AsyncClient]:
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        yield client
 
 
 @pytest.fixture
@@ -29,13 +21,6 @@ async def created_inventory_ids() -> AsyncIterator[list[int]]:
                 delete(Inventory).where(Inventory.id.in_(inventory_ids)),
             )
             await session.commit()
-
-
-@pytest.fixture(scope="session", autouse=True)
-async def dispose_database_engine() -> AsyncIterator[None]:
-    yield
-    await engine.dispose()
-
 
 @pytest.mark.asyncio
 async def test_create_inventory_item(
@@ -148,28 +133,6 @@ async def test_create_inventory_item_rejects_invalid_data(
 ) -> None:
     response = await client.post("/api/v1/inventory", json=payload)
     assert response.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_legacy_inventory_routes_remain_available(
-    client: AsyncClient,
-    created_inventory_ids: list[int],
-) -> None:
-    create_response = await client.post(
-        "/api/v1/inventory/add-stock",
-        json={
-            "item": "__legacy_inventory_routes_test__",
-            "quantity": 2,
-            "price": 100,
-        },
-    )
-    assert create_response.status_code == 201
-    created_id = create_response.json()["id"]
-    created_inventory_ids.append(created_id)
-
-    list_response = await client.get("/api/v1/inventory/all-items")
-    assert list_response.status_code == 200
-    assert created_id in [item["id"] for item in list_response.json()]
 
 
 @pytest.mark.asyncio

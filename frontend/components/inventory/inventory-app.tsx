@@ -208,6 +208,7 @@ export function InventoryApp() {
         <InventoryHeader
           currentView={currentView}
           onOpenMenu={() => setIsMenuOpen(true)}
+          onOpenReturn={() => openTransaction("return")}
           onOpenSale={() => openTransaction("sale")}
         />
 
@@ -233,10 +234,7 @@ export function InventoryApp() {
           )}
 
           {currentView === "activity" && (
-            <InventoryActivity
-              state={localInventory}
-              onOpenAction={openTransaction}
-            />
+            <InventoryActivity state={localInventory} />
           )}
         </main>
       </div>

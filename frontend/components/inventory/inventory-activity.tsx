@@ -4,19 +4,15 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   PackagePlus,
-  Plus,
-  RotateCcw,
 } from "lucide-react";
 import type {
   InventoryTransaction,
   LocalInventoryState,
   TransactionType,
 } from "@/lib/local-inventory";
-import type { TransactionAction } from "@/components/inventory/transaction-sheet";
 
 type InventoryActivityProps = {
   state: LocalInventoryState;
-  onOpenAction: (action: TransactionAction) => void;
 };
 
 type ActivityListProps = {
@@ -25,35 +21,14 @@ type ActivityListProps = {
   onViewAll?: () => void;
 };
 
-export function InventoryActivity({
-  state,
-  onOpenAction,
-}: InventoryActivityProps) {
+export function InventoryActivity({ state }: InventoryActivityProps) {
   return (
     <section>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-black">Transaction activity</h2>
-          <p className="mt-1 text-sm text-[#768178]">
-            A chronological record of sales, returns, and restocks.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => onOpenAction("return")}
-            className="flex h-11 items-center gap-2 rounded-xl border border-[#cfd8cd] bg-white px-4 text-sm font-black"
-          >
-            <RotateCcw size={17} /> Return
-          </button>
-          <button
-            type="button"
-            onClick={() => onOpenAction("sale")}
-            className="flex h-11 items-center gap-2 rounded-xl bg-[#173b24] px-4 text-sm font-black text-white"
-          >
-            <Plus size={17} /> Sale
-          </button>
-        </div>
+      <div>
+        <h2 className="text-2xl font-black">Transaction activity</h2>
+        <p className="mt-1 text-sm text-[#768178]">
+          A chronological record of sales, returns, and restocks.
+        </p>
       </div>
       <div className="mt-6">
         <ActivityList state={state} />

@@ -22,7 +22,6 @@ DatabaseSession = Annotated[AsyncSession, Depends(get_database_session)]
     status_code=status.HTTP_200_OK,
     summary="Get all inventory items",
 )
-
 async def get_inventory_items(session: DatabaseSession) -> list[Inventory]:
     try:
         return await inventory_service.list_inventory_items(session)
@@ -45,7 +44,6 @@ async def get_inventory_items(session: DatabaseSession) -> list[Inventory]:
         },
     },
 )
-
 async def create_inventory_item(
     item: InventoryCreate,
     session: DatabaseSession,

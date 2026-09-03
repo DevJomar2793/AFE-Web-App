@@ -47,11 +47,9 @@ The canonical routes are:
 GET  /api/v1/health
 GET  /api/v1/inventory
 POST /api/v1/inventory
+GET  /api/v1/sales
+POST /api/v1/sales
 ```
-
-The old `/api/v1/inventory/all-items` and
-`/api/v1/inventory/add-stock` routes remain available as deprecated aliases so
-existing clients do not break. New code should use the canonical routes.
 
 Create an item without putting an ID in the URL or request body. PostgreSQL
 generates the ID:
@@ -64,6 +62,26 @@ curl -X POST http://127.0.0.1:8000/api/v1/inventory \
 
 `status` is optional. It defaults to `in_stock` when quantity is positive and
 `out_of_stock` when quantity is zero.
+
+Create a sale with the related inventory ID, a positive whole quantity, and a
+customer name:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/sales \
+  -H "Content-Type: application/json" \
+  -d '{"inventory_id": 1, "quantity": 2, "customer_name": "Maria Santos"}'
+```
+
+Creating a sale and deducting inventory happen in one database transaction.
+The API returns `404` when the item does not exist and `409` when there is not
+enough stock. The inventory row is locked during the operation to prevent two
+simultaneous sales from overselling it.
+
+List sales, newest first, with:
+
+```bash
+curl http://127.0.0.1:8000/api/v1/sales
+```
 
 ## Code organization
 
