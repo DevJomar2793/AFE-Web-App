@@ -7,8 +7,6 @@ import {
   type CreateInventoryItemInput,
 } from "@/services/inventory-api";
 
-const PRICE_PATTERN = /^\d+(?:\.\d{1,2})?$/;
-
 export function AddInventoryItemSheet({
   onClose,
   onCreated,
@@ -18,7 +16,6 @@ export function AddInventoryItemSheet({
 }) {
   const [item, setItem] = useState("");
   const [quantity, setQuantity] = useState("0");
-  const [price, setPrice] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -27,7 +24,6 @@ export function AddInventoryItemSheet({
 
     const normalizedItem = item.trim();
     const normalizedQuantity = Number(quantity);
-    const normalizedPrice = Number(price);
 
     if (!normalizedItem) {
       setError("Enter an item name.");
@@ -37,20 +33,10 @@ export function AddInventoryItemSheet({
       setError("Starting quantity must be a whole number of zero or more.");
       return;
     }
-    if (
-      !PRICE_PATTERN.test(price) ||
-      !Number.isFinite(normalizedPrice) ||
-      normalizedPrice < 0 ||
-      normalizedPrice > 9_999_999_999.99
-    ) {
-      setError("Enter a valid price with no more than two decimal places.");
-      return;
-    }
-
     const payload: CreateInventoryItemInput = {
       item: normalizedItem,
       quantity: normalizedQuantity,
-      price: normalizedPrice,
+      price: 0,
     };
 
     setIsSubmitting(true);
@@ -143,25 +129,6 @@ export function AddInventoryItemSheet({
                 setQuantity(event.target.value);
                 setError("");
               }}
-            />
-          </label>
-
-          <label className="block text-sm font-extrabold text-[#283b2c]">
-            Price
-            <input
-              className="inventory-field mt-2"
-              type="number"
-              inputMode="decimal"
-              min="0"
-              max="9999999999.99"
-              step="0.01"
-              required
-              value={price}
-              onChange={(event) => {
-                setPrice(event.target.value);
-                setError("");
-              }}
-              placeholder="250.00"
             />
           </label>
 

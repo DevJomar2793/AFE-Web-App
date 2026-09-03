@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { AddInventoryItemSheet } from "@/components/inventory/add-inventory-item-sheet";
 import { useInventoryItems } from "@/components/inventory/hooks/use-inventory-items";
 import { useSales } from "@/components/inventory/hooks/use-sales";
-import { InventoryActivity } from "@/components/inventory/inventory-activity";
 import {
   InventoryBottomNavigation,
   InventoryHeader,
@@ -14,6 +13,7 @@ import {
 } from "@/components/inventory/inventory-navigation";
 import { InventoryOverview } from "@/components/inventory/inventory-overview";
 import { InventoryView } from "@/components/inventory/inventory-view";
+import { TransactionActivity } from "@/components/inventory/transaction-activity";
 import {
   TransactionSheet,
   type TransactionAction,
@@ -241,8 +241,8 @@ export function InventoryApp() {
           )}
 
           {currentView === "activity" && (
-            <InventoryActivity
-              databaseSales={databaseSales}
+            <TransactionActivity
+              sales={databaseSales}
               error={salesError}
               isLoading={areSalesLoading}
               onRetry={retrySales}

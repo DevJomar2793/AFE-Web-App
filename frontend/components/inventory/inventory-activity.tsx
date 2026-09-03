@@ -1,23 +1,10 @@
 "use client";
 
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  PackagePlus,
-  RotateCcw,
-} from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, PackagePlus } from "lucide-react";
 import type {
   LocalInventoryState,
   TransactionType,
 } from "@/lib/local-inventory";
-import type { DatabaseSale } from "@/services/sales-api";
-
-type InventoryActivityProps = {
-  databaseSales: DatabaseSale[];
-  error: string;
-  isLoading: boolean;
-  onRetry: () => void;
-};
 
 type ActivityListProps = {
   state: LocalInventoryState;
@@ -35,53 +22,6 @@ type ActivityEntry = {
   note?: string;
   unit: string;
 };
-
-export function InventoryActivity({
-  databaseSales,
-  error,
-  isLoading,
-  onRetry,
-}: InventoryActivityProps) {
-  return (
-    <section>
-      <div>
-        <h2 className="text-2xl font-black">Transaction activity</h2>
-        <p className="mt-1 text-sm text-[#768178]">
-          Sales recorded in the database.
-        </p>
-      </div>
-
-      {isLoading && (
-        <p
-          className="mt-5 rounded-xl bg-[#edf2eb] px-4 py-3 text-sm font-semibold text-[#627067]"
-          role="status"
-        >
-          Loading database sales…
-        </p>
-      )}
-
-      {error && (
-        <div
-          className="mt-5 flex flex-col gap-3 rounded-xl bg-[#fff0e8] px-4 py-3 text-sm text-[#8f421f] sm:flex-row sm:items-center sm:justify-between"
-          role="alert"
-        >
-          <p className="font-semibold">{error}</p>
-          <button
-            type="button"
-            onClick={onRetry}
-            className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg bg-white px-3 font-black shadow-sm"
-          >
-            <RotateCcw size={15} aria-hidden="true" /> Retry
-          </button>
-        </div>
-      )}
-
-      <div className="mt-6">
-        <ActivityCard entries={buildDatabaseSaleEntries(databaseSales)} />
-      </div>
-    </section>
-  );
-}
 
 export function ActivityList({
   state,
@@ -186,18 +126,6 @@ function buildLocalActivityEntries(state: LocalInventoryState) {
       unit: item?.unit ?? "unit",
     };
   });
-}
-
-function buildDatabaseSaleEntries(databaseSales: DatabaseSale[]) {
-  return databaseSales.map((sale): ActivityEntry => ({
-    key: `database-sale-${sale.id}`,
-    type: "sale",
-    itemName: sale.item.name,
-    quantity: sale.quantity,
-    createdAt: sale.createdAt,
-    customer: sale.customerName,
-    unit: "unit",
-  }));
 }
 
 function ActivityIcon({ type }: { type: TransactionType }) {

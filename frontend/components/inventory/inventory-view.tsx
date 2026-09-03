@@ -16,13 +16,6 @@ type InventoryViewProps = {
   onRetry: () => void;
 };
 
-const currency = new Intl.NumberFormat("en-PH", {
-  style: "currency",
-  currency: "PHP",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-});
-
 const STATUS_LABELS: Record<InventoryDatabaseStatus, string> = {
   in_stock: "In stock",
   low_stock: "Low stock",
@@ -88,10 +81,9 @@ export function InventoryView({
       </div>
 
       <div className="mt-5 overflow-hidden rounded-2xl border border-[#e0e5de] bg-white">
-        <div className="hidden grid-cols-[1.7fr_.7fr_.7fr_.8fr] gap-4 border-b border-[#e7ebe5] bg-[#f8f9f6] px-5 py-3 text-xs font-black uppercase tracking-widest text-[#818b83] md:grid">
+        <div className="hidden grid-cols-[1.7fr_.7fr_.8fr] gap-4 border-b border-[#e7ebe5] bg-[#f8f9f6] px-5 py-3 text-xs font-black uppercase tracking-widest text-[#818b83] md:grid">
           <span>Item</span>
           <span>Available</span>
-          <span>Price</span>
           <span>Status</span>
         </div>
 
@@ -170,7 +162,7 @@ function InventoryRows({
 
   return items.map((item) => (
     <div
-      className="grid gap-3 border-b border-[#edf0eb] p-5 last:border-b-0 md:grid-cols-[1.7fr_.7fr_.7fr_.8fr] md:items-center md:gap-4"
+      className="grid gap-3 border-b border-[#edf0eb] p-5 last:border-b-0 md:grid-cols-[1.7fr_.7fr_.8fr] md:items-center md:gap-4"
       key={item.id}
     >
       <p className="font-extrabold">{item.item}</p>
@@ -179,14 +171,6 @@ function InventoryRows({
           Available
         </span>
         <span className="text-lg font-black">{item.quantity}</span>
-      </div>
-      <div className="flex items-center justify-between md:block">
-        <span className="text-xs font-bold uppercase text-[#929a94] md:hidden">
-          Price
-        </span>
-        <span className="text-sm font-extrabold">
-          {currency.format(item.price)}
-        </span>
       </div>
       <InventoryStatusBadge status={item.status} />
     </div>
