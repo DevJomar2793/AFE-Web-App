@@ -1,6 +1,7 @@
 "use client";
 
 import { PackagePlus, RotateCcw, Search } from "lucide-react";
+import { ProductPriceCards } from "@/components/inventory/product-price-cards";
 import type {
   DatabaseInventoryItem,
   InventoryDatabaseStatus,
@@ -65,6 +66,12 @@ export function InventoryView({
           <PackagePlus size={18} /> Add item
         </button>
       </div>
+
+      <ProductPriceCards
+        hasError={Boolean(error)}
+        isLoading={isLoading}
+        items={items}
+      />
 
       <div className="relative mt-6 max-w-md">
         <Search
