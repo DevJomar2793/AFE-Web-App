@@ -11,7 +11,7 @@ from app.db.base import Base
 
 
 if TYPE_CHECKING:
-    from app.models.sale import Sale
+    from app.models.transaction import Sale
 
 
 class InventoryStatus(str, Enum):

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_database_session
 from app.models import Sale
 from app.schemas import SaleCreate, SaleResponse
-from app.services import sales as sales_service
+from app.services import transaction as transaction_service
 
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ DatabaseSession = Annotated[AsyncSession, Depends(get_database_session)]
 )
 async def get_sales(session: DatabaseSession) -> list[Sale]:
     try:
-        return await sales_service.list_sales(session)
+        return await transaction_service.list_sales(session)
     except SQLAlchemyError as error:
         logger.exception("Failed to get sales")
         raise HTTPException(
@@ -55,13 +55,13 @@ async def create_sale(
     session: DatabaseSession,
 ) -> Sale:
     try:
-        return await sales_service.create_sale(session, sale_data)
-    except sales_service.InventoryItemNotFoundError as error:
+        return await transaction_service.create_sale(session, sale_data)
+    except transaction_service.InventoryItemNotFoundError as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Inventory item not found",
         ) from error
-    except sales_service.InsufficientStockError as error:
+    except transaction_service.InsufficientStockError as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(

@@ -2,7 +2,7 @@
 
 from app.schemas.health import HealthResponse
 from app.schemas.inventory import InventoryCreate, InventoryResponse
-from app.schemas.sale import SaleCreate, SaleItemResponse, SaleResponse
+from app.schemas.transaction import SaleCreate, SaleItemResponse, SaleResponse
 
 
 __all__ = [
