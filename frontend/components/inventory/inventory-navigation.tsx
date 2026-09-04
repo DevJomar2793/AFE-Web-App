@@ -7,7 +7,6 @@ import {
   House,
   LayoutDashboard,
   Menu,
-  Plus,
   ReceiptText,
   RotateCcw,
   X,
@@ -96,11 +95,9 @@ export function InventorySidebar({
 export function InventoryHeader({
   currentView,
   onOpenMenu,
-  onOpenSale,
 }: {
   currentView: InventoryViewName;
   onOpenMenu: () => void;
-  onOpenSale: () => void;
 }) {
   const titles: Record<InventoryViewName, string> = {
     overview: "Operations overview",
@@ -133,18 +130,6 @@ export function InventoryHeader({
             {titles[currentView]}
           </h1>
         </div>
-        {currentView !== "activity" && (
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onOpenSale}
-              className="flex h-11 items-center gap-2 rounded-xl bg-[#173b24] px-3.5 text-sm font-black text-white shadow-sm hover:bg-[#245334] sm:px-5"
-            >
-              <Plus size={18} aria-hidden="true" />
-              <span className="hidden xs:inline sm:inline">New sale</span>
-            </button>
-          </div>
-        )}
       </div>
     </header>
   );

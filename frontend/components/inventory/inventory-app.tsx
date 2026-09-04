@@ -236,7 +236,6 @@ export function InventoryApp() {
         <InventoryHeader
           currentView={currentView}
           onOpenMenu={() => setIsMenuOpen(true)}
-          onOpenSale={() => openNewSale()}
         />
 
         <main className="mx-auto max-w-375 px-4 pb-28 pt-6 sm:px-7 lg:px-10 lg:pb-10 lg:pt-8">
@@ -258,6 +257,7 @@ export function InventoryApp() {
               query={searchQuery}
               onAddItem={() => setIsAddItemOpen(true)}
               onQueryChange={setSearchQuery}
+              onOpenReturns={() => selectView("returns")}
               onRetry={retryInventory}
               onSellItem={openNewSale}
             />

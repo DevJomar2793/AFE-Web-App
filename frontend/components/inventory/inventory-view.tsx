@@ -13,6 +13,7 @@ type InventoryViewProps = {
   items: DatabaseInventoryItem[];
   query: string;
   onAddItem: () => void;
+  onOpenReturns: () => void;
   onQueryChange: (query: string) => void;
   onRetry: () => void;
   onSellItem: (inventoryId: number) => void;
@@ -42,6 +43,7 @@ export function InventoryView({
   items,
   query,
   onAddItem,
+  onOpenReturns,
   onQueryChange,
   onRetry,
   onSellItem,
@@ -60,13 +62,22 @@ export function InventoryView({
             Live inventory records from the database.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onAddItem}
-          className="flex h-11 items-center justify-center gap-2 rounded-xl border border-[#cfd8cd] bg-white px-4 text-sm font-black text-[#173b24]"
-        >
-          <PackagePlus size={18} /> Add item
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onAddItem}
+            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-[#cfd8cd] bg-white px-4 text-sm font-black text-[#173b24] hover:bg-[#f8faf7] sm:flex-none"
+          >
+            <PackagePlus size={18} aria-hidden="true" /> Add stock
+          </button>
+          <button
+            type="button"
+            onClick={onOpenReturns}
+            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#173b24] px-4 text-sm font-black text-white hover:bg-[#245334] sm:flex-none"
+          >
+            <RotateCcw size={18} aria-hidden="true" /> Return
+          </button>
+        </div>
       </div>
 
       <ProductPriceCards
