@@ -2,13 +2,23 @@
 
 from app.schemas.health import HealthResponse
 from app.schemas.inventory import InventoryCreate, InventoryResponse
-from app.schemas.transaction import SaleCreate, SaleItemResponse, SaleResponse
+from app.schemas.transaction import (
+    ReturnCreate,
+    ReturnItemResponse,
+    ReturnResponse,
+    SaleCreate,
+    SaleItemResponse,
+    SaleResponse,
+)
 
 
 __all__ = [
     "HealthResponse",
     "InventoryCreate",
     "InventoryResponse",
+    "ReturnCreate",
+    "ReturnItemResponse",
+    "ReturnResponse",
     "SaleCreate",
     "SaleItemResponse",
     "SaleResponse",

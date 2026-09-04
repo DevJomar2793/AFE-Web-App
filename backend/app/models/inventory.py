@@ -11,7 +11,7 @@ from app.db.base import Base
 
 
 if TYPE_CHECKING:
-    from app.models.transaction import Sale
+    from app.models.transaction import Return, Sale
 
 
 class InventoryStatus(str, Enum):
@@ -72,3 +72,4 @@ class Inventory(Base):
         onupdate=func.now(),
     )
     sales: Mapped[list["Sale"]] = relationship(back_populates="item")
+    returns: Mapped[list["Return"]] = relationship(back_populates="item")

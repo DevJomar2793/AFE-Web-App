@@ -49,6 +49,8 @@ GET  /api/v1/inventory/get-item
 POST /api/v1/inventory/add-stock
 GET  /api/v1/sales/get-sales
 POST /api/v1/sales/add-sales
+GET  /api/v1/returns/get-returns
+POST /api/v1/returns/add-return
 ```
 
 Create an item without putting an ID in the URL or request body. PostgreSQL
@@ -81,6 +83,25 @@ List sales, newest first, with:
 
 ```bash
 curl http://127.0.0.1:8000/api/v1/sales/get-sales
+```
+
+Create a return with the related inventory ID, a positive whole quantity, a
+customer name, and a reason:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/returns/add-return \
+  -H "Content-Type: application/json" \
+  -d '{"inventory_id": 1, "quantity": 1, "customer_name": "Maria Santos", "reason": "Damaged tray"}'
+```
+
+Creating a return and restoring inventory happen in one database transaction.
+The API returns `404` when the item does not exist. Inventory rows are locked so
+simultaneous returns cannot overwrite each other's quantity updates.
+
+List returns, newest first, with:
+
+```bash
+curl http://127.0.0.1:8000/api/v1/returns/get-returns
 ```
 
 ## Code organization
