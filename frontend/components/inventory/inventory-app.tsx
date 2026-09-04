@@ -4,6 +4,7 @@ import { CheckCircle2, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AddInventoryItemSheet } from "@/components/inventory/add-inventory-item-sheet";
 import { useInventoryItems } from "@/components/inventory/hooks/use-inventory-items";
+import { useReturns } from "@/components/inventory/hooks/use-returns";
 import { useSales } from "@/components/inventory/hooks/use-sales";
 import {
   InventoryBottomNavigation,
@@ -14,6 +15,7 @@ import {
 import { InventoryOverview } from "@/components/inventory/inventory-overview";
 import { InventoryView } from "@/components/inventory/inventory-view";
 import { NewSaleSheet } from "@/components/inventory/new-sale-sheet";
+import { ReturnsView } from "@/components/inventory/returns-view";
 import { TransactionActivity } from "@/components/inventory/transaction-activity";
 import {
   TransactionSheet,
@@ -60,6 +62,12 @@ export function InventoryApp() {
     error: salesError,
     retry: retrySales,
   } = useSales(currentView === "activity");
+  const {
+    returns: databaseReturns,
+    isLoading: areReturnsLoading,
+    error: returnsError,
+    retry: retryReturns,
+  } = useReturns(currentView === "returns");
 
   useEffect(() => {
     const loadSavedInventory = () => {
@@ -126,7 +134,6 @@ export function InventoryApp() {
   const saveTransaction = ({
     itemId,
     quantity,
-    customer,
     note,
   }: TransactionFormValues) => {
     if (!transactionAction) return "Choose a transaction type.";
@@ -139,15 +146,13 @@ export function InventoryApp() {
       return "Enter a whole quantity of at least one.";
     }
     const transactionType: TransactionAction = transactionAction;
-    const amount =
-      (transactionType === "restock" ? item.cost : item.price) * quantity;
+    const amount = item.cost * quantity;
     const transaction = {
       id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${itemId}`,
       type: transactionType,
       itemId,
       quantity,
       amount,
-      customer: customer.trim() || undefined,
       note: note.trim() || undefined,
       createdAt: new Date().toISOString(),
     };
@@ -164,7 +169,7 @@ export function InventoryApp() {
       transactions: [transaction, ...currentInventory.transactions],
     }));
     setNotice({
-      message: getTransactionSuccessMessage(transactionType),
+      message: "New stock added to inventory.",
       tone: "success",
     });
 
@@ -239,6 +244,7 @@ export function InventoryApp() {
             <InventoryOverview
               state={localInventory}
               onOpenAction={openTransaction}
+              onOpenReturns={() => selectView("returns")}
               onOpenSale={() => openNewSale()}
               onViewActivity={() => selectView("activity")}
             />
@@ -263,6 +269,15 @@ export function InventoryApp() {
               error={salesError}
               isLoading={areSalesLoading}
               onRetry={retrySales}
+            />
+          )}
+
+          {currentView === "returns" && (
+            <ReturnsView
+              error={returnsError}
+              isLoading={areReturnsLoading}
+              returns={databaseReturns}
+              onRetry={retryReturns}
             />
           )}
         </main>
@@ -324,9 +339,4 @@ function InventoryNotice({ notice }: { notice: Notice }) {
       <span>{notice.message}</span>
     </div>
   );
-}
-
-function getTransactionSuccessMessage(type: TransactionAction) {
-  if (type === "return") return "Return saved and stock restored.";
-  return "New stock added to inventory.";
 }

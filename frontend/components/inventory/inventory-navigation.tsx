@@ -9,11 +9,16 @@ import {
   Menu,
   Plus,
   ReceiptText,
+  RotateCcw,
   X,
 } from "lucide-react";
 import { BrandMark } from "@/components/storefront/brand-mark";
 
-export type InventoryViewName = "overview" | "inventory" | "activity";
+export type InventoryViewName =
+  | "overview"
+  | "inventory"
+  | "activity"
+  | "returns";
 
 type NavigationProps = {
   currentView: InventoryViewName;
@@ -42,10 +47,10 @@ export function InventorySidebar({
         <div className="mt-auto rounded-2xl bg-[#173b24] p-4 text-white">
           <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-[#b9d1bc]">
             <span className="size-2 animate-pulse rounded-full bg-[#82d397]" />
-            Local workspace
+            Database connected
           </div>
           <p className="mt-2 text-xs leading-5 text-[#d8e6d8]">
-            Sales and transaction activity are saved on this device.
+            Inventory, sales, and returns use live database records.
           </p>
         </div>
       </aside>
@@ -101,6 +106,7 @@ export function InventoryHeader({
     overview: "Operations overview",
     inventory: "Inventory",
     activity: "Transaction activity",
+    returns: "Returns",
   };
 
   return (
@@ -150,7 +156,7 @@ export function InventoryBottomNavigation({
 }: NavigationProps) {
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-[#dce3da] bg-white/95 px-3 pb-[max(.65rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-[#dce3da] bg-white/95 px-3 pb-[max(.65rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl lg:hidden"
       aria-label="Bottom navigation"
     >
       <BottomNavButton
@@ -170,6 +176,12 @@ export function InventoryBottomNavigation({
         icon={<ClipboardList size={20} />}
         label="Activity"
         onClick={() => onSelectView("activity")}
+      />
+      <BottomNavButton
+        active={currentView === "returns"}
+        icon={<RotateCcw size={20} />}
+        label="Returns"
+        onClick={() => onSelectView("returns")}
       />
     </nav>
   );
@@ -224,6 +236,12 @@ function InventoryNav({
         icon={<ReceiptText size={19} />}
         label="Activity"
         onClick={() => onSelectView("activity")}
+      />
+      <NavButton
+        active={currentView === "returns"}
+        icon={<RotateCcw size={19} />}
+        label="Returns"
+        onClick={() => onSelectView("returns")}
       />
     </nav>
   );

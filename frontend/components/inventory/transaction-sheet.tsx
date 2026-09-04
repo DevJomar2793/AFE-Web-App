@@ -4,12 +4,11 @@ import { FormEvent, useState } from "react";
 import { Plus, X } from "lucide-react";
 import type { LocalInventoryItem } from "@/lib/local-inventory";
 
-export type TransactionAction = "return" | "restock";
+export type TransactionAction = "restock";
 
 export type TransactionFormValues = {
   itemId: string;
   quantity: number;
-  customer: string;
   note: string;
 };
 
@@ -31,11 +30,6 @@ const ACTION_COPY: Record<
   TransactionAction,
   { title: string; description: string; submit: string }
 > = {
-  return: {
-    title: "Record a return",
-    description: "Returned units are added back to available inventory.",
-    submit: "Save return",
-  },
   restock: {
     title: "Add stock",
     description: "Record incoming inventory and update quantities instantly.",
@@ -52,17 +46,14 @@ export function TransactionSheet({
 }: TransactionSheetProps) {
   const [itemId, setItemId] = useState(initialItemId ?? items[0]?.id ?? "");
   const [quantity, setQuantity] = useState(1);
-  const [customer, setCustomer] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const item = items.find((candidate) => candidate.id === itemId);
-  const estimatedAmount = item
-    ? (action === "restock" ? item.cost : item.price) * quantity
-    : 0;
+  const estimatedAmount = item ? item.cost * quantity : 0;
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const saveError = onSave({ itemId, quantity, customer, note });
+    const saveError = onSave({ itemId, quantity, note });
 
     if (saveError) {
       setError(saveError);
@@ -146,20 +137,6 @@ export function TransactionSheet({
             />
           </label>
 
-          {action === "return" && (
-            <label className="block text-sm font-extrabold text-[#283b2c]">
-              Customer{" "}
-              <span className="font-medium text-[#89928b]">(optional)</span>
-              <input
-                className="inventory-field mt-2"
-                type="text"
-                value={customer}
-                onChange={(event) => setCustomer(event.target.value)}
-                placeholder="Customer or business name"
-              />
-            </label>
-          )}
-
           <label className="block text-sm font-extrabold text-[#283b2c]">
             Note <span className="font-medium text-[#89928b]">(optional)</span>
             <input
@@ -167,17 +144,13 @@ export function TransactionSheet({
               type="text"
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              placeholder={
-                action === "return"
-                  ? "Reason for return"
-                  : "Supplier or delivery note"
-              }
+              placeholder="Supplier or delivery note"
             />
           </label>
 
           <div className="flex items-center justify-between rounded-2xl bg-[#f3f6f1] px-4 py-3">
             <span className="text-sm font-semibold text-[#68736b]">
-              {action === "restock" ? "Estimated cost" : "Refund value"}
+              Estimated cost
             </span>
             <strong className="text-lg text-[#173b24]">
               {currency.format(estimatedAmount)}

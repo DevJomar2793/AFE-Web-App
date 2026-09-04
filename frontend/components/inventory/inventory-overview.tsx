@@ -16,6 +16,7 @@ import type { LocalInventoryState } from "@/lib/local-inventory";
 type InventoryOverviewProps = {
   state: LocalInventoryState;
   onOpenAction: (action: TransactionAction, itemId?: string) => void;
+  onOpenReturns: () => void;
   onOpenSale: () => void;
   onViewActivity: () => void;
 };
@@ -34,6 +35,7 @@ const compactNumber = new Intl.NumberFormat("en-PH", {
 export function InventoryOverview({
   state,
   onOpenAction,
+  onOpenReturns,
   onOpenSale,
   onViewActivity,
 }: InventoryOverviewProps) {
@@ -149,7 +151,7 @@ export function InventoryOverview({
             </button>
             <button
               type="button"
-              onClick={() => onOpenAction("return")}
+              onClick={onOpenReturns}
               className="flex items-center gap-3 rounded-xl border border-white/20 px-4 py-3 text-left text-sm font-black text-white hover:bg-white/10"
             >
               <RotateCcw size={18} /> Record a return
