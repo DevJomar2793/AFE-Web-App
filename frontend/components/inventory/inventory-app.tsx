@@ -43,6 +43,7 @@ export function InventoryApp() {
   const [transactionItemId, setTransactionItemId] = useState<string>();
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
   const [isNewSaleOpen, setIsNewSaleOpen] = useState(false);
+  const [saleInventoryItemId, setSaleInventoryItemId] = useState<number>();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [hasLoadedLocalInventory, setHasLoadedLocalInventory] = useState(false);
@@ -188,6 +189,16 @@ export function InventoryApp() {
     setTransactionItemId(undefined);
   };
 
+  const openNewSale = (inventoryId?: number) => {
+    setSaleInventoryItemId(inventoryId);
+    setIsNewSaleOpen(true);
+  };
+
+  const closeNewSale = () => {
+    setIsNewSaleOpen(false);
+    setSaleInventoryItemId(undefined);
+  };
+
   const handleInventoryItemCreated = () => {
     setIsAddItemOpen(false);
     retryInventory();
@@ -198,7 +209,7 @@ export function InventoryApp() {
   };
 
   const handleSaleCreated = () => {
-    setIsNewSaleOpen(false);
+    closeNewSale();
     retryInventory();
     retrySales();
     setNotice({
@@ -220,7 +231,7 @@ export function InventoryApp() {
         <InventoryHeader
           currentView={currentView}
           onOpenMenu={() => setIsMenuOpen(true)}
-          onOpenSale={() => setIsNewSaleOpen(true)}
+          onOpenSale={() => openNewSale()}
         />
 
         <main className="mx-auto max-w-375 px-4 pb-28 pt-6 sm:px-7 lg:px-10 lg:pb-10 lg:pt-8">
@@ -228,7 +239,7 @@ export function InventoryApp() {
             <InventoryOverview
               state={localInventory}
               onOpenAction={openTransaction}
-              onOpenSale={() => setIsNewSaleOpen(true)}
+              onOpenSale={() => openNewSale()}
               onViewActivity={() => selectView("activity")}
             />
           )}
@@ -242,6 +253,7 @@ export function InventoryApp() {
               onAddItem={() => setIsAddItemOpen(true)}
               onQueryChange={setSearchQuery}
               onRetry={retryInventory}
+              onSellItem={openNewSale}
             />
           )}
 
@@ -265,10 +277,11 @@ export function InventoryApp() {
 
       {isNewSaleOpen && (
         <NewSaleSheet
+          initialInventoryId={saleInventoryItemId}
           inventoryError={inventoryError}
           isInventoryLoading={isInventoryLoading}
           items={databaseItems}
-          onClose={() => setIsNewSaleOpen(false)}
+          onClose={closeNewSale}
           onCreated={handleSaleCreated}
           onRetryInventory={retryInventory}
         />

@@ -96,7 +96,7 @@ async def get_returns(session: DatabaseSession) -> list[Return]:
 
 
 @returns_router.post(
-    "/add-return",
+    "/add-returns",
     response_model=ReturnResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a return",

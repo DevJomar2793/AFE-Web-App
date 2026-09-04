@@ -6,6 +6,7 @@ import type { DatabaseInventoryItem } from "@/services/inventory-api";
 import { createSale } from "@/services/sales-api";
 
 type NewSaleSheetProps = {
+  initialInventoryId?: number;
   inventoryError: string;
   isInventoryLoading: boolean;
   items: DatabaseInventoryItem[];
@@ -22,6 +23,7 @@ const currency = new Intl.NumberFormat("en-PH", {
 });
 
 export function NewSaleSheet({
+  initialInventoryId,
   inventoryError,
   isInventoryLoading,
   items,
@@ -30,7 +32,9 @@ export function NewSaleSheet({
   onRetryInventory,
 }: NewSaleSheetProps) {
   const firstAvailableItem = items.find((item) => item.quantity > 0);
-  const [selectedInventoryId, setSelectedInventoryId] = useState("");
+  const [selectedInventoryId, setSelectedInventoryId] = useState(
+    initialInventoryId ? String(initialInventoryId) : "",
+  );
   const [quantity, setQuantity] = useState("1");
   const [customerName, setCustomerName] = useState("");
   const [error, setError] = useState("");

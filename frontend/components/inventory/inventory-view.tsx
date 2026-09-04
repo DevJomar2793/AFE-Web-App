@@ -1,6 +1,6 @@
 "use client";
 
-import { PackagePlus, RotateCcw, Search } from "lucide-react";
+import { PackagePlus, RotateCcw, Search, ShoppingCart } from "lucide-react";
 import { ProductPriceCards } from "@/components/inventory/product-price-cards";
 import type {
   DatabaseInventoryItem,
@@ -15,6 +15,7 @@ type InventoryViewProps = {
   onAddItem: () => void;
   onQueryChange: (query: string) => void;
   onRetry: () => void;
+  onSellItem: (inventoryId: number) => void;
 };
 
 const STATUS_LABELS: Record<InventoryDatabaseStatus, string> = {
@@ -43,6 +44,7 @@ export function InventoryView({
   onAddItem,
   onQueryChange,
   onRetry,
+  onSellItem,
 }: InventoryViewProps) {
   const search = query.trim().toLowerCase();
   const filteredItems = items.filter(
@@ -88,10 +90,11 @@ export function InventoryView({
       </div>
 
       <div className="mt-5 overflow-hidden rounded-2xl border border-[#e0e5de] bg-white">
-        <div className="hidden grid-cols-[1.7fr_.7fr_.8fr] gap-4 border-b border-[#e7ebe5] bg-[#f8f9f6] px-5 py-3 text-xs font-black uppercase tracking-widest text-[#818b83] md:grid">
+        <div className="hidden grid-cols-[1.7fr_.7fr_.8fr_.6fr] gap-4 border-b border-[#e7ebe5] bg-[#f8f9f6] px-5 py-3 text-xs font-black uppercase tracking-widest text-[#818b83] md:grid">
           <span>Item</span>
           <span>Available</span>
           <span>Status</span>
+          <span>Action</span>
         </div>
 
         {isLoading ? (
@@ -103,6 +106,7 @@ export function InventoryView({
             items={filteredItems}
             query={query}
             total={items.length}
+            onSellItem={onSellItem}
           />
         )}
       </div>
@@ -152,10 +156,12 @@ function InventoryRows({
   items,
   query,
   total,
+  onSellItem,
 }: {
   items: DatabaseInventoryItem[];
   query: string;
   total: number;
+  onSellItem: (inventoryId: number) => void;
 }) {
   if (!items.length) {
     return (
@@ -169,7 +175,7 @@ function InventoryRows({
 
   return items.map((item) => (
     <div
-      className="grid gap-3 border-b border-[#edf0eb] p-5 last:border-b-0 md:grid-cols-[1.7fr_.7fr_.8fr] md:items-center md:gap-4"
+      className="grid gap-3 border-b border-[#edf0eb] p-5 last:border-b-0 md:grid-cols-[1.7fr_.7fr_.8fr_.6fr] md:items-center md:gap-4"
       key={item.id}
     >
       <p className="font-extrabold">{item.item}</p>
@@ -180,6 +186,19 @@ function InventoryRows({
         <span className="text-lg font-black">{item.quantity}</span>
       </div>
       <InventoryStatusBadge status={item.status} />
+      <div className="flex items-center justify-between md:block">
+        <span className="text-xs font-bold uppercase text-[#929a94] md:hidden">
+          Action
+        </span>
+        <button
+          type="button"
+          disabled={item.quantity === 0}
+          onClick={() => onSellItem(item.id)}
+          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-[#173b24] px-3 text-xs font-black text-white hover:bg-[#245334] disabled:cursor-not-allowed disabled:bg-[#dfe4dd] disabled:text-[#879087]"
+        >
+          <ShoppingCart size={14} aria-hidden="true" /> Sell
+        </button>
+      </div>
     </div>
   ));
 }
