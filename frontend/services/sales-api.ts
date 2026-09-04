@@ -13,10 +13,16 @@ export type DatabaseSale = {
   updatedAt: string;
 };
 
-const SALES_API_ROUTE = "http://127.0.0.1:8000/api/v1/sales/get-sales";
+export type CreateSaleInput = {
+  inventoryId: number;
+  quantity: number;
+  customerName: string;
+};
+
+const SALES_API_ROUTE = "http://127.0.0.1:8000/api/v1/sales";
 
 export async function getSales(signal?: AbortSignal): Promise<DatabaseSale[]> {
-  const response = await fetch(SALES_API_ROUTE, {
+  const response = await fetch(`${SALES_API_ROUTE}/get-sales`, {
     cache: "no-store",
     signal,
   });
@@ -27,6 +33,27 @@ export async function getSales(signal?: AbortSignal): Promise<DatabaseSale[]> {
   }
 
   return parseSales(responseBody);
+}
+
+export async function createSale(input: CreateSaleInput): Promise<DatabaseSale> {
+  const response = await fetch(`${SALES_API_ROUTE}/add-sales`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      inventory_id: input.inventoryId,
+      quantity: input.quantity,
+      customer_name: input.customerName,
+    }),
+  });
+  const responseBody: unknown = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      getApiErrorMessage(responseBody, "The sale could not be saved."),
+    );
+  }
+
+  return parseSale(responseBody);
 }
 
 export function parseSales(value: unknown): DatabaseSale[] {

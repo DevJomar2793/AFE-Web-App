@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { Plus, X } from "lucide-react";
 import type { LocalInventoryItem } from "@/lib/local-inventory";
 
-export type TransactionAction = "sale" | "return" | "restock";
+export type TransactionAction = "return" | "restock";
 
 export type TransactionFormValues = {
   itemId: string;
@@ -31,11 +31,6 @@ const ACTION_COPY: Record<
   TransactionAction,
   { title: string; description: string; submit: string }
 > = {
-  sale: {
-    title: "Record new sale",
-    description: "Stock is deducted as soon as the transaction is saved.",
-    submit: "Save sale",
-  },
   return: {
     title: "Record a return",
     description: "Returned units are added back to available inventory.",
@@ -151,7 +146,7 @@ export function TransactionSheet({
             />
           </label>
 
-          {action !== "restock" && (
+          {action === "return" && (
             <label className="block text-sm font-extrabold text-[#283b2c]">
               Customer{" "}
               <span className="font-medium text-[#89928b]">(optional)</span>
@@ -165,31 +160,24 @@ export function TransactionSheet({
             </label>
           )}
 
-          {action !== "sale" && (
-            <label className="block text-sm font-extrabold text-[#283b2c]">
-              Note{" "}
-              <span className="font-medium text-[#89928b]">(optional)</span>
-              <input
-                className="inventory-field mt-2"
-                type="text"
-                value={note}
-                onChange={(event) => setNote(event.target.value)}
-                placeholder={
-                  action === "return"
-                    ? "Reason for return"
-                    : "Supplier or delivery note"
-                }
-              />
-            </label>
-          )}
+          <label className="block text-sm font-extrabold text-[#283b2c]">
+            Note <span className="font-medium text-[#89928b]">(optional)</span>
+            <input
+              className="inventory-field mt-2"
+              type="text"
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder={
+                action === "return"
+                  ? "Reason for return"
+                  : "Supplier or delivery note"
+              }
+            />
+          </label>
 
           <div className="flex items-center justify-between rounded-2xl bg-[#f3f6f1] px-4 py-3">
             <span className="text-sm font-semibold text-[#68736b]">
-              {action === "restock"
-                ? "Estimated cost"
-                : action === "return"
-                  ? "Refund value"
-                  : "Sale total"}
+              {action === "restock" ? "Estimated cost" : "Refund value"}
             </span>
             <strong className="text-lg text-[#173b24]">
               {currency.format(estimatedAmount)}

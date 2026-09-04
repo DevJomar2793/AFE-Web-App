@@ -41,13 +41,14 @@ reflect the latest database response.
 - `components/inventory/` contains the inventory feature UI.
 - `components/inventory/hooks/` contains inventory-specific React hooks.
 - `lib/local-inventory.ts` defines the browser-local transaction state.
-- `services/inventory-api.ts` owns API requests, response validation, and API
-  types.
+- `services/` owns inventory and sales API requests, response validation, and
+  API types.
 
 The database inventory table is intentionally separate from the browser-local
 overview and transaction activity. See the root README for the current MVP data
 behavior and production limitations.
 
-The Transaction Activity page also loads database sales from
-`GET /api/v1/sales/get-sales` and merges them with activity saved locally on the
-device. The Overview Recent Activity card remains local-only.
+The New Sale form stores sales through `POST /api/v1/sales/add-sales` using
+database inventory records. Transaction Activity loads those records from
+`GET /api/v1/sales/get-sales`. Sales are not duplicated in browser storage; the
+Overview metrics and Recent Activity card remain local-only.

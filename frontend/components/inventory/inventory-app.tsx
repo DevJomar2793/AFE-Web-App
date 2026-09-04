@@ -13,6 +13,7 @@ import {
 } from "@/components/inventory/inventory-navigation";
 import { InventoryOverview } from "@/components/inventory/inventory-overview";
 import { InventoryView } from "@/components/inventory/inventory-view";
+import { NewSaleSheet } from "@/components/inventory/new-sale-sheet";
 import { TransactionActivity } from "@/components/inventory/transaction-activity";
 import {
   TransactionSheet,
@@ -24,7 +25,6 @@ import {
   initialLocalInventoryState,
   isLocalInventoryState,
   type LocalInventoryState,
-  type TransactionType,
 } from "@/lib/local-inventory";
 
 type Notice = {
@@ -42,6 +42,7 @@ export function InventoryApp() {
     useState<TransactionAction | null>(null);
   const [transactionItemId, setTransactionItemId] = useState<string>();
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
+  const [isNewSaleOpen, setIsNewSaleOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [hasLoadedLocalInventory, setHasLoadedLocalInventory] = useState(false);
@@ -51,7 +52,7 @@ export function InventoryApp() {
     isLoading: isInventoryLoading,
     error: inventoryError,
     retry: retryInventory,
-  } = useInventoryItems(currentView === "inventory");
+  } = useInventoryItems(currentView === "inventory" || isNewSaleOpen);
   const {
     sales: databaseSales,
     isLoading: areSalesLoading,
@@ -136,15 +137,9 @@ export function InventoryApp() {
     if (!Number.isInteger(quantity) || quantity < 1) {
       return "Enter a whole quantity of at least one.";
     }
-    if (transactionAction === "sale" && quantity > item.quantity) {
-      const unitLabel = item.quantity === 1 ? item.unit : `${item.unit}s`;
-      return `Only ${item.quantity} ${unitLabel} available.`;
-    }
-
-    const transactionType: TransactionType = transactionAction;
+    const transactionType: TransactionAction = transactionAction;
     const amount =
       (transactionType === "restock" ? item.cost : item.price) * quantity;
-    const quantityChange = transactionType === "sale" ? -quantity : quantity;
     const transaction = {
       id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${itemId}`,
       type: transactionType,
@@ -161,7 +156,7 @@ export function InventoryApp() {
         inventoryItem.id === itemId
           ? {
               ...inventoryItem,
-              quantity: inventoryItem.quantity + quantityChange,
+              quantity: inventoryItem.quantity + quantity,
             }
           : inventoryItem,
       ),
@@ -202,6 +197,16 @@ export function InventoryApp() {
     });
   };
 
+  const handleSaleCreated = () => {
+    setIsNewSaleOpen(false);
+    retryInventory();
+    retrySales();
+    setNotice({
+      message: "Sale saved and inventory updated.",
+      tone: "success",
+    });
+  };
+
   return (
     <div className="min-h-dvh bg-[#f4f6f1] text-[#18251a]">
       <InventorySidebar
@@ -215,8 +220,7 @@ export function InventoryApp() {
         <InventoryHeader
           currentView={currentView}
           onOpenMenu={() => setIsMenuOpen(true)}
-          onOpenReturn={() => openTransaction("return")}
-          onOpenSale={() => openTransaction("sale")}
+          onOpenSale={() => setIsNewSaleOpen(true)}
         />
 
         <main className="mx-auto max-w-375 px-4 pb-28 pt-6 sm:px-7 lg:px-10 lg:pb-10 lg:pt-8">
@@ -224,6 +228,7 @@ export function InventoryApp() {
             <InventoryOverview
               state={localInventory}
               onOpenAction={openTransaction}
+              onOpenSale={() => setIsNewSaleOpen(true)}
               onViewActivity={() => selectView("activity")}
             />
           )}
@@ -257,6 +262,17 @@ export function InventoryApp() {
       />
 
       {notice && <InventoryNotice notice={notice} />}
+
+      {isNewSaleOpen && (
+        <NewSaleSheet
+          inventoryError={inventoryError}
+          isInventoryLoading={isInventoryLoading}
+          items={databaseItems}
+          onClose={() => setIsNewSaleOpen(false)}
+          onCreated={handleSaleCreated}
+          onRetryInventory={retryInventory}
+        />
+      )}
 
       {transactionAction && (
         <TransactionSheet
@@ -297,8 +313,7 @@ function InventoryNotice({ notice }: { notice: Notice }) {
   );
 }
 
-function getTransactionSuccessMessage(type: TransactionType) {
-  if (type === "sale") return "Sale saved and inventory updated.";
+function getTransactionSuccessMessage(type: TransactionAction) {
   if (type === "return") return "Return saved and stock restored.";
   return "New stock added to inventory.";
 }

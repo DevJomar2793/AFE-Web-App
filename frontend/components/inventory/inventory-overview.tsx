@@ -16,6 +16,7 @@ import type { LocalInventoryState } from "@/lib/local-inventory";
 type InventoryOverviewProps = {
   state: LocalInventoryState;
   onOpenAction: (action: TransactionAction, itemId?: string) => void;
+  onOpenSale: () => void;
   onViewActivity: () => void;
 };
 
@@ -33,6 +34,7 @@ const compactNumber = new Intl.NumberFormat("en-PH", {
 export function InventoryOverview({
   state,
   onOpenAction,
+  onOpenSale,
   onViewActivity,
 }: InventoryOverviewProps) {
   const today = localDateKey(new Date());
@@ -140,7 +142,7 @@ export function InventoryOverview({
           <div className="mt-5 grid gap-2">
             <button
               type="button"
-              onClick={() => onOpenAction("sale")}
+              onClick={onOpenSale}
               className="flex items-center gap-3 rounded-xl bg-white px-4 py-3 text-left text-sm font-black text-[#173b24]"
             >
               <CircleDollarSign size={18} /> Record a sale

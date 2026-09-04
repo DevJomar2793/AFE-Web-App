@@ -9,7 +9,6 @@ import {
   Menu,
   Plus,
   ReceiptText,
-  RotateCcw,
   X,
 } from "lucide-react";
 import { BrandMark } from "@/components/storefront/brand-mark";
@@ -92,12 +91,10 @@ export function InventorySidebar({
 export function InventoryHeader({
   currentView,
   onOpenMenu,
-  onOpenReturn,
   onOpenSale,
 }: {
   currentView: InventoryViewName;
   onOpenMenu: () => void;
-  onOpenReturn: () => void;
   onOpenSale: () => void;
 }) {
   const titles: Record<InventoryViewName, string> = {
@@ -130,27 +127,18 @@ export function InventoryHeader({
             {titles[currentView]}
           </h1>
         </div>
-        <div className="ml-auto flex items-center gap-2">
-          {currentView === "activity" && (
+        {currentView !== "activity" && (
+          <div className="ml-auto flex items-center gap-2">
             <button
               type="button"
-              aria-label="Record a return"
-              onClick={onOpenReturn}
-              className="flex h-11 items-center gap-2 rounded-xl border border-[#cfd8cd] bg-white px-3.5 text-sm font-black text-[#173b24] hover:bg-[#f1f3ee] sm:px-5"
+              onClick={onOpenSale}
+              className="flex h-11 items-center gap-2 rounded-xl bg-[#173b24] px-3.5 text-sm font-black text-white shadow-sm hover:bg-[#245334] sm:px-5"
             >
-              <RotateCcw size={17} aria-hidden="true" />
-              <span className="hidden sm:inline">Return</span>
+              <Plus size={18} aria-hidden="true" />
+              <span className="hidden xs:inline sm:inline">New sale</span>
             </button>
-          )}
-          <button
-            type="button"
-            onClick={onOpenSale}
-            className="flex h-11 items-center gap-2 rounded-xl bg-[#173b24] px-3.5 text-sm font-black text-white shadow-sm hover:bg-[#245334] sm:px-5"
-          >
-            <Plus size={18} aria-hidden="true" />
-            <span className="hidden xs:inline sm:inline">New sale</span>
-          </button>
-        </div>
+          </div>
+        )}
       </div>
     </header>
   );
