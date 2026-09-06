@@ -8,6 +8,7 @@ export type DatabaseSale = {
   inventoryId: number;
   item: DatabaseSaleItem;
   quantity: number;
+  price: number;
   customerName: string;
   createdAt: string;
   updatedAt: string;
@@ -17,6 +18,11 @@ export type CreateSaleInput = {
   inventoryId: number;
   quantity: number;
   customerName: string;
+};
+
+export type UpdateSaleInput = {
+  price: number;
+  quantity: number;
 };
 
 const SALES_API_ROUTE = "http://127.0.0.1:8000/api/v1/sales";
@@ -56,6 +62,26 @@ export async function createSale(input: CreateSaleInput): Promise<DatabaseSale> 
   return parseSale(responseBody);
 }
 
+export async function updateSale(
+  saleId: number,
+  input: UpdateSaleInput,
+): Promise<DatabaseSale> {
+  const response = await fetch(`${SALES_API_ROUTE}/${saleId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const responseBody: unknown = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      getApiErrorMessage(responseBody, "The sale could not be updated."),
+    );
+  }
+
+  return parseSale(responseBody);
+}
+
 export function parseSales(value: unknown): DatabaseSale[] {
   if (!Array.isArray(value)) throw new Error("Invalid sales response");
   return value.map(parseSale);
@@ -66,6 +92,11 @@ function parseSale(value: unknown): DatabaseSale {
     throw new Error("Invalid sale");
   }
 
+  const price =
+    typeof value.price === "string" || typeof value.price === "number"
+      ? Number(value.price)
+      : Number.NaN;
+
   if (
     !isPositiveInteger(value.id) ||
     !isPositiveInteger(value.inventory_id) ||
@@ -74,6 +105,8 @@ function parseSale(value: unknown): DatabaseSale {
     typeof value.item.item !== "string" ||
     !value.item.item.trim() ||
     !isPositiveInteger(value.quantity) ||
+    !Number.isFinite(price) ||
+    price < 0 ||
     typeof value.customer_name !== "string" ||
     !value.customer_name.trim() ||
     !isValidDate(value.created_at) ||
@@ -90,6 +123,7 @@ function parseSale(value: unknown): DatabaseSale {
       name: value.item.item,
     },
     quantity: value.quantity,
+    price,
     customerName: value.customer_name,
     createdAt: value.created_at,
     updatedAt: value.updated_at,

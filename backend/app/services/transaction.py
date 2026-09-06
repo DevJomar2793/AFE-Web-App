@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models import Inventory, InventoryStatus, Return, Sale
-from app.schemas import ReturnCreate, SaleCreate
+from app.schemas import ReturnCreate, SaleCreate, SaleUpdate
 
 
 class InventoryItemNotFoundError(Exception):
@@ -15,6 +15,10 @@ class InsufficientStockError(Exception):
     def __init__(self, available_quantity: int) -> None:
         self.available_quantity = available_quantity
         super().__init__("Insufficient inventory quantity")
+
+
+class SaleNotFoundError(Exception):
+    """Raised when a sale cannot be found."""
 
 
 async def list_sales(session: AsyncSession) -> list[Sale]:
@@ -48,6 +52,7 @@ async def create_sale(session: AsyncSession, sale_data: SaleCreate) -> Sale:
         sale = Sale(
             inventory_id=inventory_item.id,
             quantity=sale_data.quantity,
+            price=inventory_item.price,
             customer_name=sale_data.customer_name,
             item=inventory_item,
         )
@@ -56,6 +61,56 @@ async def create_sale(session: AsyncSession, sale_data: SaleCreate) -> Sale:
         await session.refresh(sale, attribute_names=["item"])
         return sale
     except (InventoryItemNotFoundError, InsufficientStockError):
+        await session.rollback()
+        raise
+    except SQLAlchemyError:
+        await session.rollback()
+        raise
+
+
+async def update_sale(
+    session: AsyncSession,
+    sale_id: int,
+    sale_data: SaleUpdate,
+) -> Sale:
+    try:
+        sale = await session.scalar(
+            select(Sale).where(Sale.id == sale_id).with_for_update(),
+        )
+        if sale is None:
+            raise SaleNotFoundError
+
+        inventory_item = await session.scalar(
+            select(Inventory)
+            .where(Inventory.id == sale.inventory_id)
+            .with_for_update(),
+        )
+        if inventory_item is None:
+            raise InventoryItemNotFoundError
+
+        quantity_delta = sale_data.quantity - sale.quantity
+        if quantity_delta > inventory_item.quantity:
+            raise InsufficientStockError(inventory_item.quantity)
+
+        inventory_item.quantity -= quantity_delta
+        inventory_item.price = sale_data.price
+        if inventory_item.quantity == 0:
+            inventory_item.status = InventoryStatus.OUT_OF_STOCK
+        elif inventory_item.status == InventoryStatus.OUT_OF_STOCK:
+            inventory_item.status = InventoryStatus.IN_STOCK
+
+        sale.quantity = sale_data.quantity
+        sale.price = sale_data.price
+
+        await session.commit()
+        await session.refresh(sale)
+        await session.refresh(sale, attribute_names=["item"])
+        return sale
+    except (
+        InventoryItemNotFoundError,
+        InsufficientStockError,
+        SaleNotFoundError,
+    ):
         await session.rollback()
         raise
     except SQLAlchemyError:

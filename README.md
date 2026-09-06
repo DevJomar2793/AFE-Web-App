@@ -27,8 +27,9 @@ The inventory table and the Add Item form read and write PostgreSQL through
 `GET /api/v1/inventory/get-item` and `POST /api/v1/inventory/add-stock`.
 
 The backend also stores sales through `GET /api/v1/sales/get-sales` and
-`POST /api/v1/sales/add-sales`. Each sale references an inventory item and
-deducts its quantity atomically.
+`POST /api/v1/sales/add-sales`, and updates existing records through
+`PATCH /api/v1/sales/{sale_id}`. Each sale keeps a unit-price snapshot, and
+quantity changes adjust its linked inventory atomically.
 
 Returns are available through `GET /api/v1/returns/get-returns` and
 `POST /api/v1/returns/add-returns`. Recording a return stores its customer and

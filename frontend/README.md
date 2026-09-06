@@ -50,8 +50,9 @@ behavior and production limitations.
 
 The New Sale form stores sales through `POST /api/v1/sales/add-sales` using
 database inventory records. Transaction Activity loads those records from
-`GET /api/v1/sales/get-sales`. Sales are not duplicated in browser storage; the
-Overview metrics and Recent Activity card remain local-only.
+`GET /api/v1/sales/get-sales` and updates existing records through
+`PATCH /api/v1/sales/{sale_id}`. Sales are not duplicated in browser storage;
+the Overview metrics and Recent Activity card remain local-only.
 
 The Returns page loads database return history from
 `GET /api/v1/returns/get-returns`. New returns are submitted through the

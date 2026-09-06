@@ -1,12 +1,13 @@
 "use client";
 
-import { ArrowUpRight, RotateCcw } from "lucide-react";
+import { ArrowUpRight, Pencil, RotateCcw } from "lucide-react";
 import type { DatabaseSale } from "@/services/sales-api";
 
 type TransactionActivityProps = {
   sales: DatabaseSale[];
   error: string;
   isLoading: boolean;
+  onEdit: (sale: DatabaseSale) => void;
   onRetry: () => void;
 };
 
@@ -14,6 +15,7 @@ export function TransactionActivity({
   sales,
   error,
   isLoading,
+  onEdit,
   onRetry,
 }: TransactionActivityProps) {
   return (
@@ -57,7 +59,9 @@ export function TransactionActivity({
         </div>
 
         {sales.length ? (
-          sales.map((sale) => <SaleActivityRow key={sale.id} sale={sale} />)
+          sales.map((sale) => (
+            <SaleActivityRow key={sale.id} sale={sale} onEdit={onEdit} />
+          ))
         ) : (
           <p className="p-10 text-center text-sm font-semibold text-[#7c867e]">
             No sales have been recorded yet.
@@ -68,8 +72,15 @@ export function TransactionActivity({
   );
 }
 
-function SaleActivityRow({ sale }: { sale: DatabaseSale }) {
+function SaleActivityRow({
+  sale,
+  onEdit,
+}: {
+  sale: DatabaseSale;
+  onEdit: (sale: DatabaseSale) => void;
+}) {
   const unitLabel = sale.quantity === 1 ? "Tray" : "Trays";
+  const total = sale.price * sale.quantity;
 
   return (
     <div className="flex items-center gap-3 border-b border-[#edf0eb] px-4 py-4 last:border-b-0 sm:px-6">
@@ -84,17 +95,36 @@ function SaleActivityRow({ sale }: { sale: DatabaseSale }) {
           {sale.customerName}
         </p>
       </div>
-      <div className="text-right">
+      <div className="min-w-0 text-right">
         <p className="text-sm font-black text-[#24362a]">
           −{sale.quantity} <span className="hidden sm:inline">{unitLabel}</span>
+        </p>
+        <p className="mt-1 text-xs font-bold text-[#68736b]">
+          {currency.format(sale.price)} each · {currency.format(total)}
         </p>
         <p className="mt-1 text-[11px] font-semibold text-[#929a94]">
           {formatActivityDate(sale.createdAt)}
         </p>
       </div>
+      <button
+        type="button"
+        aria-label={`Edit sale for ${sale.item.name}, ${sale.customerName}`}
+        onClick={() => onEdit(sale)}
+        className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#cfd8cd] bg-white px-3 text-xs font-black text-[#173b24] hover:bg-[#f8faf7]"
+      >
+        <Pencil size={14} aria-hidden="true" />
+        <span className="hidden sm:inline">Edit</span>
+      </button>
     </div>
   );
 }
+
+const currency = new Intl.NumberFormat("en-PH", {
+  style: "currency",
+  currency: "PHP",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
 
 function formatActivityDate(value: string) {
   const date = new Date(value);

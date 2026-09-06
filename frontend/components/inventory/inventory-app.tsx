@@ -3,6 +3,7 @@
 import { CheckCircle2, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AddInventoryItemSheet } from "@/components/inventory/add-inventory-item-sheet";
+import { EditSaleSheet } from "@/components/inventory/edit-sale-sheet";
 import { useInventoryItems } from "@/components/inventory/hooks/use-inventory-items";
 import { useReturns } from "@/components/inventory/hooks/use-returns";
 import { useSales } from "@/components/inventory/hooks/use-sales";
@@ -29,6 +30,7 @@ import {
   isLocalInventoryState,
   type LocalInventoryState,
 } from "@/lib/local-inventory";
+import type { DatabaseSale } from "@/services/sales-api";
 
 type Notice = {
   message: string;
@@ -47,6 +49,7 @@ export function InventoryApp() {
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
   const [isNewSaleOpen, setIsNewSaleOpen] = useState(false);
   const [isNewReturnOpen, setIsNewReturnOpen] = useState(false);
+  const [editingSale, setEditingSale] = useState<DatabaseSale | null>(null);
   const [saleInventoryItemId, setSaleInventoryItemId] = useState<number>();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -227,6 +230,16 @@ export function InventoryApp() {
     });
   };
 
+  const handleSaleUpdated = () => {
+    setEditingSale(null);
+    retryInventory();
+    retrySales();
+    setNotice({
+      message: "Sale updated and inventory adjusted.",
+      tone: "success",
+    });
+  };
+
   const handleReturnCreated = () => {
     setIsNewReturnOpen(false);
     retryInventory();
@@ -282,6 +295,7 @@ export function InventoryApp() {
               sales={databaseSales}
               error={salesError}
               isLoading={areSalesLoading}
+              onEdit={setEditingSale}
               onRetry={retrySales}
             />
           )}
@@ -325,6 +339,15 @@ export function InventoryApp() {
           onClose={() => setIsNewReturnOpen(false)}
           onCreated={handleReturnCreated}
           onRetryInventory={retryInventory}
+        />
+      )}
+
+      {editingSale && (
+        <EditSaleSheet
+          key={editingSale.id}
+          sale={editingSale}
+          onClose={() => setEditingSale(null)}
+          onUpdated={handleSaleUpdated}
         />
       )}
 

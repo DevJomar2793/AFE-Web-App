@@ -9,6 +9,7 @@ from app.schemas.transaction import (
     SaleCreate,
     SaleItemResponse,
     SaleResponse,
+    SaleUpdate,
 )
 
 
@@ -22,4 +23,5 @@ __all__ = [
     "SaleCreate",
     "SaleItemResponse",
     "SaleResponse",
+    "SaleUpdate",
 ]

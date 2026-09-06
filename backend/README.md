@@ -49,6 +49,7 @@ GET  /api/v1/inventory/get-item
 POST /api/v1/inventory/add-stock
 GET  /api/v1/sales/get-sales
 POST /api/v1/sales/add-sales
+PATCH /api/v1/sales/{sale_id}
 GET  /api/v1/returns/get-returns
 POST /api/v1/returns/add-returns
 ```
@@ -84,6 +85,18 @@ List sales, newest first, with:
 ```bash
 curl http://127.0.0.1:8000/api/v1/sales/get-sales
 ```
+
+Update only a sale's unit price and quantity:
+
+```bash
+curl -X PATCH http://127.0.0.1:8000/api/v1/sales/1 \
+  -H "Content-Type: application/json" \
+  -d '{"price": "275.00", "quantity": 3}'
+```
+
+Updating a sale adjusts inventory by the quantity difference and updates the
+linked inventory item's current price. Existing sales keep their own price
+snapshots. The API returns `409` if the additional quantity is unavailable.
 
 Create a return with the related inventory ID, a positive whole quantity, a
 customer name, and a reason:

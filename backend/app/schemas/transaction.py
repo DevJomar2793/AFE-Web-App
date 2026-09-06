@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -16,6 +17,13 @@ class SaleCreate(BaseModel):
         return value
 
 
+class SaleUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    price: Decimal = Field(ge=0, max_digits=12, decimal_places=2)
+    quantity: int = Field(gt=0, strict=True)
+
+
 class SaleItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -30,6 +38,7 @@ class SaleResponse(BaseModel):
     inventory_id: int
     item: SaleItemResponse
     quantity: int
+    price: Decimal
     customer_name: str
     created_at: datetime
     updated_at: datetime

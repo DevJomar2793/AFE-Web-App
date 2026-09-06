@@ -128,11 +128,7 @@ export function InventoryView({
 
 function InventoryLoadingState() {
   return (
-    <div
-      className="space-y-3 p-5"
-      role="status"
-      aria-label="Loading inventory"
-    >
+    <div className="space-y-3 p-5" role="status" aria-label="Loading inventory">
       {[0, 1, 2].map((placeholder) => (
         <div
           className="h-14 animate-pulse rounded-xl bg-[#f0f3ee]"
