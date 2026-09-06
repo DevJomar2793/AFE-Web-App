@@ -87,9 +87,7 @@ async def create_return(
         if inventory_item is None:
             raise InventoryItemNotFoundError
 
-        inventory_item.quantity += return_data.quantity
-        if inventory_item.status == InventoryStatus.OUT_OF_STOCK:
-            inventory_item.status = InventoryStatus.IN_STOCK
+        inventory_item.returns_count += return_data.quantity
 
         inventory_return = Return(
             inventory_id=inventory_item.id,

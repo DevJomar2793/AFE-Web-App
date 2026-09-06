@@ -101,9 +101,10 @@ export function InventoryView({
       </div>
 
       <div className="mt-5 overflow-hidden rounded-2xl border border-[#e0e5de] bg-white">
-        <div className="hidden grid-cols-[1.7fr_.7fr_.8fr_.6fr] gap-4 border-b border-[#e7ebe5] bg-[#f8f9f6] px-5 py-3 text-xs font-black uppercase tracking-widest text-[#818b83] md:grid">
+        <div className="hidden grid-cols-[1.5fr_.7fr_.7fr_.8fr_.6fr] gap-4 border-b border-[#e7ebe5] bg-[#f8f9f6] px-5 py-3 text-xs font-black uppercase tracking-widest text-[#818b83] md:grid">
           <span>Item</span>
-          <span>Available</span>
+          <span>Quantity</span>
+          <span>Returns</span>
           <span>Status</span>
           <span>Action</span>
         </div>
@@ -186,15 +187,23 @@ function InventoryRows({
 
   return items.map((item) => (
     <div
-      className="grid gap-3 border-b border-[#edf0eb] p-5 last:border-b-0 md:grid-cols-[1.7fr_.7fr_.8fr_.6fr] md:items-center md:gap-4"
+      className="grid gap-3 border-b border-[#edf0eb] p-5 last:border-b-0 md:grid-cols-[1.5fr_.7fr_.7fr_.8fr_.6fr] md:items-center md:gap-4"
       key={item.id}
     >
       <p className="font-extrabold">{item.item}</p>
       <div className="flex items-baseline justify-between md:block">
         <span className="text-xs font-bold uppercase text-[#929a94] md:hidden">
-          Available
+          Quantity
         </span>
         <span className="text-lg font-black">{item.quantity}</span>
+      </div>
+      <div className="flex items-baseline justify-between md:block">
+        <span className="text-xs font-bold uppercase text-[#929a94] md:hidden">
+          Returns
+        </span>
+        <span className="text-lg font-black text-[#9b3f3f]">
+          {item.returnsCount}
+        </span>
       </div>
       <InventoryStatusBadge status={item.status} />
       <div className="flex items-center justify-between md:block">

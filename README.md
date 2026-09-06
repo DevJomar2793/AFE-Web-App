@@ -31,8 +31,9 @@ The backend also stores sales through `GET /api/v1/sales/get-sales` and
 deducts its quantity atomically.
 
 Returns are available through `GET /api/v1/returns/get-returns` and
-`POST /api/v1/returns/add-return`. Recording a return stores its customer and
-reason while restoring the related inventory quantity atomically.
+`POST /api/v1/returns/add-returns`. Recording a return stores its customer and
+reason while incrementing the related inventory `returns_count` atomically;
+the inventory quantity is unchanged.
 
 The Transaction Activity page merges database sales with the existing local
 activity. The sale form, returns, restocks, and Overview activity remain part of

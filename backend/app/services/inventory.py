@@ -18,6 +18,7 @@ async def create_inventory_item(
     inventory = Inventory(
         item=item.item,
         quantity=item.quantity,
+        returns_count=0,
         price=item.price,
         status=item.status,
     )

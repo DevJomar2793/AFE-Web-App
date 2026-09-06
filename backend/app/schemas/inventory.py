@@ -38,6 +38,7 @@ class InventoryResponse(BaseModel):
     id: int
     item: str
     quantity: int
+    returns_count: int
     price: Decimal
     status: InventoryStatus
     created_at: datetime

@@ -41,6 +41,7 @@ async def test_create_inventory_item(
     created_inventory_ids.append(data["id"])
     assert data["item"] == "__create_inventory_item_test__"
     assert data["quantity"] == 5
+    assert data["returns_count"] == 0
     assert data["price"] == "250.50"
     assert data["status"] == "in_stock"
     assert datetime.fromisoformat(data["created_at"])
@@ -54,6 +55,7 @@ async def test_create_inventory_item(
     assert stored_inventory is not None
     assert stored_inventory.item == "__create_inventory_item_test__"
     assert stored_inventory.quantity == 5
+    assert stored_inventory.returns_count == 0
     assert stored_inventory.price == Decimal("250.50")
     assert stored_inventory.status == InventoryStatus.IN_STOCK
 
@@ -101,7 +103,8 @@ async def test_list_inventory_items(
     inventory_items = response.json()
     returned_ids = [item["id"] for item in inventory_items]
     assert returned_ids == sorted(returned_ids)
-    assert created_id in returned_ids
+    created_item = next(item for item in inventory_items if item["id"] == created_id)
+    assert created_item["returns_count"] == 0
 
 
 @pytest.mark.asyncio

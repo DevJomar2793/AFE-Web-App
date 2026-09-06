@@ -28,6 +28,10 @@ class Inventory(Base):
             name="ck_inventory_item_not_blank",
         ),
         CheckConstraint("quantity >= 0", name="ck_inventory_quantity_non_negative"),
+        CheckConstraint(
+            "returns_count >= 0",
+            name="ck_inventory_returns_count_non_negative",
+        ),
         CheckConstraint("price >= 0", name="ck_inventory_price_non_negative"),
         CheckConstraint(
             "(quantity = 0 AND status = 'out_of_stock') OR "
@@ -39,6 +43,12 @@ class Inventory(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     item: Mapped[str] = mapped_column(String(255), nullable=False)
     quantity: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default=text("0"),
+    )
+    returns_count: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
         default=0,

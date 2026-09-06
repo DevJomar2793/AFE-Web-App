@@ -4,6 +4,7 @@ export type DatabaseInventoryItem = {
   id: number;
   item: string;
   quantity: number;
+  returnsCount: number;
   price: number;
   status: InventoryDatabaseStatus;
   createdAt: string;
@@ -43,6 +44,8 @@ export function parseInventoryItem(value: unknown): DatabaseInventoryItem {
     !value.item.trim() ||
     !Number.isInteger(value.quantity) ||
     Number(value.quantity) < 0 ||
+    !Number.isInteger(value.returns_count) ||
+    Number(value.returns_count) < 0 ||
     !Number.isFinite(price) ||
     price < 0 ||
     !isInventoryStatus(value.status) ||
@@ -56,6 +59,7 @@ export function parseInventoryItem(value: unknown): DatabaseInventoryItem {
     id: Number(value.id),
     item: value.item,
     quantity: Number(value.quantity),
+    returnsCount: Number(value.returns_count),
     price,
     status: value.status,
     createdAt: value.created_at,

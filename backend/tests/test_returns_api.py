@@ -34,12 +34,12 @@ async def return_inventory_item() -> AsyncIterator[Inventory]:
 
 
 @pytest.mark.asyncio
-async def test_create_return_restores_inventory_and_stores_all_fields(
+async def test_create_return_tracks_returned_units_without_changing_quantity(
     client: AsyncClient,
     return_inventory_item: Inventory,
 ) -> None:
     response = await client.post(
-        "/api/v1/returns/add-return",
+        "/api/v1/returns/add-returns",
         json={
             "inventory_id": return_inventory_item.id,
             "quantity": 3,
@@ -68,12 +68,13 @@ async def test_create_return_restores_inventory_and_stores_all_fields(
     assert stored_return is not None
     assert stored_return.reason == "Damaged tray"
     assert stored_item is not None
-    assert stored_item.quantity == 13
+    assert stored_item.quantity == 10
+    assert stored_item.returns_count == 3
     assert stored_item.status == InventoryStatus.IN_STOCK
 
 
 @pytest.mark.asyncio
-async def test_return_marks_out_of_stock_item_in_stock(
+async def test_return_does_not_change_out_of_stock_quantity_or_status(
     client: AsyncClient,
     return_inventory_item: Inventory,
 ) -> None:
@@ -85,7 +86,7 @@ async def test_return_marks_out_of_stock_item_in_stock(
         await session.commit()
 
     response = await client.post(
-        "/api/v1/returns/add-return",
+        "/api/v1/returns/add-returns",
         json={
             "inventory_id": return_inventory_item.id,
             "quantity": 1,
@@ -99,8 +100,9 @@ async def test_return_marks_out_of_stock_item_in_stock(
         stored_item = await session.get(Inventory, return_inventory_item.id)
 
     assert stored_item is not None
-    assert stored_item.quantity == 1
-    assert stored_item.status == InventoryStatus.IN_STOCK
+    assert stored_item.quantity == 0
+    assert stored_item.returns_count == 1
+    assert stored_item.status == InventoryStatus.OUT_OF_STOCK
 
 
 @pytest.mark.asyncio
@@ -115,7 +117,7 @@ async def test_return_preserves_low_stock_status(
         await session.commit()
 
     response = await client.post(
-        "/api/v1/returns/add-return",
+        "/api/v1/returns/add-returns",
         json={
             "inventory_id": return_inventory_item.id,
             "quantity": 1,
@@ -129,6 +131,8 @@ async def test_return_preserves_low_stock_status(
         stored_item = await session.get(Inventory, return_inventory_item.id)
 
     assert stored_item is not None
+    assert stored_item.quantity == 10
+    assert stored_item.returns_count == 1
     assert stored_item.status == InventoryStatus.LOW_STOCK
 
 
@@ -138,7 +142,7 @@ async def test_list_returns_returns_newest_first_with_item_details(
     return_inventory_item: Inventory,
 ) -> None:
     first_response = await client.post(
-        "/api/v1/returns/add-return",
+        "/api/v1/returns/add-returns",
         json={
             "inventory_id": return_inventory_item.id,
             "quantity": 1,
@@ -147,7 +151,7 @@ async def test_list_returns_returns_newest_first_with_item_details(
         },
     )
     second_response = await client.post(
-        "/api/v1/returns/add-return",
+        "/api/v1/returns/add-returns",
         json={
             "inventory_id": return_inventory_item.id,
             "quantity": 2,
@@ -180,7 +184,7 @@ async def test_create_return_rejects_unknown_inventory_item(
     client: AsyncClient,
 ) -> None:
     response = await client.post(
-        "/api/v1/returns/add-return",
+        "/api/v1/returns/add-returns",
         json={
             "inventory_id": 2_147_483_647,
             "quantity": 1,
@@ -250,7 +254,7 @@ async def test_create_return_rejects_invalid_data(
     client: AsyncClient,
     payload: dict[str, object],
 ) -> None:
-    response = await client.post("/api/v1/returns/add-return", json=payload)
+    response = await client.post("/api/v1/returns/add-returns", json=payload)
     assert response.status_code == 422
 
 
@@ -267,8 +271,8 @@ async def test_concurrent_returns_do_not_lose_inventory_updates(
     }
 
     first_response, second_response = await asyncio.gather(
-        client.post("/api/v1/returns/add-return", json=return_payload),
-        client.post("/api/v1/returns/add-return", json=return_payload),
+        client.post("/api/v1/returns/add-returns", json=return_payload),
+        client.post("/api/v1/returns/add-returns", json=return_payload),
     )
 
     assert first_response.status_code == 201
@@ -281,5 +285,6 @@ async def test_concurrent_returns_do_not_lose_inventory_updates(
         )
 
     assert stored_item is not None
-    assert stored_item.quantity == 22
+    assert stored_item.quantity == 10
+    assert stored_item.returns_count == 12
     assert len(list(inventory_returns.all())) == 2
