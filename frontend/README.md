@@ -54,5 +54,5 @@ database inventory records. Transaction Activity loads those records from
 Overview metrics and Recent Activity card remain local-only.
 
 The Returns page loads database return history from
-`GET /api/v1/returns/get-returns`. It is currently read-only; creating returns
-through the backend will be connected in a later frontend change.
+`GET /api/v1/returns/get-returns`. New returns are submitted through the
+same-origin `POST /api/v1/returns` frontend proxy and forwarded to the backend.

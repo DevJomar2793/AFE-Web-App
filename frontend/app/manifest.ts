@@ -11,9 +11,9 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#173b24",
     icons: [
       {
-        src: "/inventory-icon.svg",
-        sizes: "any",
-        type: "image/svg+xml",
+        src: "/adamos-fresh-eggs-logo.jpg",
+        sizes: "480x480",
+        type: "image/jpeg",
         purpose: "any",
       },
     ],

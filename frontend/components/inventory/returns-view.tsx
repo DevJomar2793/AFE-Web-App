@@ -8,6 +8,7 @@ type ReturnsViewProps = {
   isLoading: boolean;
   returns: DatabaseReturn[];
   onRetry: () => void;
+  onOpenReturn: () => void;
 };
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-PH", {
@@ -21,14 +22,24 @@ export function ReturnsView({
   isLoading,
   returns,
   onRetry,
+  onOpenReturn,
 }: ReturnsViewProps) {
   return (
     <section>
-      <div>
-        <h2 className="text-2xl font-black">Product returns</h2>
-        <p className="mt-1 text-sm text-[#768178]">
-          Return records stored in the database.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-black">Product returns</h2>
+          <p className="mt-1 text-sm text-[#768178]">
+            Return records stored in the database.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onOpenReturn}
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#173b24] px-4 text-sm font-black text-white hover:bg-[#245334]"
+        >
+          <RotateCcw size={18} aria-hidden="true" /> Return item
+        </button>
       </div>
 
       <div className="mt-6 overflow-hidden rounded-2xl border border-[#e0e5de] bg-white">

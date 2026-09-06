@@ -23,6 +23,10 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "AFE Inventory",
   },
+  icons: {
+    icon: "/adamos-fresh-eggs-logo.jpg",
+    apple: "/adamos-fresh-eggs-logo.jpg",
+  },
 };
 
 export const viewport: Viewport = {

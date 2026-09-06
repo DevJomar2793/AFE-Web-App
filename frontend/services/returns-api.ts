@@ -14,6 +14,13 @@ export type DatabaseReturn = {
   updatedAt: string;
 };
 
+export type CreateReturnInput = {
+  inventoryId: number;
+  quantity: number;
+  customerName: string;
+  reason: string;
+};
+
 const RETURNS_API_ROUTE =
   "http://127.0.0.1:8000/api/v1/returns/get-returns";
 
@@ -33,6 +40,30 @@ export async function getReturns(
   }
 
   return parseReturns(responseBody);
+}
+
+export async function createReturn(
+  input: CreateReturnInput,
+): Promise<DatabaseReturn> {
+  const response = await fetch("/api/v1/returns", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      inventory_id: input.inventoryId,
+      quantity: input.quantity,
+      customer_name: input.customerName,
+      reason: input.reason,
+    }),
+  });
+  const responseBody: unknown = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      getApiErrorMessage(responseBody, "The return could not be saved."),
+    );
+  }
+
+  return parseReturn(responseBody);
 }
 
 export function parseReturns(value: unknown): DatabaseReturn[] {

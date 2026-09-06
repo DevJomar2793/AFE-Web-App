@@ -15,6 +15,7 @@ import {
 import { InventoryOverview } from "@/components/inventory/inventory-overview";
 import { InventoryView } from "@/components/inventory/inventory-view";
 import { NewSaleSheet } from "@/components/inventory/new-sale-sheet";
+import { NewReturnSheet } from "@/components/inventory/new-return-sheet";
 import { ReturnsView } from "@/components/inventory/returns-view";
 import { TransactionActivity } from "@/components/inventory/transaction-activity";
 import {
@@ -45,6 +46,7 @@ export function InventoryApp() {
   const [transactionItemId, setTransactionItemId] = useState<string>();
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
   const [isNewSaleOpen, setIsNewSaleOpen] = useState(false);
+  const [isNewReturnOpen, setIsNewReturnOpen] = useState(false);
   const [saleInventoryItemId, setSaleInventoryItemId] = useState<number>();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -55,7 +57,9 @@ export function InventoryApp() {
     isLoading: isInventoryLoading,
     error: inventoryError,
     retry: retryInventory,
-  } = useInventoryItems(currentView === "inventory" || isNewSaleOpen);
+  } = useInventoryItems(
+    currentView === "inventory" || isNewSaleOpen || isNewReturnOpen,
+  );
   const {
     sales: databaseSales,
     isLoading: areSalesLoading,
@@ -223,6 +227,16 @@ export function InventoryApp() {
     });
   };
 
+  const handleReturnCreated = () => {
+    setIsNewReturnOpen(false);
+    retryInventory();
+    retryReturns();
+    setNotice({
+      message: "Return saved and inventory updated.",
+      tone: "success",
+    });
+  };
+
   return (
     <div className="min-h-dvh bg-[#f4f6f1] text-[#18251a]">
       <InventorySidebar
@@ -278,6 +292,7 @@ export function InventoryApp() {
               isLoading={areReturnsLoading}
               returns={databaseReturns}
               onRetry={retryReturns}
+              onOpenReturn={() => setIsNewReturnOpen(true)}
             />
           )}
         </main>
@@ -298,6 +313,17 @@ export function InventoryApp() {
           items={databaseItems}
           onClose={closeNewSale}
           onCreated={handleSaleCreated}
+          onRetryInventory={retryInventory}
+        />
+      )}
+
+      {isNewReturnOpen && (
+        <NewReturnSheet
+          inventoryError={inventoryError}
+          isInventoryLoading={isInventoryLoading}
+          items={databaseItems}
+          onClose={() => setIsNewReturnOpen(false)}
+          onCreated={handleReturnCreated}
           onRetryInventory={retryInventory}
         />
       )}
