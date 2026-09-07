@@ -14,9 +14,9 @@ import {
   useState,
   type FocusEvent,
 } from "react";
-import { useMediaQuery } from "@/components/storefront/hooks/use-media-query";
-import { useIsPageHidden } from "@/components/storefront/hooks/use-page-visibility";
-import type { CustomerOrder } from "@/components/storefront/storefront-data";
+import type { CustomerOrder } from "@/components/storefront/data";
+import { useMediaQuery } from "@/components/storefront/use-media-query";
+import { useIsPageHidden } from "@/components/storefront/use-page-visibility";
 
 const AUTOPLAY_DELAY_MS = 5000;
 const DESKTOP_MEDIA_QUERY = "(min-width: 768px)";

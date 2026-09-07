@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { InventoryApp } from "@/components/inventory/inventory-app";
+import { InventoryDashboard } from "@/components/inventory/inventory-dashboard";
 
 export const metadata: Metadata = {
   title: "Inventory Dashboard | Adamos Fresh Eggs",
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function DashboardPage() {
-  return <InventoryApp />;
+  return <InventoryDashboard />;
 }

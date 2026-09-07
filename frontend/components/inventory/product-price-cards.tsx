@@ -1,8 +1,8 @@
 import { PhilippinePeso } from "lucide-react";
-import type { DatabaseInventoryItem } from "@/services/inventory-api";
+import type { InventoryItem } from "@/lib/api";
 
 type ProductPriceCardsProps = {
-  items: DatabaseInventoryItem[];
+  items: InventoryItem[];
   isLoading: boolean;
   hasError: boolean;
 };

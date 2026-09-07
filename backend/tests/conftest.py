@@ -3,7 +3,7 @@ from collections.abc import AsyncIterator
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from app.db.session import engine
+from app.database import engine
 from app.main import app
 
 

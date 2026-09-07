@@ -1,5 +1,5 @@
-import { FarmStorefront } from "@/components/farm-storefront";
+import { StorefrontPage } from "@/components/storefront/storefront-page";
 
 export default function Home() {
-  return <FarmStorefront />;
+  return <StorefrontPage />;
 }

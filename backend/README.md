@@ -47,6 +47,7 @@ The canonical routes are:
 GET  /api/v1/health
 GET  /api/v1/inventory/get-item
 POST /api/v1/inventory/add-stock
+PATCH /api/v1/inventory/{inventory_id}
 GET  /api/v1/sales/get-sales
 POST /api/v1/sales/add-sales
 PATCH /api/v1/sales/{sale_id}
@@ -65,6 +66,18 @@ curl -X POST http://127.0.0.1:8000/api/v1/inventory/add-stock \
 
 `status` is optional. It defaults to `in_stock` when quantity is positive and
 `out_of_stock` when quantity is zero.
+
+Update an inventory item's current quantity and price:
+
+```bash
+curl -X PATCH http://127.0.0.1:8000/api/v1/inventory/1 \
+  -H "Content-Type: application/json" \
+  -d '{"quantity": 12, "price": "275.00"}'
+```
+
+The update marks zero quantity as `out_of_stock` and restores an out-of-stock
+item to `in_stock` when its quantity becomes positive. Existing `low_stock`
+status is preserved while quantity remains positive.
 
 Create a sale with the related inventory ID, a positive whole quantity, and a
 customer name:
@@ -119,12 +132,13 @@ curl http://127.0.0.1:8000/api/v1/returns/get-returns
 
 ## Code organization
 
-- Routes validate HTTP input, call a service, and translate database failures
-  into safe API errors.
-- Services contain readable database queries and transaction handling.
-- Schemas define API request and response shapes.
-- Models define the PostgreSQL tables and database constraints.
-- Database modules create the engine and one async session per request.
+- `app/main.py` creates FastAPI and registers the feature routes.
+- `app/routes/` keeps each endpoint beside its database operation and error
+  handling, grouped into health, inventory, sales, and returns files.
+- `app/schemas.py` defines all API request and response shapes.
+- `app/models.py` defines all PostgreSQL tables and constraints.
+- `app/database.py` creates the engine and one async session per request.
+- `app/config.py` loads database and CORS settings from the environment.
 
 The `Inventory` model uses `Numeric(12, 2)` so prices keep exact decimal cents.
 Database constraints prevent blank names, negative values, and status/quantity

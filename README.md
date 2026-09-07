@@ -7,17 +7,18 @@ workspace, and a FastAPI inventory service backed by PostgreSQL.
 
 ```text
 backend/
-  app/api/          FastAPI route registration and route handlers
-  app/models/       SQLAlchemy database models
-  app/schemas/      Pydantic request and response schemas
-  app/services/     Inventory queries and business operations
+  app/routes/       FastAPI endpoints and their database operations
+  app/config.py     Environment settings
+  app/database.py   Database engine and sessions
+  app/models.py     SQLAlchemy database models
+  app/schemas.py    Pydantic request and response schemas
   alembic/          Database migrations
   tests/            API integration tests
 frontend/
-  app/              Next.js pages and server-side API proxy
-  components/       UI components and feature components
-  lib/              Browser-local inventory state and shared utilities
-  services/         Typed frontend API functions
+  app/              Next.js pages, layout, manifest, and global styles
+  components/       Storefront, inventory, and shared UI components
+  lib/api.ts        All typed FastAPI requests and response parsing
+  lib/local-inventory.ts  Browser-local overview demo data
   public/           Images, manifest, and service worker
 ```
 
@@ -25,6 +26,8 @@ frontend/
 
 The inventory table and the Add Item form read and write PostgreSQL through
 `GET /api/v1/inventory/get-item` and `POST /api/v1/inventory/add-stock`.
+Inventory quantity and price edits use `PATCH /api/v1/inventory/{inventory_id}`
+and leave item names, return counts, and historical sales unchanged.
 
 The backend also stores sales through `GET /api/v1/sales/get-sales` and
 `POST /api/v1/sales/add-sales`, and updates existing records through
@@ -36,10 +39,10 @@ Returns are available through `GET /api/v1/returns/get-returns` and
 reason while incrementing the related inventory `returns_count` atomically;
 the inventory quantity is unchanged.
 
-The Transaction Activity page merges database sales with the existing local
-activity. The sale form, returns, restocks, and Overview activity remain part of
-the browser-local MVP. They are stored under `afe-inventory-v1` in
-`localStorage` and synchronize only between tabs on the same device.
+The Inventory, Activity, and Returns views use database records. The Overview
+metrics, Overview recent activity, and quick Restock form are the original
+browser-local demo. That local state is stored under `afe-inventory-v1` in
+`localStorage` and synchronizes only between tabs on the same device.
 
 This split preserves the current application behavior, but it is not suitable
 for multi-user production use. Authentication and database-backed transaction
@@ -64,8 +67,14 @@ Then run the frontend in a second terminal:
 ```bash
 cd frontend
 npm ci
+cp .env.example .env.local
 npm run dev
 ```
+
+`NEXT_PUBLIC_BACKEND_API_URL` in `.env.local` tells browser components where
+FastAPI is running. Because requests go directly from the browser to FastAPI,
+the frontend origin must also be listed in the backend's
+`CORS_ALLOWED_ORIGINS` setting.
 
 Visit `http://localhost:3000` for the storefront and
 `http://localhost:3000/dashboard` for the inventory workspace.

@@ -3,8 +3,8 @@
 import { ArrowRight, LayoutDashboard, Mail, Menu, X } from "lucide-react";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { BrandMark } from "@/components/storefront/brand-mark";
-import { useActiveNavigation } from "@/components/storefront/hooks/use-active-navigation";
-import type { NavigationItem } from "@/components/storefront/storefront-data";
+import type { NavigationItem } from "@/components/storefront/data";
+import { useActiveNavigation } from "@/components/storefront/use-active-navigation";
 
 type SiteHeaderProps = {
   navigationItems: NavigationItem[];

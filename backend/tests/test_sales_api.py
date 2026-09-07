@@ -6,7 +6,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import delete, select
 
-from app.db.session import async_session_factory
+from app.database import async_session_factory
 from app.models import Inventory, InventoryStatus, Sale
 
 

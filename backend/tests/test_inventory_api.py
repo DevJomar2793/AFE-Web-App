@@ -6,7 +6,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import delete, select
 
-from app.db.session import async_session_factory
+from app.database import async_session_factory
 from app.models import Inventory, InventoryStatus
 
 
@@ -78,6 +78,139 @@ async def test_zero_quantity_defaults_to_out_of_stock(
     data = response.json()
     created_inventory_ids.append(data["id"])
     assert data["status"] == "out_of_stock"
+
+
+@pytest.mark.asyncio
+async def test_update_inventory_item_quantity_and_price(
+    client: AsyncClient,
+    created_inventory_ids: list[int],
+) -> None:
+    create_response = await client.post(
+        "/api/v1/inventory/add-stock",
+        json={
+            "item": "__update_inventory_item_test__",
+            "quantity": 5,
+            "price": 250,
+        },
+    )
+    inventory_id = create_response.json()["id"]
+    created_inventory_ids.append(inventory_id)
+
+    response = await client.patch(
+        f"/api/v1/inventory/{inventory_id}",
+        json={"quantity": 12, "price": "275.50"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == inventory_id
+    assert data["item"] == "__update_inventory_item_test__"
+    assert data["quantity"] == 12
+    assert data["price"] == "275.50"
+    assert data["status"] == "in_stock"
+
+    async with async_session_factory() as session:
+        stored_inventory = await session.get(Inventory, inventory_id)
+
+    assert stored_inventory is not None
+    assert stored_inventory.quantity == 12
+    assert stored_inventory.price == Decimal("275.50")
+
+
+@pytest.mark.asyncio
+async def test_update_inventory_item_adjusts_out_of_stock_status(
+    client: AsyncClient,
+    created_inventory_ids: list[int],
+) -> None:
+    create_response = await client.post(
+        "/api/v1/inventory/add-stock",
+        json={
+            "item": "__update_inventory_status_test__",
+            "quantity": 2,
+            "price": 100,
+        },
+    )
+    inventory_id = create_response.json()["id"]
+    created_inventory_ids.append(inventory_id)
+
+    empty_response = await client.patch(
+        f"/api/v1/inventory/{inventory_id}",
+        json={"quantity": 0, "price": 100},
+    )
+    restored_response = await client.patch(
+        f"/api/v1/inventory/{inventory_id}",
+        json={"quantity": 3, "price": 100},
+    )
+
+    assert empty_response.status_code == 200
+    assert empty_response.json()["status"] == "out_of_stock"
+    assert restored_response.status_code == 200
+    assert restored_response.json()["status"] == "in_stock"
+
+
+@pytest.mark.asyncio
+async def test_update_inventory_item_preserves_low_stock_status(
+    client: AsyncClient,
+    created_inventory_ids: list[int],
+) -> None:
+    create_response = await client.post(
+        "/api/v1/inventory/add-stock",
+        json={
+            "item": "__update_low_stock_test__",
+            "quantity": 2,
+            "price": 100,
+            "status": "low_stock",
+        },
+    )
+    inventory_id = create_response.json()["id"]
+    created_inventory_ids.append(inventory_id)
+
+    response = await client.patch(
+        f"/api/v1/inventory/{inventory_id}",
+        json={"quantity": 4, "price": 125},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "low_stock"
+
+
+@pytest.mark.asyncio
+async def test_update_inventory_item_rejects_unknown_item(
+    client: AsyncClient,
+) -> None:
+    response = await client.patch(
+        "/api/v1/inventory/2147483647",
+        json={"quantity": 1, "price": 100},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Inventory item not found"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"quantity": -1, "price": 10},
+        {"quantity": 1.5, "price": 10},
+        {"quantity": 1, "price": -1},
+        {"quantity": 1, "price": 10.123},
+        {"quantity": 1, "price": 10_000_000_000},
+        {"quantity": 1},
+        {"price": 10},
+        {"quantity": 1, "price": 10, "item": "Changed"},
+    ],
+)
+async def test_update_inventory_item_rejects_invalid_data(
+    client: AsyncClient,
+    payload: dict[str, object],
+) -> None:
+    response = await client.patch(
+        "/api/v1/inventory/1",
+        json=payload,
+    )
+
+    assert response.status_code == 422
 
 
 @pytest.mark.asyncio
