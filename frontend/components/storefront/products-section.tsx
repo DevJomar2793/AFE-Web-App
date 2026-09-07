@@ -2,10 +2,7 @@ import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Reveal } from "@/components/ui/reveal";
-import {
-  products,
-  type Product,
-} from "@/components/storefront/data";
+import { products, type Product } from "@/components/storefront/data";
 
 type ProductCardProps = {
   product: Product;
@@ -19,10 +16,7 @@ function ProductCard({ product, imageDelay }: ProductCardProps) {
 
   return (
     <article className="group overflow-hidden border border-[#dedbd2] bg-[#fdfcf8] transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_55px_rgba(30,45,31,0.12)]">
-      <div
-        className="image-load-frame relative aspect-[4/3]"
-        style={imageStyle}
-      >
+      <div className="image-load-frame relative aspect-4/3" style={imageStyle}>
         <Image
           src={product.image}
           alt={product.alt}
