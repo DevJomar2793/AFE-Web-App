@@ -44,7 +44,7 @@ export function SiteFooter() {
             </p>
 
             <a
-              className="mt-8 flex max-w-xl items-center gap-4 border border-white/15 bg-white/6 p-4 transition hover:border-[#f5bd78]/60 hover:bg-white/[0.1]"
+              className="mt-8 flex max-w-xl items-center gap-4 border border-white/15 bg-white/6 p-4 transition hover:border-[#f5bd78]/60 hover:bg-white/10"
               href={`mailto:${contactEmail}`}
             >
               <span className="grid size-11 shrink-0 place-items-center bg-[#f5bd78] text-[#173b24]">
