@@ -1,9 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+import { useState } from 'react';
 import {
   Image,
   ImageSourcePropType,
+  Modal,
   Platform,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StatusBar as NativeStatusBar,
@@ -37,6 +40,11 @@ interface BottomNavigationItemProps {
   icon: IconName;
   label: string;
   isActive?: boolean;
+}
+
+interface SuccessNotice {
+  title: string;
+  message: string;
 }
 
 const eggsImage: ImageSourcePropType = require('./assets/inventory-eggs.png');
@@ -126,11 +134,22 @@ function SummaryCard({
   );
 }
 
-function InventoryRow({ item }: { item: InventoryItem }) {
+function InventoryRow({
+  item,
+  onPress,
+}: {
+  item: InventoryItem;
+  onPress: () => void;
+}) {
   const stockColor = item.isLowStock ? '#ef4444' : '#31934f';
 
   return (
-    <View style={styles.inventoryRow}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Edit ${item.name}`}
+      onPress={onPress}
+      style={styles.inventoryRow}
+    >
       <Image source={item.image} style={styles.productImage} resizeMode="cover" />
 
       <View style={styles.productDetails}>
@@ -147,7 +166,7 @@ function InventoryRow({ item }: { item: InventoryItem }) {
       </View>
 
       <Ionicons name="chevron-forward" size={23} color="#718096" />
-    </View>
+    </Pressable>
   );
 }
 
@@ -166,7 +185,278 @@ function BottomNavigationItem({
   );
 }
 
+function AddStockModal({
+  onClose,
+  onComplete,
+}: {
+  onClose: () => void;
+  onComplete: () => void;
+}) {
+  return (
+    <Modal transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.modalOverlay} onPress={onClose}>
+        <Pressable
+          accessibilityViewIsModal
+          style={styles.modalCard}
+          onPress={() => undefined}
+        >
+          <View style={styles.modalHeader}>
+            <View style={styles.modalTitleGroup}>
+              <View style={styles.modalIconBox}>
+                <Ionicons name="cube-outline" size={37} color="#258143" />
+                <View style={styles.modalIconPlus}>
+                  <Ionicons name="add" size={16} color="#ffffff" />
+                </View>
+              </View>
+              <View style={styles.modalTitleText}>
+                <Text style={styles.modalTitle}>Add Stock</Text>
+                <Text style={styles.modalSubtitle}>
+                  Add new stock to your inventory item
+                </Text>
+              </View>
+            </View>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close add stock modal"
+              hitSlop={10}
+              onPress={onClose}
+              style={styles.closeButton}
+            >
+              <Ionicons name="close" size={31} color="#657082" />
+            </Pressable>
+          </View>
+
+          <View style={styles.modalProductRow}>
+            <Image
+              source={eggsImage}
+              style={styles.modalProductImage}
+              resizeMode="cover"
+            />
+            <View>
+              <Text style={styles.modalProductName}>Eggs - Medium</Text>
+              <Text style={styles.modalProductCategory}>Eggs</Text>
+              <Text style={styles.modalProductPrice}>₱205.00</Text>
+            </View>
+          </View>
+
+          <Text style={styles.modalLabel}>Quantity to Add</Text>
+          <View style={styles.quantityRow}>
+            <View style={styles.quantityControl}>
+              <View style={styles.quantityIconMuted}>
+                <Ionicons name="remove" size={25} color="#7e8995" />
+              </View>
+              <Text style={styles.quantityValue}>10</Text>
+              <View style={styles.quantityIconActive}>
+                <Ionicons name="add" size={28} color="#258143" />
+              </View>
+            </View>
+            <View style={styles.unitField}>
+              <Text style={styles.unitFieldText}>trays</Text>
+            </View>
+          </View>
+
+          <Text style={styles.modalLabel}>
+            Unit Cost <Text style={styles.optionalText}>(Optional)</Text>
+          </Text>
+          <View style={styles.textField}>
+            <Text style={styles.currencySymbol}>₱</Text>
+            <Text style={styles.fieldPlaceholder}>0.00</Text>
+          </View>
+
+          <Text style={styles.modalLabel}>
+            Notes <Text style={styles.optionalText}>(Optional)</Text>
+          </Text>
+          <View style={styles.notesField}>
+            <Text style={styles.notesPlaceholder}>
+              e.g. Received new delivery, supplier, etc.
+            </Text>
+            <Text style={styles.characterCount}>0/200</Text>
+          </View>
+
+          <View style={styles.modalActions}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onClose}
+              style={[styles.modalActionButton, styles.cancelButton]}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onComplete}
+              style={[styles.modalActionButton, styles.addStockButton]}
+            >
+              <Text style={styles.addStockButtonText}>Add Stock</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function EditItemModal({
+  item,
+  onClose,
+  onSave,
+}: {
+  item: InventoryItem;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  const [stockAmount, stockUnit = 'units'] = item.stock.split(' ');
+  const reorderThreshold = item.isLowStock ? '10' : '20';
+  const note = item.category === 'Eggs'
+    ? 'Fresh eggs from local supplier.'
+    : 'Regular inventory item.';
+
+  return (
+    <Modal transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.modalOverlay} onPress={onClose}>
+        <Pressable
+          accessibilityViewIsModal
+          style={styles.editModalCard}
+          onPress={() => undefined}
+        >
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalTitleGroup}>
+                <View style={styles.modalIconBox}>
+                  <Ionicons name="cube-outline" size={37} color="#258143" />
+                </View>
+                <View style={styles.modalTitleText}>
+                  <Text style={styles.modalTitle}>Edit Item</Text>
+                  <Text style={styles.modalSubtitle}>Update the item details</Text>
+                </View>
+              </View>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close edit item modal"
+                hitSlop={10}
+                onPress={onClose}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={31} color="#657082" />
+              </Pressable>
+            </View>
+
+            <View style={styles.editImageContainer}>
+              <Image source={item.image} style={styles.editProductImage} resizeMode="cover" />
+              <View style={styles.cameraBadge}>
+                <Ionicons name="camera-outline" size={21} color="#344255" />
+              </View>
+            </View>
+
+            <Text style={styles.editFieldLabel}>Item Name</Text>
+            <View style={styles.editTextField}>
+              <Text style={styles.editFieldValue}>{item.name}</Text>
+            </View>
+
+            <Text style={styles.editFieldLabel}>Category</Text>
+            <View style={styles.editTextField}>
+              <Text style={styles.editFieldValue}>{item.category}</Text>
+              <Ionicons name="chevron-down" size={21} color="#657082" />
+            </View>
+
+            <Text style={styles.editFieldLabel}>Price (₱)</Text>
+            <View style={styles.editTextField}>
+              <Text style={styles.editFieldValue}>{item.price.replace('₱', '')}</Text>
+            </View>
+
+            <Text style={styles.editFieldLabel}>Current Stock</Text>
+            <View style={styles.editSplitRow}>
+              <View style={[styles.editTextField, styles.editStockValueField]}>
+                <Text style={styles.editFieldValue}>{stockAmount}</Text>
+              </View>
+              <View style={[styles.editTextField, styles.editUnitField]}>
+                <Text style={styles.editFieldValue}>{stockUnit}</Text>
+                <Ionicons name="chevron-down" size={21} color="#657082" />
+              </View>
+            </View>
+
+            <Text style={styles.editFieldLabel}>Reorder Threshold</Text>
+            <View style={styles.editSplitRow}>
+              <View style={[styles.editTextField, styles.editStockValueField]}>
+                <Text style={styles.editFieldValue}>{reorderThreshold}</Text>
+              </View>
+              <View style={[styles.editTextField, styles.editUnitField]}>
+                <Text style={styles.editFieldValue}>{stockUnit}</Text>
+                <Ionicons name="chevron-down" size={21} color="#657082" />
+              </View>
+            </View>
+
+            <Text style={styles.editFieldLabel}>Notes (Optional)</Text>
+            <View style={styles.editNotesField}>
+              <Text style={styles.editNotesText}>{note}</Text>
+              <Text style={styles.editCharacterCount}>{note.length}/200</Text>
+            </View>
+
+            <View style={styles.editActions}>
+              <View style={[styles.editActionButton, styles.deleteButton]}>
+                <Ionicons name="trash-outline" size={22} color="#e53935" />
+                <Text style={styles.deleteButtonText}>Delete</Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                onPress={onSave}
+                style={[styles.editActionButton, styles.saveButton]}
+              >
+                <Text style={styles.saveButtonText}>Save Changes</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function SuccessModal({
+  notice,
+  onClose,
+}: {
+  notice: SuccessNotice;
+  onClose: () => void;
+}) {
+  return (
+    <Modal transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.successOverlay}>
+        <View accessibilityViewIsModal style={styles.successCard}>
+          <View style={styles.successIllustration}>
+            <View style={[styles.confetti, styles.confettiTopLeft]} />
+            <View style={[styles.confetti, styles.confettiTopRight]} />
+            <View style={[styles.confetti, styles.confettiMiddleLeft]} />
+            <View style={[styles.confetti, styles.confettiMiddleRight]} />
+            <View style={[styles.confetti, styles.confettiBottomLeft]} />
+            <View style={[styles.confetti, styles.confettiBottomRight]} />
+            <View style={styles.successCheckCircle}>
+              <Ionicons name="checkmark" size={68} color="#258143" />
+            </View>
+          </View>
+
+          <Text style={styles.successTitle}>{notice.title}</Text>
+          <Text style={styles.successMessage}>{notice.message}</Text>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={onClose}
+            style={styles.doneButton}
+          >
+            <Text style={styles.doneButtonText}>Done</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function App() {
+  const [isAddStockModalVisible, setIsAddStockModalVisible] = useState(false);
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [successNotice, setSuccessNotice] = useState<SuccessNotice | null>(null);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
@@ -180,10 +470,15 @@ export default function App() {
             </Text>
           </View>
 
-          <View style={styles.addButton}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add item"
+            onPress={() => setIsAddStockModalVisible(true)}
+            style={styles.addButton}
+          >
             <Ionicons name="add" size={25} color="#ffffff" />
             <Text style={styles.addButtonText}>Add Item</Text>
-          </View>
+          </Pressable>
         </View>
 
         <View style={styles.summaryRow}>
@@ -241,7 +536,11 @@ export default function App() {
           showsVerticalScrollIndicator={false}
         >
           {inventoryItems.map((item) => (
-            <InventoryRow key={item.id} item={item} />
+            <InventoryRow
+              key={item.id}
+              item={item}
+              onPress={() => setEditingItem(item)}
+            />
           ))}
         </ScrollView>
 
@@ -252,6 +551,40 @@ export default function App() {
           <BottomNavigationItem icon="bar-chart-outline" label="Reports" />
           <BottomNavigationItem icon="person-outline" label="Profile" />
         </View>
+
+        {isAddStockModalVisible && (
+          <AddStockModal
+            onClose={() => setIsAddStockModalVisible(false)}
+            onComplete={() => {
+              setIsAddStockModalVisible(false);
+              setSuccessNotice({
+                title: 'Stock Added!',
+                message: '10 trays of Eggs - Medium\nhas been added to your inventory.',
+              });
+            }}
+          />
+        )}
+
+        {editingItem && (
+          <EditItemModal
+            item={editingItem}
+            onClose={() => setEditingItem(null)}
+            onSave={() => {
+              setEditingItem(null);
+              setSuccessNotice({
+                title: 'Changes Saved!',
+                message: `${editingItem.name} details have been updated.`,
+              });
+            }}
+          />
+        )}
+
+        {successNotice && (
+          <SuccessModal
+            notice={successNotice}
+            onClose={() => setSuccessNotice(null)}
+          />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -505,5 +838,455 @@ const styles = StyleSheet.create({
   },
   navigationLabel: {
     fontSize: 11,
+  },
+  modalOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(16, 24, 32, 0.65)',
+    padding: 18,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 430,
+    borderRadius: 26,
+    backgroundColor: '#ffffff',
+    padding: 22,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.24,
+    shadowRadius: 28,
+    elevation: 12,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  modalTitleGroup: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  modalIconBox: {
+    width: 74,
+    height: 74,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+    backgroundColor: '#e4f5e9',
+  },
+  modalIconPlus: {
+    position: 'absolute',
+    right: 8,
+    bottom: 9,
+    width: 25,
+    height: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 13,
+    backgroundColor: '#258143',
+  },
+  modalTitleText: {
+    flex: 1,
+  },
+  modalTitle: {
+    color: '#111827',
+    fontSize: 29,
+    fontWeight: '700',
+  },
+  modalSubtitle: {
+    color: '#718096',
+    fontSize: 15,
+    lineHeight: 21,
+    marginTop: 3,
+  },
+  closeButton: {
+    paddingTop: 1,
+  },
+  modalProductRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginTop: 22,
+  },
+  modalProductImage: {
+    width: 96,
+    height: 96,
+    borderRadius: 13,
+  },
+  modalProductName: {
+    color: '#121820',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  modalProductCategory: {
+    color: '#718096',
+    fontSize: 16,
+    marginTop: 4,
+  },
+  modalProductPrice: {
+    color: '#258143',
+    fontSize: 19,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  modalLabel: {
+    color: '#2f3b49',
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 22,
+  },
+  optionalText: {
+    fontWeight: '400',
+  },
+  quantityRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 9,
+  },
+  quantityControl: {
+    flex: 1,
+    height: 58,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#d7dee6',
+    borderRadius: 13,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 8,
+  },
+  quantityIconMuted: {
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: '#f0f3f5',
+  },
+  quantityValue: {
+    color: '#121820',
+    fontSize: 21,
+    fontWeight: '700',
+  },
+  quantityIconActive: {
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: '#e4f5e9',
+  },
+  unitField: {
+    width: 116,
+    height: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#d7dee6',
+    borderRadius: 13,
+    backgroundColor: '#f3f6f8',
+  },
+  unitFieldText: {
+    color: '#2f3b49',
+    fontSize: 17,
+  },
+  textField: {
+    height: 58,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    borderWidth: 1,
+    borderColor: '#d7dee6',
+    borderRadius: 13,
+    backgroundColor: '#ffffff',
+    marginTop: 9,
+    paddingHorizontal: 18,
+  },
+  currencySymbol: {
+    color: '#2f3b49',
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  fieldPlaceholder: {
+    color: '#99a3b0',
+    fontSize: 18,
+  },
+  notesField: {
+    height: 126,
+    borderWidth: 1,
+    borderColor: '#d7dee6',
+    borderRadius: 13,
+    backgroundColor: '#ffffff',
+    marginTop: 9,
+    padding: 16,
+  },
+  notesPlaceholder: {
+    color: '#99a3b0',
+    fontSize: 16,
+    lineHeight: 21,
+  },
+  characterCount: {
+    position: 'absolute',
+    right: 15,
+    bottom: 12,
+    color: '#8994a1',
+    fontSize: 14,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 14,
+    marginTop: 24,
+  },
+  modalActionButton: {
+    flex: 1,
+    height: 58,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 13,
+  },
+  cancelButton: {
+    backgroundColor: '#eef2f5',
+  },
+  cancelButtonText: {
+    color: '#536171',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  addStockButton: {
+    backgroundColor: '#258143',
+  },
+  addStockButtonText: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  editModalCard: {
+    width: '100%',
+    maxWidth: 430,
+    maxHeight: '90%',
+    borderRadius: 26,
+    backgroundColor: '#ffffff',
+    padding: 22,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.24,
+    shadowRadius: 28,
+    elevation: 12,
+  },
+  editImageContainer: {
+    width: 138,
+    height: 138,
+    marginTop: 20,
+  },
+  editProductImage: {
+    width: 138,
+    height: 138,
+    borderRadius: 14,
+  },
+  cameraBadge: {
+    position: 'absolute',
+    right: -4,
+    bottom: -4,
+    width: 43,
+    height: 43,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#dce3e9',
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+  },
+  editFieldLabel: {
+    color: '#2f3b49',
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 20,
+  },
+  editTextField: {
+    height: 53,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#d7dee6',
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    marginTop: 9,
+    paddingHorizontal: 16,
+  },
+  editFieldValue: {
+    color: '#27313d',
+    fontSize: 17,
+  },
+  editSplitRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  editStockValueField: {
+    flex: 1,
+  },
+  editUnitField: {
+    flex: 1,
+  },
+  editNotesField: {
+    height: 111,
+    borderWidth: 1,
+    borderColor: '#d7dee6',
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    marginTop: 9,
+    padding: 15,
+  },
+  editNotesText: {
+    color: '#7c8a9c',
+    fontSize: 16,
+    lineHeight: 21,
+  },
+  editCharacterCount: {
+    position: 'absolute',
+    right: 14,
+    bottom: 11,
+    color: '#7c8a9c',
+    fontSize: 14,
+  },
+  editActions: {
+    flexDirection: 'row',
+    gap: 14,
+    marginTop: 25,
+    paddingBottom: 2,
+  },
+  editActionButton: {
+    flex: 1,
+    height: 59,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 9,
+    borderRadius: 13,
+  },
+  deleteButton: {
+    backgroundColor: '#f0f3f5',
+  },
+  deleteButtonText: {
+    color: '#e53935',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  saveButton: {
+    backgroundColor: '#258143',
+  },
+  saveButtonText: {
+    color: '#ffffff',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  successOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(16, 24, 32, 0.65)',
+    padding: 18,
+  },
+  successCard: {
+    width: '100%',
+    maxWidth: 430,
+    borderRadius: 26,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 26,
+    paddingTop: 42,
+    paddingBottom: 34,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.24,
+    shadowRadius: 28,
+    elevation: 12,
+  },
+  successIllustration: {
+    width: 180,
+    height: 180,
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  successCheckCircle: {
+    width: 130,
+    height: 130,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 65,
+    backgroundColor: '#e2f5e9',
+  },
+  confetti: {
+    position: 'absolute',
+    width: 13,
+    height: 27,
+    borderRadius: 8,
+  },
+  confettiTopLeft: {
+    top: 18,
+    left: 36,
+    backgroundColor: '#31934f',
+    transform: [{ rotate: '-32deg' }],
+  },
+  confettiTopRight: {
+    top: 11,
+    right: 36,
+    backgroundColor: '#f6c847',
+    transform: [{ rotate: '42deg' }],
+  },
+  confettiMiddleLeft: {
+    top: 82,
+    left: 0,
+    backgroundColor: '#f6c847',
+    transform: [{ rotate: '-34deg' }],
+  },
+  confettiMiddleRight: {
+    top: 80,
+    right: 0,
+    backgroundColor: '#4ebc6d',
+    transform: [{ rotate: '50deg' }],
+  },
+  confettiBottomLeft: {
+    bottom: 18,
+    left: 22,
+    backgroundColor: '#5ac17a',
+    transform: [{ rotate: '-46deg' }],
+  },
+  confettiBottomRight: {
+    right: 25,
+    bottom: 17,
+    backgroundColor: '#f6c847',
+    transform: [{ rotate: '-38deg' }],
+  },
+  successTitle: {
+    color: '#111827',
+    fontSize: 31,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 15,
+  },
+  successMessage: {
+    color: '#687789',
+    fontSize: 18,
+    lineHeight: 27,
+    textAlign: 'center',
+    marginTop: 22,
+  },
+  doneButton: {
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    backgroundColor: '#258143',
+    marginTop: 42,
+  },
+  doneButtonText: {
+    color: '#ffffff',
+    fontSize: 19,
+    fontWeight: '700',
   },
 });
