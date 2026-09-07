@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type RefObject } from "react";
-import type { NavigationItem } from "@/components/storefront/storefront-data";
+import type { NavigationItem } from "@/components/storefront/data";
 
 const SECTION_SCROLL_GAP_PX = 24;
 

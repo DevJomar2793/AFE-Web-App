@@ -1,8 +1,8 @@
 import { Mail } from "lucide-react";
-import { Reveal } from "@/components/reveal";
+import { Reveal } from "@/components/ui/reveal";
 import { BrandMark } from "@/components/storefront/brand-mark";
 import { ContactForm } from "@/components/storefront/contact-form";
-import { contactEmail } from "@/components/storefront/storefront-data";
+import { contactEmail } from "@/components/storefront/data";
 
 const emailSteps = [
   {

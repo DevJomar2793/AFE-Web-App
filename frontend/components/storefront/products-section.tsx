@@ -1,11 +1,11 @@
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import type { CSSProperties } from "react";
-import { Reveal } from "@/components/reveal";
+import { Reveal } from "@/components/ui/reveal";
 import {
   products,
   type Product,
-} from "@/components/storefront/storefront-data";
+} from "@/components/storefront/data";
 
 type ProductCardProps = {
   product: Product;

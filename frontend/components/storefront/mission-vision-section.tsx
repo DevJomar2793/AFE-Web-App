@@ -1,5 +1,5 @@
 import { Eye, Target } from "lucide-react";
-import { Reveal } from "@/components/reveal";
+import { Reveal } from "@/components/ui/reveal";
 
 export function MissionVisionSection() {
   return (

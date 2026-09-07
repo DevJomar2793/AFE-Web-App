@@ -1,6 +1,6 @@
-import { Reveal } from "@/components/reveal";
+import { Reveal } from "@/components/ui/reveal";
 import { CustomerOrdersCarousel } from "@/components/storefront/customer-orders-carousel";
-import { customerOrders } from "@/components/storefront/storefront-data";
+import { customerOrders } from "@/components/storefront/data";
 
 export function CustomerOrdersSection() {
   return (

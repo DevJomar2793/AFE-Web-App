@@ -166,6 +166,27 @@ textarea {
   color: #8a8e87;
 }
 
+.inventory-field {
+  background: #fff;
+  border: 1px solid #d5ddd3;
+  border-radius: 0.75rem;
+  color: #18251a;
+  font-size: 0.875rem;
+  height: 3rem;
+  outline: none;
+  padding: 0 0.875rem;
+  width: 100%;
+}
+
+.inventory-field:focus {
+  border-color: #477a55;
+  box-shadow: 0 0 0 3px rgba(71, 122, 85, 0.13);
+}
+
+.inventory-field::placeholder {
+  color: #929b94;
+}
+
 :focus-visible {
   outline: 2px solid #a85620;
   outline-offset: 3px;
