@@ -20,6 +20,9 @@ frontend/
   lib/api.ts        All typed FastAPI requests and response parsing
   lib/local-inventory.ts  Browser-local overview demo data
   public/           Images, manifest, and service worker
+mobile/
+  App.tsx           Minimal Expo and React Native entry component
+  app.json          Expo application configuration
 ```
 
 ## Data behavior
@@ -79,6 +82,20 @@ the frontend origin must also be listed in the backend's
 Visit `http://localhost:3000` for the storefront and
 `http://localhost:3000/dashboard` for the inventory workspace.
 
+### Mobile development
+
+The React Native app uses Expo and requires Node.js 24 LTS. Install its
+dependencies and start the Expo development server:
+
+```bash
+cd mobile
+npm install
+npx expo start
+```
+
+Install Expo Go on an Android or iOS phone, connect the phone and development
+machine to the same network, then scan the QR code shown in the terminal.
+
 ## Validation
 
 Run these commands before submitting changes:
@@ -92,6 +109,10 @@ alembic check
 cd ../frontend
 npm run lint
 npm run build
+
+cd ../mobile
+npx tsc --noEmit
+npx expo-doctor
 ```
 
 The Google fonts used by the frontend are downloaded during a production build,
