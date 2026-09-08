@@ -38,6 +38,8 @@ type Notice = {
 };
 
 export function InventoryDashboard() {
+  const currentYear = new Date().getFullYear();
+
   // Overview and restock data are the original browser-local demo state.
   const [localInventory, setLocalInventory] = useState<LocalInventoryState>(
     initialLocalInventoryState,
@@ -316,6 +318,11 @@ export function InventoryDashboard() {
               onOpenReturn={() => setIsNewReturnOpen(true)}
             />
           )}
+
+          <footer className="mt-12 border-t border-[#d9dfd7] py-6 text-center text-sm text-[#667364]">
+            © {currentYear} Adamos Fresh Eggs. Built by{" "}
+            <span className="font-semibold text-[#173b24]">DevJomar</span>
+          </footer>
         </main>
       </div>
 

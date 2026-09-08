@@ -4,8 +4,6 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { inventoryItems } from '../data/inventory';
 import type { InventoryItem } from '../types/inventory';
 
-type IconName = keyof typeof Ionicons.glyphMap;
-
 interface InventoryScreenProps {
   onAddItem: () => void;
   onEditItem: (item: InventoryItem) => void;
@@ -15,12 +13,6 @@ interface InventoryScreenProps {
 interface ProductPriceCardProps {
   item: InventoryItem;
   displayName: string;
-}
-
-interface NavigationItemProps {
-  icon: IconName;
-  label: string;
-  isActive?: boolean;
 }
 
 const productPriceCards = [
@@ -64,19 +56,6 @@ function InventoryTableRow({ item, onPress }: { item: InventoryItem; onPress: ()
         <Ionicons name="pencil-outline" size={16} color="#ffffff" />
         <Text style={styles.editButtonText}>Edit</Text>
       </Pressable>
-    </View>
-  );
-}
-
-function NavigationItem({ icon, label, isActive = false }: NavigationItemProps) {
-  const color = isActive ? '#2f8c48' : '#7c8996';
-
-  return (
-    <View style={styles.navigationItem}>
-      <View style={isActive ? styles.activeNavigationIcon : undefined}>
-        <Ionicons name={icon} size={27} color={color} />
-      </View>
-      <Text style={[styles.navigationLabel, { color }]}>{label}</Text>
     </View>
   );
 }
@@ -155,13 +134,6 @@ export function InventoryScreen({
         </View>
       </ScrollView>
 
-      <View style={styles.bottomNavigation}>
-        <NavigationItem icon="home-outline" label="Home" />
-        <NavigationItem icon="cube-outline" label="Inventory" isActive />
-        <NavigationItem icon="receipt-outline" label="Orders" />
-        <NavigationItem icon="bar-chart-outline" label="Reports" />
-        <NavigationItem icon="person-outline" label="Profile" />
-      </View>
     </View>
   );
 }
@@ -384,31 +356,5 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 12,
     fontWeight: '700',
-  },
-  bottomNavigation: {
-    minHeight: 78,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    borderTopWidth: 1,
-    borderTopColor: '#e4e9e5',
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 8,
-    paddingTop: 8,
-    paddingBottom: 10,
-  },
-  navigationItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 3,
-  },
-  activeNavigationIcon: {
-    borderRadius: 12,
-    backgroundColor: '#eaf7eb',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  navigationLabel: {
-    fontSize: 11,
   },
 });

@@ -23,6 +23,8 @@ const emailSteps = [
 ];
 
 export function SiteFooter() {
+  const currentYear = new Date().getFullYear();
+
   return (
     <>
       <section
@@ -100,7 +102,10 @@ export function SiteFooter() {
             </span>
             Adamos Fresh Eggs
           </a>
-          <p>© 2026 Adamos Fresh Eggs. Pasture raised and locally packed.</p>
+          <p>
+            © {currentYear} Adamos Fresh Eggs. Pasture raised and locally packed.
+            <span className="ml-2 font-semibold text-white">DevJomar</span>
+          </p>
         </div>
       </footer>
     </>
