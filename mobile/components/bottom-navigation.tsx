@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-export type MobileTab = 'inventory' | 'orders' | 'returns';
+export type MobileTab = 'home' | 'inventory' | 'orders' | 'returns';
 
 interface BottomNavigationProps {
   activeTab: MobileTab;
@@ -39,7 +39,7 @@ function NavigationItem({ icon, label, isActive = false, onPress }: NavigationIt
 export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationProps) {
   return (
     <View style={styles.navigation}>
-      <NavigationItem icon="home-outline" label="Home" />
+      <NavigationItem icon="home-outline" label="Home" isActive={activeTab === 'home'} onPress={() => onTabChange('home')} />
       <NavigationItem icon="cube-outline" label="Inventory" isActive={activeTab === 'inventory'} onPress={() => onTabChange('inventory')} />
       <NavigationItem icon="receipt-outline" label="Orders" isActive={activeTab === 'orders'} onPress={() => onTabChange('orders')} />
       <NavigationItem icon="bar-chart-outline" label="Return" isActive={activeTab === 'returns'} onPress={() => onTabChange('returns')} />

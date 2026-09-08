@@ -5,5 +5,6 @@ export interface ProductReturn {
   customerName: string;
   reason: string;
   createdAt: string;
+  createdAtIso: string;
   updatedAt: string;
 }

@@ -10,13 +10,14 @@ import {
 import { AddStockModal, EditItemModal, SuccessModal } from './components/inventory-modals';
 import { BottomNavigation } from './components/bottom-navigation';
 import { InventoryScreen } from './components/inventory-screen';
+import { OverviewScreen } from './components/overview-screen';
 import { OrdersScreen } from './components/orders-screen';
 import { ReturnsScreen } from './components/returns-screen';
 import type { MobileTab } from './components/bottom-navigation';
 import type { InventoryItem, SuccessNotice } from './types/inventory';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<MobileTab>('inventory');
+  const [activeTab, setActiveTab] = useState<MobileTab>('home');
   const [isAddStockModalVisible, setIsAddStockModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [successNotice, setSuccessNotice] = useState<SuccessNotice | null>(null);
@@ -58,7 +59,9 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
-      {activeTab === 'inventory' ? (
+      {activeTab === 'home' ? (
+        <OverviewScreen onTabChange={setActiveTab} />
+      ) : activeTab === 'inventory' ? (
         <InventoryScreen
           onAddItem={() => setIsAddStockModalVisible(true)}
           onEditItem={setEditingItem}
