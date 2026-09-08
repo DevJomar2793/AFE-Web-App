@@ -38,6 +38,10 @@ class Inventory(Base):
         ),
         CheckConstraint("price >= 0", name="ck_inventory_price_non_negative"),
         CheckConstraint(
+            "wholesale_price IS NULL OR wholesale_price >= 0",
+            name="ck_inventory_wholesale_price_non_negative",
+        ),
+        CheckConstraint(
             "(quantity = 0 AND status = 'out_of_stock') OR "
             "(quantity > 0 AND status IN ('in_stock', 'low_stock'))",
             name="ck_inventory_status_matches_quantity",
@@ -63,6 +67,10 @@ class Inventory(Base):
         nullable=False,
         default=Decimal("0.00"),
         server_default=text("0.00"),
+    )
+    wholesale_price: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2),
+        nullable=True,
     )
     status: Mapped[InventoryStatus] = mapped_column(
         SQLAlchemyEnum(

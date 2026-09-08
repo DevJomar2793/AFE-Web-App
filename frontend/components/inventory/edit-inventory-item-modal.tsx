@@ -23,6 +23,9 @@ export function EditInventoryItemModal({
 }: EditInventoryItemModalProps) {
   const [quantity, setQuantity] = useState(String(item.quantity));
   const [price, setPrice] = useState(String(item.price));
+  const [wholesalePrice, setWholesalePrice] = useState(
+    item.wholesalePrice === null ? "" : String(item.wholesalePrice),
+  );
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -31,9 +34,24 @@ export function EditInventoryItemModal({
 
     const normalizedQuantity = Number(quantity);
     const normalizedPrice = Number(price);
+    const normalizedWholesalePrice =
+      wholesalePrice === "" ? null : Number(wholesalePrice);
+    const wholesalePriceValue = Number(wholesalePrice);
 
     if (!Number.isInteger(normalizedQuantity) || normalizedQuantity < 0) {
       setError("Quantity must be a whole number of zero or more.");
+      return;
+    }
+    if (
+      wholesalePrice !== "" &&
+      (!PRICE_PATTERN.test(wholesalePrice) ||
+        !Number.isFinite(wholesalePriceValue) ||
+        wholesalePriceValue < 0 ||
+        wholesalePriceValue > MAX_PRICE)
+    ) {
+      setError(
+        "Enter a valid WholeSale/Batch Price with no more than two decimal places.",
+      );
       return;
     }
     if (
@@ -53,6 +71,7 @@ export function EditInventoryItemModal({
       await updateInventoryItem(item.id, {
         quantity: normalizedQuantity,
         price: normalizedPrice,
+        wholesalePrice: normalizedWholesalePrice,
       });
       onUpdated();
     } catch (submitError) {
@@ -143,6 +162,25 @@ export function EditInventoryItemModal({
                 setPrice(event.target.value);
                 setError("");
               }}
+            />
+          </label>
+
+          <label className="block text-sm font-extrabold text-[#283b2c]">
+            WholeSale/Batch Price
+            <input
+              className="inventory-field mt-2"
+              type="number"
+              inputMode="decimal"
+              min="0"
+              max={MAX_PRICE}
+              step="0.01"
+              disabled={isSubmitting}
+              value={wholesalePrice}
+              onChange={(event) => {
+                setWholesalePrice(event.target.value);
+                setError("");
+              }}
+              placeholder="Optional"
             />
           </label>
 
