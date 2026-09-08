@@ -52,6 +52,16 @@ export function ProductPriceCards({
               <p className="mt-4 text-2xl font-black text-[#173b24]">
                 {currency.format(item.price)}
               </p>
+              {item.wholesalePrice !== null && (
+                <div className="mt-4 border-t border-[#e8ece6] pt-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-[#768178]">
+                    WholeSale/Batch Price
+                  </p>
+                  <p className="mt-1 text-lg font-black text-[#39704a]">
+                    {currency.format(item.wholesalePrice)}
+                  </p>
+                </div>
+              )}
             </article>
           ))}
         </div>
