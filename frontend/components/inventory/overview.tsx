@@ -45,8 +45,6 @@ export function InventoryOverview({
   error,
   onRetry,
   onOpenInventory,
-  onOpenReturns,
-  onOpenSale,
   onViewActivity,
 }: InventoryOverviewProps) {
   const today = localDateKey(new Date());
