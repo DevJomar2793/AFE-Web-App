@@ -2,10 +2,7 @@
 
 import { PackagePlus, Pencil, RotateCcw, Search } from "lucide-react";
 import { ProductPriceCards } from "@/components/inventory/product-price-cards";
-import type {
-  InventoryItem,
-  InventoryStatus,
-} from "@/lib/api";
+import type { InventoryItem, InventoryStatus } from "@/lib/api";
 
 type InventoryListProps = {
   error: string;
@@ -24,6 +21,16 @@ const STATUS_LABELS: Record<InventoryStatus, string> = {
   low_stock: "Low stock",
   out_of_stock: "Out of stock",
 };
+
+function setStatus(item: InventoryItem): InventoryStatus {
+  if (item.quantity === 0) {
+    return "out_of_stock";
+  } else if (item.quantity <= 4) {
+    return "low_stock";
+  } else {
+    return "in_stock";
+  }
+}
 
 const STATUS_CLASSES: Record<InventoryStatus, string> = {
   in_stock: "bg-[#e9f4e8] text-[#28643c]",
@@ -201,7 +208,7 @@ function InventoryRows({
           {item.returnsCount}
         </span>
       </div>
-      <InventoryStatusBadge status={item.status} />
+      <InventoryStatusBadge status={setStatus(item)} />
       <div className="flex items-center justify-between md:block">
         <span className="text-xs font-bold uppercase text-[#929a94] md:hidden">
           Action

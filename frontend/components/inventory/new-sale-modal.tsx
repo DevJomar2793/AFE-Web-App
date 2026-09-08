@@ -40,15 +40,24 @@ export function NewSaleModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const selectedItem =
     items.find(
-      (item) =>
-        item.id === Number(selectedInventoryId) && item.quantity > 0,
+      (item) => item.id === Number(selectedInventoryId) && item.quantity > 0,
     ) ?? firstAvailableItem;
   const selectedItemId = selectedItem ? String(selectedItem.id) : "";
   const normalizedQuantity = Number(quantity);
-  const saleTotal =
-    selectedItem && Number.isFinite(normalizedQuantity)
-      ? selectedItem.price * Math.max(normalizedQuantity, 0)
-      : 0;
+  const usesWholesalePrice = Boolean(
+    selectedItem &&
+    normalizedQuantity >= 6 &&
+    selectedItem.wholesalePrice !== null,
+  );
+  const unitPrice =
+    selectedItem &&
+    normalizedQuantity >= 6 &&
+    selectedItem.wholesalePrice !== null
+      ? selectedItem.wholesalePrice
+      : (selectedItem?.price ?? 0);
+  const saleTotal = Number.isFinite(normalizedQuantity)
+    ? unitPrice * Math.max(normalizedQuantity, 0)
+    : 0;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -221,9 +230,13 @@ export function NewSaleModal({
 
             <div className="flex items-center justify-between gap-4 rounded-2xl bg-[#f3f6f1] px-4 py-3">
               <div>
-                <p className="text-sm font-semibold text-[#68736b]">Sale total</p>
+                <p className="text-sm font-semibold text-[#68736b]">
+                  Sale total
+                </p>
                 <p className="mt-1 text-xs font-semibold text-[#89928b]">
-                  {selectedItem?.quantity ?? 0} units available
+                  {usesWholesalePrice
+                    ? "WholeSale/Batch Price applied for 6 or more units"
+                    : `${selectedItem?.quantity ?? 0} units available`}
                 </p>
               </div>
               <strong className="text-lg text-[#173b24]">
