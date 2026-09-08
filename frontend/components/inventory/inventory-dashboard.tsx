@@ -304,6 +304,7 @@ export function InventoryDashboard() {
               sales={databaseSales}
               error={salesError}
               isLoading={areSalesLoading}
+              onAddSale={() => openNewSale()}
               onEdit={setEditingSale}
               onRetry={retrySales}
             />

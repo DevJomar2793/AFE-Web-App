@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, Pencil, RotateCcw } from "lucide-react";
+import { ArrowUpRight, Pencil, Plus, RotateCcw } from "lucide-react";
 import type { Sale } from "@/lib/api";
 
 type SalesActivityProps = {
@@ -8,6 +8,7 @@ type SalesActivityProps = {
   error: string;
   isLoading: boolean;
   onEdit: (sale: Sale) => void;
+  onAddSale: () => void;
   onRetry: () => void;
 };
 
@@ -16,15 +17,26 @@ export function SalesActivity({
   error,
   isLoading,
   onEdit,
+  onAddSale,
   onRetry,
 }: SalesActivityProps) {
   return (
     <section>
-      <div>
-        <h2 className="text-2xl font-black">Transaction activity</h2>
-        <p className="mt-1 text-sm text-[#768178]">
-          Sales recorded in the database.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-black">Transaction activity</h2>
+          <p className="mt-1 text-sm text-[#768178]">
+            Sales recorded in the database.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onAddSale}
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#173b24] px-4 text-sm font-black text-white transition hover:bg-[#245334]"
+        >
+          <Plus size={17} aria-hidden="true" />
+          Add sale
+        </button>
       </div>
 
       {isLoading && (
