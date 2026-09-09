@@ -1,5 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { inventoryItems } from '../data/inventory';
 import { productReturns } from '../data/returns';
@@ -17,6 +24,7 @@ interface DashboardMetricProps {
   icon: keyof typeof Ionicons.glyphMap;
   iconColor: string;
   iconBackground: string;
+  isTablet: boolean;
 }
 
 interface ChartDay {
@@ -83,9 +91,10 @@ function DashboardMetric({
   icon,
   iconColor,
   iconBackground,
+  isTablet,
 }: DashboardMetricProps) {
   return (
-    <View style={styles.metricCard}>
+    <View style={[styles.metricCard, isTablet && styles.tabletMetricCard]}>
       <View style={[styles.metricIcon, { backgroundColor: iconBackground }]}>
         <Ionicons name={icon} size={23} color={iconColor} />
       </View>
@@ -97,6 +106,9 @@ function DashboardMetric({
 }
 
 export function OverviewScreen({ onTabChange }: OverviewScreenProps) {
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
+  const isWideTablet = width >= 900;
   const today = new Date();
   const todayKey = getDateKey(today);
 
@@ -162,9 +174,9 @@ export function OverviewScreen({ onTabChange }: OverviewScreenProps) {
     .slice(0, 5);
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, isTablet && styles.tabletScreen]}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, isTablet && styles.tabletContent]}
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.date}>
@@ -184,6 +196,7 @@ export function OverviewScreen({ onTabChange }: OverviewScreenProps) {
             icon="cash-outline"
             iconColor="#2f8c48"
             iconBackground="#eaf7eb"
+            isTablet={isTablet}
           />
           <DashboardMetric
             title="Units on hand"
@@ -192,6 +205,7 @@ export function OverviewScreen({ onTabChange }: OverviewScreenProps) {
             icon="bag-handle-outline"
             iconColor="#4267c7"
             iconBackground="#eef1ff"
+            isTablet={isTablet}
           />
           <DashboardMetric
             title="Returns today"
@@ -200,6 +214,7 @@ export function OverviewScreen({ onTabChange }: OverviewScreenProps) {
             icon="return-down-back-outline"
             iconColor="#bd5b14"
             iconBackground="#fff1e5"
+            isTablet={isTablet}
           />
           <DashboardMetric
             title="Inventory value"
@@ -208,70 +223,78 @@ export function OverviewScreen({ onTabChange }: OverviewScreenProps) {
             icon="trending-up-outline"
             iconColor="#8c4eb0"
             iconBackground="#f5ebf8"
+            isTablet={isTablet}
           />
         </View>
 
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <View>
-              <Text style={styles.sectionTitle}>7-day sales</Text>
-              <Text style={styles.sectionSubtitle}>Gross sales revenue</Text>
-            </View>
-            <View style={styles.liveBadge}>
-              <Text style={styles.liveText}>Live</Text>
-            </View>
-          </View>
-
-          <View style={styles.chart}>
-            {chartDays.map((day) => {
-              const barHeight = day.total === 0
-                ? 0
-                : Math.max(10, Math.round((day.total / highestChartValue) * 100));
-
-              return (
-                <View key={day.dateKey} style={styles.chartColumn}>
-                  <Text style={styles.chartValue}>{formatChartValue(day.total)}</Text>
-                  <View style={styles.chartTrack}>
-                    <View style={[styles.chartBar, { height: `${barHeight}%` }]} />
-                  </View>
-                  <Text style={styles.chartLabel}>{day.label}</Text>
-                </View>
-              );
-            })}
-          </View>
-        </View>
-
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.flexText}>
-              <Text style={styles.sectionTitle}>Stock attention</Text>
-              <Text style={styles.sectionSubtitle}>Low and out-of-stock items</Text>
-            </View>
-            <View style={[styles.sectionIcon, styles.warningIcon]}>
-              <Ionicons name="warning-outline" size={24} color="#bd5b14" />
-            </View>
-          </View>
-
-          <View style={styles.stockList}>
-            {lowStockItems.map((item) => (
-              <View key={item.id} style={styles.stockRow}>
-                <View style={styles.stockQuantity}>
-                  <Text style={styles.stockQuantityText}>{getStockQuantity(item.stock)}</Text>
-                </View>
-                <View style={styles.flexText}>
-                  <Text style={styles.stockName}>{item.name}</Text>
-                  <Text style={styles.stockStatus}>{item.stockLabel}</Text>
-                </View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Manage ${item.name}`}
-                  onPress={() => onTabChange('inventory')}
-                  hitSlop={8}
-                >
-                  <Text style={styles.manageText}>Manage</Text>
-                </Pressable>
+        <View
+          style={[
+            styles.dashboardPanels,
+            isWideTablet && styles.wideDashboardPanels,
+          ]}
+        >
+          <View style={[styles.sectionCard, isWideTablet && styles.tabletPanel]}>
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>7-day sales</Text>
+                <Text style={styles.sectionSubtitle}>Gross sales revenue</Text>
               </View>
-            ))}
+              <View style={styles.liveBadge}>
+                <Text style={styles.liveText}>Live</Text>
+              </View>
+            </View>
+
+            <View style={styles.chart}>
+              {chartDays.map((day) => {
+                const barHeight = day.total === 0
+                  ? 0
+                  : Math.max(10, Math.round((day.total / highestChartValue) * 100));
+
+                return (
+                  <View key={day.dateKey} style={styles.chartColumn}>
+                    <Text style={styles.chartValue}>{formatChartValue(day.total)}</Text>
+                    <View style={styles.chartTrack}>
+                      <View style={[styles.chartBar, { height: `${barHeight}%` }]} />
+                    </View>
+                    <Text style={styles.chartLabel}>{day.label}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={[styles.sectionCard, isWideTablet && styles.tabletPanel]}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.flexText}>
+                <Text style={styles.sectionTitle}>Stock attention</Text>
+                <Text style={styles.sectionSubtitle}>Low and out-of-stock items</Text>
+              </View>
+              <View style={[styles.sectionIcon, styles.warningIcon]}>
+                <Ionicons name="warning-outline" size={24} color="#bd5b14" />
+              </View>
+            </View>
+
+            <View style={styles.stockList}>
+              {lowStockItems.map((item) => (
+                <View key={item.id} style={styles.stockRow}>
+                  <View style={styles.stockQuantity}>
+                    <Text style={styles.stockQuantityText}>{getStockQuantity(item.stock)}</Text>
+                  </View>
+                  <View style={styles.flexText}>
+                    <Text style={styles.stockName}>{item.name}</Text>
+                    <Text style={styles.stockStatus}>{item.stockLabel}</Text>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Manage ${item.name}`}
+                    onPress={() => onTabChange('inventory')}
+                    hitSlop={8}
+                  >
+                    <Text style={styles.manageText}>Manage</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
           </View>
         </View>
 
@@ -342,10 +365,17 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     backgroundColor: '#f8faf8',
   },
+  tabletScreen: {
+    maxWidth: 1120,
+  },
   content: {
     padding: 18,
     paddingTop: 14,
     paddingBottom: 28,
+  },
+  tabletContent: {
+    padding: 28,
+    paddingBottom: 36,
   },
   date: {
     color: '#66736c',
@@ -374,6 +404,20 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#ffffff',
     padding: 15,
+  },
+  tabletMetricCard: {
+    flexBasis: '22%',
+  },
+  dashboardPanels: {
+    gap: 0,
+  },
+  wideDashboardPanels: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 14,
+  },
+  tabletPanel: {
+    flex: 1,
   },
   metricIcon: {
     position: 'absolute',

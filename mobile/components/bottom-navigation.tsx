@@ -47,30 +47,32 @@ export function BottomNavigation({
 }: BottomNavigationProps) {
   return (
     <View style={styles.navigation}>
-      <NavigationItem
-        icon="home-outline"
-        label="Home"
-        isActive={activeTab === "home"}
-        onPress={() => onTabChange("home")}
-      />
-      <NavigationItem
-        icon="cube-outline"
-        label="Inventory"
-        isActive={activeTab === "inventory"}
-        onPress={() => onTabChange("inventory")}
-      />
-      <NavigationItem
-        icon="receipt-outline"
-        label="Orders"
-        isActive={activeTab === "orders"}
-        onPress={() => onTabChange("orders")}
-      />
-      <NavigationItem
-        icon="bar-chart-outline"
-        label="Return"
-        isActive={activeTab === "returns"}
-        onPress={() => onTabChange("returns")}
-      />
+      <View style={styles.navigationContent}>
+        <NavigationItem
+          icon="home-outline"
+          label="Home"
+          isActive={activeTab === "home"}
+          onPress={() => onTabChange("home")}
+        />
+        <NavigationItem
+          icon="cube-outline"
+          label="Inventory"
+          isActive={activeTab === "inventory"}
+          onPress={() => onTabChange("inventory")}
+        />
+        <NavigationItem
+          icon="receipt-outline"
+          label="Orders"
+          isActive={activeTab === "orders"}
+          onPress={() => onTabChange("orders")}
+        />
+        <NavigationItem
+          icon="bar-chart-outline"
+          label="Return"
+          isActive={activeTab === "returns"}
+          onPress={() => onTabChange("returns")}
+        />
+      </View>
     </View>
   );
 }
@@ -78,15 +80,20 @@ export function BottomNavigation({
 const styles = StyleSheet.create({
   navigation: {
     minHeight: 78,
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-around",
     borderTopWidth: 1,
     borderTopColor: "#e4e9e5",
     backgroundColor: "#ffffff",
     paddingHorizontal: 8,
     paddingTop: 8,
     paddingBottom: 10,
+  },
+  navigationContent: {
+    width: "100%",
+    maxWidth: 720,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
   },
   navigationItem: { flex: 1, alignItems: "center", gap: 3 },
   activeIcon: {

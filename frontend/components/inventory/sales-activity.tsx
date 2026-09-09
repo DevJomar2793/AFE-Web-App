@@ -95,7 +95,7 @@ function SaleActivityRow({
   const total = sale.price * sale.quantity;
 
   return (
-    <div className="flex items-center gap-3 border-b border-[#edf0eb] px-4 py-4 last:border-b-0 sm:px-6">
+    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 border-b border-[#edf0eb] px-4 py-4 last:border-b-0 sm:flex sm:items-center sm:px-6">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#e7f2e6] text-[#2f7043]">
         <ArrowUpRight size={17} aria-hidden="true" />
       </span>
@@ -107,7 +107,7 @@ function SaleActivityRow({
           {sale.customerName}
         </p>
       </div>
-      <div className="min-w-0 text-right">
+      <div className="col-start-2 min-w-0 text-left sm:text-right">
         <p className="text-sm font-black text-[#24362a]">
           −{sale.quantity} <span className="hidden sm:inline">{unitLabel}</span>
         </p>

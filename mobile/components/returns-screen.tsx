@@ -1,5 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { productReturns } from '../data/returns';
 import type { ProductReturn } from '../types/returns';
@@ -8,13 +15,21 @@ interface ReturnsScreenProps {
   onShowUnavailableNotice: (featureName: string) => void;
 }
 
-function ReturnCard({ record, onPress }: { record: ProductReturn; onPress: () => void }) {
+function ReturnCard({
+  isTablet,
+  record,
+  onPress,
+}: {
+  isTablet: boolean;
+  record: ProductReturn;
+  onPress: () => void;
+}) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`View return for ${record.itemName}`}
       onPress={onPress}
-      style={styles.returnCard}
+      style={[styles.returnCard, isTablet && styles.tabletReturnCard]}
     >
       <View style={styles.cardTitleRow}>
         <Text style={styles.itemName}>{record.itemName}</Text>
@@ -53,10 +68,17 @@ function ReturnCard({ record, onPress }: { record: ProductReturn; onPress: () =>
 }
 
 export function ReturnsScreen({ onShowUnavailableNotice }: ReturnsScreenProps) {
+  const { width } = useWindowDimensions();
+  const isCompact = width < 430;
+  const isTablet = width >= 768;
+
   return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
+    <View style={[styles.screen, isTablet && styles.tabletScreen]}>
+      <ScrollView
+        contentContainerStyle={[styles.content, isTablet && styles.tabletContent]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[styles.header, isCompact && styles.compactHeader]}>
           <View style={styles.headerText}>
             <Text style={styles.title}>Product returns</Text>
             <Text style={styles.subtitle}>Return records stored in the database.</Text>
@@ -65,7 +87,7 @@ export function ReturnsScreen({ onShowUnavailableNotice }: ReturnsScreenProps) {
             accessibilityRole="button"
             accessibilityLabel="Return item"
             onPress={() => onShowUnavailableNotice('Returning items')}
-            style={styles.returnButton}
+            style={[styles.returnButton, isCompact && styles.compactReturnButton]}
           >
             <Ionicons name="return-up-back-outline" size={25} color="#ffffff" />
             <Text style={styles.returnButtonText}>Return item</Text>
@@ -77,10 +99,11 @@ export function ReturnsScreen({ onShowUnavailableNotice }: ReturnsScreenProps) {
           <Text style={styles.searchPlaceholder}>Search item, customer...</Text>
         </View>
 
-        <View style={styles.recordsList}>
+        <View style={[styles.recordsList, isTablet && styles.tabletRecordsList]}>
           {productReturns.map((record) => (
             <ReturnCard
               key={record.id}
+              isTablet={isTablet}
               record={record}
               onPress={() => onShowUnavailableNotice('Return details')}
             />
@@ -93,17 +116,23 @@ export function ReturnsScreen({ onShowUnavailableNotice }: ReturnsScreenProps) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, width: '100%', maxWidth: 520, alignSelf: 'center', backgroundColor: '#f8faf8' },
+  tabletScreen: { maxWidth: 1120 },
   content: { padding: 20, paddingTop: 18, paddingBottom: 28 },
+  tabletContent: { padding: 28, paddingBottom: 36 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  compactHeader: { flexDirection: 'column', alignItems: 'stretch' },
   headerText: { flex: 1, minWidth: 0, gap: 4 },
   title: { color: '#121a15', fontSize: 28, fontWeight: '700' },
   subtitle: { color: '#74808a', fontSize: 16 },
   returnButton: { width: 142, height: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, borderRadius: 15, backgroundColor: '#173f28' },
+  compactReturnButton: { width: '100%' },
   returnButtonText: { color: '#ffffff', fontSize: 15, fontWeight: '700' },
   searchBox: { height: 66, flexDirection: 'row', alignItems: 'center', gap: 13, borderWidth: 1, borderColor: '#d5deda', borderRadius: 16, backgroundColor: '#ffffff', marginTop: 28, paddingHorizontal: 20 },
   searchPlaceholder: { color: '#74808a', fontSize: 17 },
   recordsList: { gap: 20, marginTop: 30 },
+  tabletRecordsList: { flexDirection: 'row', flexWrap: 'wrap' },
   returnCard: { borderWidth: 1, borderColor: '#dce3dd', borderRadius: 18, backgroundColor: '#ffffff', padding: 18 },
+  tabletReturnCard: { width: '48.5%' },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   itemName: { flex: 1, color: '#121a15', fontSize: 22, fontWeight: '700' },
   detailsRow: { flexDirection: 'row', gap: 12, marginTop: 20 },

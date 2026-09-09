@@ -69,7 +69,7 @@ export function InventoryOverview({
   return (
     <>
       <section
-        className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-5"
+        className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4 lg:gap-5"
         aria-label="Today's summary"
       >
         <MetricCard
@@ -292,7 +292,7 @@ function RecentDatabaseActivity({
       {activity.length ? (
         activity.map((entry) => (
           <div
-            className="flex items-center gap-3 border-b border-[#edf0eb] px-4 py-4 last:border-b-0 sm:px-6"
+            className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-b border-[#edf0eb] px-4 py-4 last:border-b-0 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-6"
             key={entry.id}
           >
             <span
@@ -312,7 +312,7 @@ function RecentDatabaseActivity({
                 {entry.customerName}
               </p>
             </div>
-            <div className="text-right">
+            <div className="col-start-2 min-w-0 text-left sm:col-start-3 sm:text-right">
               <p className="text-sm font-black text-[#24362a]">
                 {entry.type === "sale" ? "−" : "+"}
                 {entry.quantity}
@@ -342,7 +342,7 @@ function OverviewLoadingState() {
       role="status"
       aria-label="Loading dashboard data"
     >
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4">
         {[0, 1, 2, 3].map((item) => (
           <div
             className="h-36 animate-pulse rounded-2xl bg-[#e9ede7]"

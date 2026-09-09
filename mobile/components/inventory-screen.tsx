@@ -1,5 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
 import { inventoryItems } from "../data/inventory";
 import type { InventoryItem } from "../types/inventory";
@@ -13,6 +20,7 @@ interface InventoryScreenProps {
 interface ProductPriceCardProps {
   item: InventoryItem;
   displayName: string;
+  isTablet: boolean;
 }
 
 const productPriceCards = [
@@ -22,9 +30,13 @@ const productPriceCards = [
   { item: inventoryItems[4], displayName: "1.5L BJ Oil" },
 ];
 
-function ProductPriceCard({ item, displayName }: ProductPriceCardProps) {
+function ProductPriceCard({
+  item,
+  displayName,
+  isTablet,
+}: ProductPriceCardProps) {
   return (
-    <View style={styles.priceCard}>
+    <View style={[styles.priceCard, isTablet && styles.tabletPriceCard]}>
       <View style={styles.priceCardHeader}>
         <Text style={styles.priceCardName} numberOfLines={1}>
           {displayName}
@@ -75,13 +87,16 @@ export function InventoryScreen({
   onEditItem,
   onReturn,
 }: InventoryScreenProps) {
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
+
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, isTablet && styles.tabletScreen]}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, isTablet && styles.tabletContent]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, isTablet && styles.tabletHeader]}>
           <View style={styles.headerText}>
             <Text style={styles.title}>All inventory</Text>
             <Text style={styles.subtitle}>
@@ -89,7 +104,12 @@ export function InventoryScreen({
             </Text>
           </View>
 
-          <View style={styles.headerActions}>
+          <View
+            style={[
+              styles.headerActions,
+              isTablet && styles.tabletHeaderActions,
+            ]}
+          >
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Add stock"
@@ -128,6 +148,7 @@ export function InventoryScreen({
               key={item.id}
               item={item}
               displayName={displayName}
+              isTablet={isTablet}
             />
           ))}
         </View>
@@ -173,15 +194,29 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     backgroundColor: "#f8faf8",
   },
+  tabletScreen: {
+    maxWidth: 1120,
+  },
   content: {
     padding: 20,
     paddingTop: 18,
     paddingBottom: 28,
   },
+  tabletContent: {
+    padding: 28,
+    paddingBottom: 36,
+  },
   header: {
     gap: 16,
   },
+  tabletHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   headerText: {
+    flex: 1,
+    minWidth: 0,
     gap: 4,
   },
   title: {
@@ -197,6 +232,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "stretch",
     gap: 10,
+  },
+  tabletHeaderActions: {
+    width: 320,
   },
   addStockButton: {
     flex: 1,
@@ -257,6 +295,9 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     backgroundColor: "#ffffff",
     padding: 16,
+  },
+  tabletPriceCard: {
+    width: "23.5%",
   },
   priceCardHeader: {
     flexDirection: "row",

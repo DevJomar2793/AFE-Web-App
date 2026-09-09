@@ -74,12 +74,17 @@ export function AddStockModal({ onClose, onComplete }: AddStockModalProps) {
           style={styles.card}
           onPress={() => undefined}
         >
-          <ModalHeader
-            title="Add Stock"
-            subtitle="Add new stock to your inventory item"
-            showAddIcon
-            onClose={onClose}
-          />
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled
+            showsVerticalScrollIndicator
+          >
+            <ModalHeader
+              title="Add Stock"
+              subtitle="Add new stock to your inventory item"
+              showAddIcon
+              onClose={onClose}
+            />
           <View style={styles.productRow}>
             <Image
               source={eggsImage}
@@ -141,6 +146,7 @@ export function AddStockModal({ onClose, onComplete }: AddStockModalProps) {
               <Text style={styles.primaryText}>Add Stock</Text>
             </Pressable>
           </View>
+          </ScrollView>
         </Pressable>
       </Pressable>
     </Modal>
@@ -281,6 +287,7 @@ const styles = StyleSheet.create({
   card: {
     width: "100%",
     maxWidth: 430,
+    maxHeight: "90%",
     borderRadius: 26,
     backgroundColor: "#ffffff",
     padding: 22,

@@ -65,14 +65,15 @@ function SaleRow({ isCompact, sale, onEdit }: SaleRowProps) {
 export function OrdersScreen({ onShowUnavailableNotice }: OrdersScreenProps) {
   const { width } = useWindowDimensions();
   const isCompact = width < 430;
+  const isTablet = width >= 768;
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, isTablet && styles.tabletScreen]}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, isTablet && styles.tabletContent]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, isCompact && styles.compactHeader]}>
           <View style={styles.headerText}>
             <Text style={styles.title}>Transaction activity</Text>
             <Text style={styles.subtitle}>Sales recorded in the database.</Text>
@@ -82,7 +83,7 @@ export function OrdersScreen({ onShowUnavailableNotice }: OrdersScreenProps) {
             accessibilityRole="button"
             accessibilityLabel="Filter transactions"
             onPress={() => onShowUnavailableNotice('Filtering')}
-            style={styles.filterButton}
+            style={[styles.filterButton, isCompact && styles.compactFilterButton]}
           >
             <Ionicons name="filter-outline" size={24} color="#1d4c2d" />
             <Text style={styles.filterButtonText}>Filter</Text>
@@ -117,16 +118,27 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     backgroundColor: '#f8faf8',
   },
+  tabletScreen: {
+    maxWidth: 1120,
+  },
   content: {
     padding: 20,
     paddingTop: 18,
     paddingBottom: 28,
+  },
+  tabletContent: {
+    padding: 28,
+    paddingBottom: 36,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
+  },
+  compactHeader: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
   },
   headerText: {
     flex: 1,
@@ -154,6 +166,9 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: '#ffffff',
     paddingHorizontal: 22,
+  },
+  compactFilterButton: {
+    width: '100%',
   },
   filterButtonText: {
     color: '#1d4c2d',

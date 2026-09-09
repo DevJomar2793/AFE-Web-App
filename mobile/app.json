@@ -3,7 +3,7 @@
     "name": "AFE Mobile",
     "slug": "afe-mobile",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {

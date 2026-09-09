@@ -21,7 +21,7 @@ function ProductCard({ product, imageDelay }: ProductCardProps) {
           src={product.image}
           alt={product.alt}
           fill
-          sizes="(min-width: 1024px) 33vw, 100vw"
+          sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
           className="image-load-in object-cover transition duration-700 group-hover:scale-105"
         />
       </div>
@@ -60,7 +60,7 @@ export function ProductsSection() {
           </a>
         </Reveal>
 
-        <div className="mt-12 grid gap-6 lg:grid-cols-3">
+        <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {products.map((product, index) => (
             <Reveal key={product.name} delay={index * 90} variant="scale">
               <ProductCard product={product} imageDelay={100 + index * 100} />
