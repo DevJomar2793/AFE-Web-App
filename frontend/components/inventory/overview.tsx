@@ -4,7 +4,6 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   CircleDollarSign,
-  PackageSearch,
   RotateCcw,
   ShoppingBag,
   TrendingUp,

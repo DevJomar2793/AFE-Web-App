@@ -5,6 +5,7 @@ export interface InventoryItem {
   name: string;
   category: string;
   price: string;
+  wholesalePrice: string | null;
   stock: string;
   stockLabel: string;
   isLowStock: boolean;

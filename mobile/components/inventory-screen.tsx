@@ -19,7 +19,7 @@ const productPriceCards = [
   { item: inventoryItems[0], displayName: 'Small Eggs' },
   { item: inventoryItems[1], displayName: 'Medium Eggs' },
   { item: inventoryItems[2], displayName: 'Large Eggs' },
-  { item: inventoryItems[4], displayName: '1.5L Palm Oil' },
+  { item: inventoryItems[4], displayName: '1.5L BJ Oil' },
 ];
 
 function ProductPriceCard({ item, displayName }: ProductPriceCardProps) {
@@ -34,6 +34,12 @@ function ProductPriceCard({ item, displayName }: ProductPriceCardProps) {
         </View>
       </View>
       <Text style={styles.priceValue}>{item.price}</Text>
+      <View style={styles.wholesalePriceSection}>
+        <Text style={styles.wholesalePriceLabel}>Wholesale/Batch Price</Text>
+        <Text style={styles.wholesalePriceValue}>
+          {item.wholesalePrice}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -224,8 +230,7 @@ const styles = StyleSheet.create({
   },
   priceCard: {
     width: '48%',
-    minHeight: 122,
-    justifyContent: 'space-between',
+    minHeight: 174,
     borderWidth: 1,
     borderColor: '#dce3dd',
     borderRadius: 15,
@@ -261,6 +266,26 @@ const styles = StyleSheet.create({
     color: '#173f28',
     fontSize: 28,
     fontWeight: '700',
+    marginTop: 12,
+  },
+  wholesalePriceSection: {
+    borderTopWidth: 1,
+    borderTopColor: '#e4e9e4',
+    marginTop: 12,
+    paddingTop: 10,
+  },
+  wholesalePriceLabel: {
+    color: '#74808a',
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.35,
+    textTransform: 'uppercase',
+  },
+  wholesalePriceValue: {
+    color: '#258143',
+    fontSize: 20,
+    fontWeight: '700',
+    marginTop: 4,
   },
   searchBox: {
     height: 58,

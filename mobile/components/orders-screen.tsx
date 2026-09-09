@@ -1,5 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { recentSales } from '../data/sales';
 import type { SaleActivity } from '../types/sales';
@@ -9,42 +16,56 @@ interface OrdersScreenProps {
 }
 
 interface SaleRowProps {
+  isCompact: boolean;
   sale: SaleActivity;
   onEdit: () => void;
 }
 
-function SaleRow({ sale, onEdit }: SaleRowProps) {
+function SaleRow({ isCompact, sale, onEdit }: SaleRowProps) {
   return (
-    <View style={styles.saleRow}>
-      <View style={styles.saleIcon}>
-        <Ionicons name="arrow-up-outline" size={32} color="#3c9654" />
+    <View style={[styles.saleRow, isCompact && styles.compactSaleRow]}>
+      <View style={[styles.saleIcon, isCompact && styles.compactSaleIcon]}>
+        <Ionicons
+          name="arrow-up-outline"
+          size={isCompact ? 27 : 32}
+          color="#3c9654"
+        />
       </View>
 
-      <View style={styles.saleDetails}>
-        <Text style={styles.saleTitle}>Sale · {sale.itemName}</Text>
-        <Text style={styles.customerName}>{sale.customerName}</Text>
-      </View>
+      <View
+        style={[styles.saleContent, isCompact && styles.compactSaleContent]}
+      >
+        <View style={styles.saleDetails}>
+          <Text style={styles.saleTitle}>Sale · {sale.itemName}</Text>
+          <Text style={styles.customerName}>{sale.customerName}</Text>
+        </View>
 
-      <View style={styles.saleAmount}>
-        <Text style={styles.quantity}>{sale.quantity}</Text>
-        <Text style={styles.priceSummary}>{sale.priceSummary}</Text>
-        <Text style={styles.dateTime}>{sale.dateTime}</Text>
+        <View
+          style={[styles.saleAmount, isCompact && styles.compactSaleAmount]}
+        >
+          <Text style={styles.quantity}>{sale.quantity}</Text>
+          <Text style={styles.priceSummary}>{sale.priceSummary}</Text>
+          <Text style={styles.dateTime}>{sale.dateTime}</Text>
+        </View>
       </View>
 
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Edit sale for ${sale.itemName}`}
         onPress={onEdit}
-        style={styles.editButton}
+        style={[styles.editButton, isCompact && styles.compactEditButton]}
       >
         <Ionicons name="pencil-outline" size={18} color="#1d4c2d" />
-        <Text style={styles.editButtonText}>Edit</Text>
+        {!isCompact && <Text style={styles.editButtonText}>Edit</Text>}
       </Pressable>
     </View>
   );
 }
 
 export function OrdersScreen({ onShowUnavailableNotice }: OrdersScreenProps) {
+  const { width } = useWindowDimensions();
+  const isCompact = width < 430;
+
   return (
     <View style={styles.screen}>
       <ScrollView
@@ -76,6 +97,7 @@ export function OrdersScreen({ onShowUnavailableNotice }: OrdersScreenProps) {
 
           {recentSales.map((sale) => (
             <SaleRow
+              isCompact={isCompact}
               key={sale.id}
               sale={sale}
               onEdit={() => onShowUnavailableNotice('Sale editing')}
@@ -171,6 +193,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 18,
   },
+  compactSaleRow: {
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 15,
+  },
   saleIcon: {
     width: 54,
     height: 54,
@@ -178,6 +206,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 16,
     backgroundColor: '#eef7ee',
+  },
+  compactSaleIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+  },
+  saleContent: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  compactSaleContent: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 8,
   },
   saleDetails: {
     flex: 1,
@@ -195,6 +240,9 @@ const styles = StyleSheet.create({
   },
   saleAmount: {
     alignItems: 'flex-end',
+  },
+  compactSaleAmount: {
+    alignItems: 'flex-start',
   },
   quantity: {
     color: '#121a15',
@@ -223,6 +271,10 @@ const styles = StyleSheet.create({
     borderColor: '#cfd9d0',
     borderRadius: 11,
     backgroundColor: '#ffffff',
+  },
+  compactEditButton: {
+    width: 44,
+    minHeight: 40,
   },
   editButtonText: {
     color: '#1d4c2d',
