@@ -85,13 +85,28 @@ Visit `http://localhost:3000` for the storefront and
 ### Mobile development
 
 The React Native app uses Expo and requires Node.js 24 LTS. Install its
-dependencies and start the Expo development server:
+dependencies, create its environment file, and start the Expo development
+server:
 
 ```bash
 cd mobile
 npm install
+cp .env.example .env
 npx expo start
 ```
+
+`EXPO_PUBLIC_BACKEND_API_URL` connects the Inventory screen to FastAPI. Use the
+address that matches where the app runs:
+
+```text
+Physical phone:   http://YOUR_COMPUTER_LAN_IP:8000
+iOS simulator:    http://127.0.0.1:8000
+Android emulator: http://10.0.2.2:8000
+```
+
+For a physical phone, run FastAPI with `uvicorn app.main:app --reload --host
+0.0.0.0`, and keep the phone and computer on the same network. Local HTTP is
+for development; use HTTPS for a deployed mobile application.
 
 Install Expo Go on an Android or iOS phone, connect the phone and development
 machine to the same network, then scan the QR code shown in the terminal.
