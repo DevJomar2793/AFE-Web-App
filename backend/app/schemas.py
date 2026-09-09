@@ -16,6 +16,12 @@ class InventoryCreate(BaseModel):
     item: str = Field(min_length=1, max_length=255)
     quantity: int = Field(ge=0, strict=True)
     price: Decimal = Field(ge=0, max_digits=12, decimal_places=2)
+    wholesale_price: Decimal | None = Field(
+        default=None,
+        ge=0,
+        max_digits=12,
+        decimal_places=2,
+    )
     status: InventoryStatus | None = None
 
     @model_validator(mode="after")
@@ -42,6 +48,12 @@ class InventoryUpdate(BaseModel):
 
     quantity: int = Field(ge=0, strict=True)
     price: Decimal = Field(ge=0, max_digits=12, decimal_places=2)
+    wholesale_price: Decimal | None = Field(
+        default=None,
+        ge=0,
+        max_digits=12,
+        decimal_places=2,
+    )
 
 
 class InventoryResponse(BaseModel):
@@ -52,6 +64,7 @@ class InventoryResponse(BaseModel):
     quantity: int
     returns_count: int
     price: Decimal
+    wholesale_price: Decimal | None
     status: InventoryStatus
     created_at: datetime
     updated_at: datetime

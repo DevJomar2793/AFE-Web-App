@@ -19,6 +19,7 @@ export function AddInventoryItemModal({
   const [item, setItem] = useState("");
   const [quantity, setQuantity] = useState("0");
   const [price, setPrice] = useState("");
+  const [wholesalePrice, setWholesalePrice] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -28,6 +29,9 @@ export function AddInventoryItemModal({
     const normalizedItem = item.trim();
     const normalizedQuantity = Number(quantity);
     const normalizedPrice = Number(price);
+    const normalizedWholesalePrice =
+      wholesalePrice === "" ? null : Number(wholesalePrice);
+    const wholesalePriceValue = Number(wholesalePrice);
 
     if (!normalizedItem) {
       setError("Enter an item name.");
@@ -46,11 +50,24 @@ export function AddInventoryItemModal({
       setError("Enter a valid price with no more than two decimal places.");
       return;
     }
+    if (
+      wholesalePrice !== "" &&
+      (!PRICE_PATTERN.test(wholesalePrice) ||
+        !Number.isFinite(wholesalePriceValue) ||
+        wholesalePriceValue < 0 ||
+        wholesalePriceValue > 9_999_999_999.99)
+    ) {
+      setError(
+        "Enter a valid WholeSale/Batch Price with no more than two decimal places.",
+      );
+      return;
+    }
 
     const payload: CreateInventoryItemInput = {
       item: normalizedItem,
       quantity: normalizedQuantity,
       price: normalizedPrice,
+      wholesalePrice: normalizedWholesalePrice,
     };
 
     setIsSubmitting(true);
@@ -82,7 +99,7 @@ export function AddInventoryItemModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-inventory-item-title"
-        className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl sm:p-7"
+        className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl sm:p-7"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
@@ -162,6 +179,24 @@ export function AddInventoryItemModal({
                 setError("");
               }}
               placeholder="250.00"
+            />
+          </label>
+
+          <label className="block text-sm font-extrabold text-[#283b2c]">
+            WholeSale/Batch Price
+            <input
+              className="inventory-field mt-2"
+              type="number"
+              inputMode="decimal"
+              min="0"
+              max="9999999999.99"
+              step="0.01"
+              value={wholesalePrice}
+              onChange={(event) => {
+                setWholesalePrice(event.target.value);
+                setError("");
+              }}
+              placeholder="Optional"
             />
           </label>
 

@@ -17,6 +17,7 @@ async def inventory_item() -> AsyncIterator[Inventory]:
             item="__sale_inventory_test__",
             quantity=10,
             price=Decimal("250.00"),
+            wholesale_price=Decimal("200.00"),
             status=InventoryStatus.IN_STOCK,
         )
         session.add(item)
@@ -85,6 +86,31 @@ async def test_create_sale_deducts_inventory(
     assert stored_item is not None
     assert stored_item.quantity == 7
     assert stored_item.status == InventoryStatus.IN_STOCK
+
+
+@pytest.mark.asyncio
+async def test_sale_of_five_or_more_uses_wholesale_price(
+    client: AsyncClient,
+    inventory_item: Inventory,
+) -> None:
+    response = await client.post(
+        "/api/v1/sales/add-sales",
+        json={
+            "inventory_id": inventory_item.id,
+            "quantity": 5,
+            "customer_name": "Wholesale Customer",
+        },
+    )
+
+    assert response.status_code == 201
+    assert Decimal(response.json()["price"]) == Decimal("200.00")
+
+    async with async_session_factory() as session:
+        stored_item = await session.get(Inventory, inventory_item.id)
+
+    assert stored_item is not None
+    assert stored_item.price == Decimal("250.00")
+    assert stored_item.quantity == 5
 
 
 @pytest.mark.asyncio

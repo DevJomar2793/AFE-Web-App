@@ -18,18 +18,8 @@ import { InventoryList } from "@/components/inventory/inventory-list";
 import { NewReturnModal } from "@/components/inventory/new-return-modal";
 import { NewSaleModal } from "@/components/inventory/new-sale-modal";
 import { InventoryOverview } from "@/components/inventory/overview";
-import {
-  RestockModal,
-  type RestockFormValues,
-} from "@/components/inventory/restock-modal";
 import { ReturnsList } from "@/components/inventory/returns-list";
 import { SalesActivity } from "@/components/inventory/sales-activity";
-import {
-  INVENTORY_STORAGE_KEY,
-  initialLocalInventoryState,
-  isLocalInventoryState,
-  type LocalInventoryState,
-} from "@/lib/local-inventory";
 import type { InventoryItem, Sale } from "@/lib/api";
 
 type Notice = {
@@ -38,14 +28,10 @@ type Notice = {
 };
 
 export function InventoryDashboard() {
-  // Overview and restock data are the original browser-local demo state.
-  const [localInventory, setLocalInventory] = useState<LocalInventoryState>(
-    initialLocalInventoryState,
-  );
+  const currentYear = new Date().getFullYear();
+
   const [currentView, setCurrentView] =
     useState<InventoryViewName>("overview");
-  const [isRestockOpen, setIsRestockOpen] = useState(false);
-  const [restockItemId, setRestockItemId] = useState<string>();
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
   const [isNewSaleOpen, setIsNewSaleOpen] = useState(false);
   const [isNewReturnOpen, setIsNewReturnOpen] = useState(false);
@@ -55,7 +41,6 @@ export function InventoryDashboard() {
   const [saleInventoryItemId, setSaleInventoryItemId] = useState<number>();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [hasLoadedLocalInventory, setHasLoadedLocalInventory] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
 
   // Inventory, sales, and returns below are loaded from the FastAPI database.
@@ -65,75 +50,23 @@ export function InventoryDashboard() {
     error: inventoryError,
     retry: retryInventory,
   } = useInventoryItems(
-    currentView === "inventory" || isNewSaleOpen || isNewReturnOpen,
+    currentView === "overview" ||
+      currentView === "inventory" ||
+      isNewSaleOpen ||
+      isNewReturnOpen,
   );
   const {
     sales: databaseSales,
     isLoading: areSalesLoading,
     error: salesError,
     retry: retrySales,
-  } = useSales(currentView === "activity");
+  } = useSales(currentView === "overview" || currentView === "activity");
   const {
     returns: databaseReturns,
     isLoading: areReturnsLoading,
     error: returnsError,
     retry: retryReturns,
-  } = useReturns(currentView === "returns");
-
-  useEffect(() => {
-    const loadSavedInventory = () => {
-      try {
-        const savedInventory = window.localStorage.getItem(
-          INVENTORY_STORAGE_KEY,
-        );
-
-        if (savedInventory) {
-          const parsedInventory: unknown = JSON.parse(savedInventory);
-          if (isLocalInventoryState(parsedInventory)) {
-            setLocalInventory(parsedInventory);
-          }
-        }
-      } catch {
-        setNotice({
-          message: "Saved data could not be loaded. Showing starter inventory.",
-          tone: "error",
-        });
-      } finally {
-        setHasLoadedLocalInventory(true);
-      }
-    };
-
-    const animationFrame = window.requestAnimationFrame(loadSavedInventory);
-
-    const syncInventoryAcrossTabs = (event: StorageEvent) => {
-      if (event.key !== INVENTORY_STORAGE_KEY || !event.newValue) return;
-
-      try {
-        const parsedInventory: unknown = JSON.parse(event.newValue);
-        if (isLocalInventoryState(parsedInventory)) {
-          setLocalInventory(parsedInventory);
-        }
-      } catch {
-        // Ignore malformed values written outside the application.
-      }
-    };
-
-    window.addEventListener("storage", syncInventoryAcrossTabs);
-
-    return () => {
-      window.cancelAnimationFrame(animationFrame);
-      window.removeEventListener("storage", syncInventoryAcrossTabs);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!hasLoadedLocalInventory) return;
-
-    window.localStorage.setItem(
-      INVENTORY_STORAGE_KEY,
-      JSON.stringify(localInventory),
-    );
-  }, [hasLoadedLocalInventory, localInventory]);
+  } = useReturns(currentView === "overview" || currentView === "returns");
 
   useEffect(() => {
     if (!notice) return;
@@ -142,61 +75,9 @@ export function InventoryDashboard() {
     return () => window.clearTimeout(timeout);
   }, [notice]);
 
-  const saveRestock = ({
-    itemId,
-    quantity,
-    note,
-  }: RestockFormValues) => {
-    const item = localInventory.items.find(
-      (candidate) => candidate.id === itemId,
-    );
-    if (!item) return "Choose a valid inventory item.";
-    if (!Number.isInteger(quantity) || quantity < 1) {
-      return "Enter a whole quantity of at least one.";
-    }
-    const amount = item.cost * quantity;
-    const transaction = {
-      id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${itemId}`,
-      type: "restock" as const,
-      itemId,
-      quantity,
-      amount,
-      note: note.trim() || undefined,
-      createdAt: new Date().toISOString(),
-    };
-
-    setLocalInventory((currentInventory) => ({
-      items: currentInventory.items.map((inventoryItem) =>
-        inventoryItem.id === itemId
-          ? {
-              ...inventoryItem,
-              quantity: inventoryItem.quantity + quantity,
-            }
-          : inventoryItem,
-      ),
-      transactions: [transaction, ...currentInventory.transactions],
-    }));
-    setNotice({
-      message: "New stock added to inventory.",
-      tone: "success",
-    });
-
-    return null;
-  };
-
   const selectView = (nextView: InventoryViewName) => {
     setCurrentView(nextView);
     setIsMenuOpen(false);
-  };
-
-  const openRestock = (itemId?: string) => {
-    setRestockItemId(itemId);
-    setIsRestockOpen(true);
-  };
-
-  const closeRestock = () => {
-    setIsRestockOpen(false);
-    setRestockItemId(undefined);
   };
 
   const openNewSale = (inventoryId?: number) => {
@@ -257,6 +138,18 @@ export function InventoryDashboard() {
     });
   };
 
+  const overviewError = [inventoryError, salesError, returnsError]
+    .filter(Boolean)
+    .join(" ");
+  const isOverviewLoading =
+    isInventoryLoading || areSalesLoading || areReturnsLoading;
+
+  const retryOverview = () => {
+    retryInventory();
+    retrySales();
+    retryReturns();
+  };
+
   return (
     <div className="min-h-dvh bg-[#f4f6f1] text-[#18251a]">
       <InventorySidebar
@@ -275,10 +168,15 @@ export function InventoryDashboard() {
         <main className="mx-auto max-w-375 px-4 pb-28 pt-6 sm:px-7 lg:px-10 lg:pb-10 lg:pt-8">
           {currentView === "overview" && (
             <InventoryOverview
-              state={localInventory}
-              onOpenRestock={openRestock}
+              error={overviewError}
+              isLoading={isOverviewLoading}
+              items={databaseItems}
+              sales={databaseSales}
+              returns={databaseReturns}
+              onOpenInventory={() => selectView("inventory")}
               onOpenReturns={() => selectView("returns")}
               onOpenSale={() => openNewSale()}
+              onRetry={retryOverview}
               onViewActivity={() => selectView("activity")}
             />
           )}
@@ -302,6 +200,7 @@ export function InventoryDashboard() {
               sales={databaseSales}
               error={salesError}
               isLoading={areSalesLoading}
+              onAddSale={() => openNewSale()}
               onEdit={setEditingSale}
               onRetry={retrySales}
             />
@@ -316,6 +215,11 @@ export function InventoryDashboard() {
               onOpenReturn={() => setIsNewReturnOpen(true)}
             />
           )}
+
+          <footer className="mt-12 border-t border-[#d9dfd7] py-6 text-center text-sm text-[#667364]">
+            © {currentYear} Adamos Fresh Eggs. Built by{" "}
+            <span className="font-semibold text-[#173b24]">DevJomar</span>
+          </footer>
         </main>
       </div>
 
@@ -364,15 +268,6 @@ export function InventoryDashboard() {
           item={editingInventoryItem}
           onClose={() => setEditingInventoryItem(null)}
           onUpdated={handleInventoryItemUpdated}
-        />
-      )}
-
-      {isRestockOpen && (
-        <RestockModal
-          initialItemId={restockItemId}
-          items={localInventory.items}
-          onClose={closeRestock}
-          onSave={saveRestock}
         />
       )}
 

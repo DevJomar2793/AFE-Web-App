@@ -1,53 +1,520 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from "@expo/vector-icons";
+import {
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-import { eggsImage } from '../data/inventory';
-import type { InventoryItem, SuccessNotice } from '../types/inventory';
+import { eggsImage } from "../data/inventory";
+import type { InventoryItem, SuccessNotice } from "../types/inventory";
 
-interface AddStockModalProps { onClose: () => void; onComplete: () => void; }
-interface EditItemModalProps { item: InventoryItem; onClose: () => void; onSave: () => void; }
-interface SuccessModalProps { notice: SuccessNotice; onClose: () => void; }
+interface AddStockModalProps {
+  onClose: () => void;
+  onComplete: () => void;
+}
+interface EditItemModalProps {
+  item: InventoryItem;
+  onClose: () => void;
+  onSave: () => void;
+}
+interface SuccessModalProps {
+  notice: SuccessNotice;
+  onClose: () => void;
+}
 
-function ModalHeader({ title, subtitle, showAddIcon = false, onClose }: { title: string; subtitle: string; showAddIcon?: boolean; onClose: () => void }) {
-  return <View style={styles.modalHeader}><View style={styles.modalTitleGroup}><View style={styles.modalIconBox}><Ionicons name="cube-outline" size={37} color="#258143" />{showAddIcon && <View style={styles.modalIconPlus}><Ionicons name="add" size={16} color="#ffffff" /></View>}</View><View style={styles.modalTitleText}><Text style={styles.modalTitle}>{title}</Text><Text style={styles.modalSubtitle}>{subtitle}</Text></View></View><Pressable accessibilityRole="button" accessibilityLabel={`Close ${title.toLowerCase()} modal`} hitSlop={10} onPress={onClose}><Ionicons name="close" size={31} color="#657082" /></Pressable></View>;
+function ModalHeader({
+  title,
+  subtitle,
+  showAddIcon = false,
+  onClose,
+}: {
+  title: string;
+  subtitle: string;
+  showAddIcon?: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <View style={styles.modalHeader}>
+      <View style={styles.modalTitleGroup}>
+        <View style={styles.modalIconBox}>
+          <Ionicons name="cube-outline" size={37} color="#258143" />
+          {showAddIcon && (
+            <View style={styles.modalIconPlus}>
+              <Ionicons name="add" size={16} color="#ffffff" />
+            </View>
+          )}
+        </View>
+        <View style={styles.modalTitleText}>
+          <Text style={styles.modalTitle}>{title}</Text>
+          <Text style={styles.modalSubtitle}>{subtitle}</Text>
+        </View>
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Close ${title.toLowerCase()} modal`}
+        hitSlop={10}
+        onPress={onClose}
+      >
+        <Ionicons name="close" size={31} color="#657082" />
+      </Pressable>
+    </View>
+  );
 }
 
 export function AddStockModal({ onClose, onComplete }: AddStockModalProps) {
-  return <Modal transparent animationType="fade" onRequestClose={onClose}><Pressable style={styles.overlay} onPress={onClose}><Pressable accessibilityViewIsModal style={styles.card} onPress={() => undefined}>
-    <ModalHeader title="Add Stock" subtitle="Add new stock to your inventory item" showAddIcon onClose={onClose} />
-    <View style={styles.productRow}><Image source={eggsImage} style={styles.productImage} resizeMode="cover" /><View><Text style={styles.productName}>Eggs - Medium</Text><Text style={styles.mutedText}>Eggs</Text><Text style={styles.productPrice}>₱205.00</Text></View></View>
-    <Text style={styles.label}>Quantity to Add</Text><View style={styles.quantityRow}><View style={styles.quantityControl}><View style={styles.quantityButton}><Ionicons name="remove" size={25} color="#7e8995" /></View><Text style={styles.quantityValue}>10</Text><View style={[styles.quantityButton, styles.quantityButtonActive]}><Ionicons name="add" size={28} color="#258143" /></View></View><View style={styles.unitField}><Text style={styles.unitText}>trays</Text></View></View>
-    <Text style={styles.label}>Unit Cost <Text style={styles.optional}>(Optional)</Text></Text><View style={styles.field}><Text style={styles.currency}>₱</Text><Text style={styles.placeholder}>0.00</Text></View>
-    <Text style={styles.label}>Notes <Text style={styles.optional}>(Optional)</Text></Text><View style={styles.notesField}><Text style={styles.placeholder}>e.g. Received new delivery, supplier, etc.</Text><Text style={styles.count}>0/200</Text></View>
-    <View style={styles.actions}><Pressable accessibilityRole="button" onPress={onClose} style={[styles.actionButton, styles.cancelButton]}><Text style={styles.cancelText}>Cancel</Text></Pressable><Pressable accessibilityRole="button" onPress={onComplete} style={[styles.actionButton, styles.primaryButton]}><Text style={styles.primaryText}>Add Stock</Text></Pressable></View>
-  </Pressable></Pressable></Modal>;
+  return (
+    <Modal transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.overlay} onPress={onClose}>
+        <Pressable
+          accessibilityViewIsModal
+          style={styles.card}
+          onPress={() => undefined}
+        >
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled
+            showsVerticalScrollIndicator
+          >
+            <ModalHeader
+              title="Add Stock"
+              subtitle="Add new stock to your inventory item"
+              showAddIcon
+              onClose={onClose}
+            />
+          <View style={styles.productRow}>
+            <Image
+              source={eggsImage}
+              style={styles.productImage}
+              resizeMode="cover"
+            />
+            <View>
+              <Text style={styles.productName}>Medium Eggs</Text>
+              <Text style={styles.mutedText}>Eggs</Text>
+              <Text style={styles.productPrice}>₱230.00</Text>
+            </View>
+          </View>
+          <Text style={styles.label}>Quantity to Add</Text>
+          <View style={styles.quantityRow}>
+            <View style={styles.quantityControl}>
+              <View style={styles.quantityButton}>
+                <Ionicons name="remove" size={25} color="#7e8995" />
+              </View>
+              <Text style={styles.quantityValue}>10</Text>
+              <View
+                style={[styles.quantityButton, styles.quantityButtonActive]}
+              >
+                <Ionicons name="add" size={28} color="#258143" />
+              </View>
+            </View>
+            <View style={styles.unitField}>
+              <Text style={styles.unitText}>trays</Text>
+            </View>
+          </View>
+          <Text style={styles.label}>
+            Unit Cost <Text style={styles.optional}>(Optional)</Text>
+          </Text>
+          <View style={styles.field}>
+            <Text style={styles.currency}>₱</Text>
+            <Text style={styles.placeholder}>0.00</Text>
+          </View>
+          <Text style={styles.label}>
+            Notes <Text style={styles.optional}>(Optional)</Text>
+          </Text>
+          <View style={styles.notesField}>
+            <Text style={styles.placeholder}>
+              e.g. Received new delivery, supplier, etc.
+            </Text>
+            <Text style={styles.count}>0/200</Text>
+          </View>
+          <View style={styles.actions}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onClose}
+              style={[styles.actionButton, styles.cancelButton]}
+            >
+              <Text style={styles.cancelText}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onComplete}
+              style={[styles.actionButton, styles.primaryButton]}
+            >
+              <Text style={styles.primaryText}>Add Stock</Text>
+            </Pressable>
+          </View>
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
 }
 
 export function EditItemModal({ item, onClose, onSave }: EditItemModalProps) {
-  const [stockAmount, stockUnit = 'units'] = item.stock.split(' ');
-  const reorderThreshold = item.isLowStock ? '10' : '20';
-  const note = item.category === 'Eggs' ? 'Fresh eggs from local supplier.' : 'Regular inventory item.';
-  const fields = [['Item Name', item.name], ['Category', item.category], ['Price (₱)', item.price.replace('₱', '')]];
-  return <Modal transparent animationType="fade" onRequestClose={onClose}><Pressable style={styles.overlay} onPress={onClose}><Pressable accessibilityViewIsModal style={styles.editCard} onPress={() => undefined}><ScrollView showsVerticalScrollIndicator={false}>
-    <ModalHeader title="Edit Item" subtitle="Update the item details" onClose={onClose} />
-    <View style={styles.editImageBox}><Image source={item.image} style={styles.editImage} resizeMode="cover" /><View style={styles.cameraBadge}><Ionicons name="camera-outline" size={21} color="#344255" /></View></View>
-    {fields.map(([label, value]) => <View key={label}><Text style={styles.label}>{label}</Text><View style={styles.field}><Text style={styles.fieldValue}>{value}</Text>{label === 'Category' && <Ionicons name="chevron-down" size={21} color="#657082" />}</View></View>)}
-    <Text style={styles.label}>Current Stock</Text><View style={styles.splitRow}><View style={[styles.field, styles.flexField]}><Text style={styles.fieldValue}>{stockAmount}</Text></View><View style={[styles.field, styles.flexField]}><Text style={styles.fieldValue}>{stockUnit}</Text><Ionicons name="chevron-down" size={21} color="#657082" /></View></View>
-    <Text style={styles.label}>Reorder Threshold</Text><View style={styles.splitRow}><View style={[styles.field, styles.flexField]}><Text style={styles.fieldValue}>{reorderThreshold}</Text></View><View style={[styles.field, styles.flexField]}><Text style={styles.fieldValue}>{stockUnit}</Text><Ionicons name="chevron-down" size={21} color="#657082" /></View></View>
-    <Text style={styles.label}>Notes (Optional)</Text><View style={styles.editNotes}><Text style={styles.mutedText}>{note}</Text><Text style={styles.count}>{note.length}/200</Text></View>
-    <View style={styles.actions}><View style={[styles.actionButton, styles.cancelButton]}><Ionicons name="trash-outline" size={22} color="#e53935" /><Text style={styles.deleteText}>Delete</Text></View><Pressable accessibilityRole="button" onPress={onSave} style={[styles.actionButton, styles.primaryButton]}><Text style={styles.primaryText}>Save Changes</Text></Pressable></View>
-  </ScrollView></Pressable></Pressable></Modal>;
+  const [stockAmount, stockUnit = "units"] = item.stock.split(" ");
+  const reorderThreshold = item.isLowStock ? "10" : "20";
+  const note =
+    item.category === "Eggs"
+      ? "Fresh eggs from local supplier."
+      : "Regular inventory item.";
+  const fields = [
+    ["Item Name", item.name],
+    ["Category", item.category],
+    ["Price (₱)", item.price.replace("₱", "")],
+  ];
+  return (
+    <Modal transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Close edit item modal"
+          onPress={onClose}
+          style={styles.modalBackdrop}
+        />
+        <View accessibilityViewIsModal style={styles.editCard}>
+          <ScrollView
+            contentContainerStyle={styles.editScrollContent}
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled
+            showsVerticalScrollIndicator
+            style={styles.editScroll}
+          >
+            <ModalHeader
+              title="Edit Item"
+              subtitle="Update the item details"
+              onClose={onClose}
+            />
+            <View style={styles.editImageBox}>
+              <Image
+                source={item.image}
+                style={styles.editImage}
+                resizeMode="cover"
+              />
+              <View style={styles.cameraBadge}>
+                <Ionicons name="camera-outline" size={21} color="#344255" />
+              </View>
+            </View>
+            {fields.map(([label, value]) => (
+              <View key={label}>
+                <Text style={styles.label}>{label}</Text>
+                <View style={styles.field}>
+                  <Text style={styles.fieldValue}>{value}</Text>
+                  {label === "Category" && (
+                    <Ionicons name="chevron-down" size={21} color="#657082" />
+                  )}
+                </View>
+              </View>
+            ))}
+            <Text style={styles.label}>Current Stock</Text>
+            <View style={styles.splitRow}>
+              <View style={[styles.field, styles.flexField]}>
+                <Text style={styles.fieldValue}>{stockAmount}</Text>
+              </View>
+              <View style={[styles.field, styles.flexField]}>
+                <Text style={styles.fieldValue}>{stockUnit}</Text>
+                <Ionicons name="chevron-down" size={21} color="#657082" />
+              </View>
+            </View>
+            <Text style={styles.label}>Reorder Threshold</Text>
+            <View style={styles.splitRow}>
+              <View style={[styles.field, styles.flexField]}>
+                <Text style={styles.fieldValue}>{reorderThreshold}</Text>
+              </View>
+              <View style={[styles.field, styles.flexField]}>
+                <Text style={styles.fieldValue}>{stockUnit}</Text>
+                <Ionicons name="chevron-down" size={21} color="#657082" />
+              </View>
+            </View>
+            <Text style={styles.label}>Notes (Optional)</Text>
+            <View style={styles.editNotes}>
+              <Text style={styles.mutedText}>{note}</Text>
+              <Text style={styles.count}>{note.length}/200</Text>
+            </View>
+            <View style={styles.actions}>
+              <View style={[styles.actionButton, styles.cancelButton]}>
+                <Ionicons name="trash-outline" size={22} color="#e53935" />
+                <Text style={styles.deleteText}>Delete</Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                onPress={onSave}
+                style={[styles.actionButton, styles.primaryButton]}
+              >
+                <Text style={styles.primaryText}>Save Changes</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
 }
 
 export function SuccessModal({ notice, onClose }: SuccessModalProps) {
-  return <Modal transparent animationType="fade" onRequestClose={onClose}><View style={styles.overlay}><View accessibilityViewIsModal style={styles.successCard}><View style={styles.successCircle}><Ionicons name="checkmark" size={68} color="#258143" /></View><Text style={styles.successTitle}>{notice.title}</Text><Text style={styles.successMessage}>{notice.message}</Text><Pressable accessibilityRole="button" onPress={onClose} style={styles.doneButton}><Text style={styles.primaryText}>Done</Text></Pressable></View></View></Modal>;
+  return (
+    <Modal transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <View accessibilityViewIsModal style={styles.successCard}>
+          <View style={styles.successCircle}>
+            <Ionicons name="checkmark" size={68} color="#258143" />
+          </View>
+          <Text style={styles.successTitle}>{notice.title}</Text>
+          <Text style={styles.successMessage}>{notice.message}</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onClose}
+            style={styles.doneButton}
+          >
+            <Text style={styles.primaryText}>Done</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(16, 24, 32, 0.65)', padding: 18 }, card: { width: '100%', maxWidth: 430, borderRadius: 26, backgroundColor: '#ffffff', padding: 22, elevation: 12 }, editCard: { width: '100%', maxWidth: 430, maxHeight: '90%', borderRadius: 26, backgroundColor: '#ffffff', padding: 22, elevation: 12 },
-  modalHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }, modalTitleGroup: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 }, modalIconBox: { width: 74, height: 74, alignItems: 'center', justifyContent: 'center', borderRadius: 18, backgroundColor: '#e4f5e9' }, modalIconPlus: { position: 'absolute', right: 8, bottom: 9, width: 25, height: 25, alignItems: 'center', justifyContent: 'center', borderRadius: 13, backgroundColor: '#258143' }, modalTitleText: { flex: 1 }, modalTitle: { color: '#111827', fontSize: 29, fontWeight: '700' }, modalSubtitle: { color: '#718096', fontSize: 15, lineHeight: 21, marginTop: 3 },
-  productRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 22 }, productImage: { width: 96, height: 96, borderRadius: 13 }, productName: { color: '#121820', fontSize: 20, fontWeight: '700' }, mutedText: { color: '#718096', fontSize: 16, marginTop: 4 }, productPrice: { color: '#258143', fontSize: 19, fontWeight: '700', marginTop: 6 }, label: { color: '#2f3b49', fontSize: 16, fontWeight: '600', marginTop: 20 }, optional: { fontWeight: '400' }, quantityRow: { flexDirection: 'row', gap: 12, marginTop: 9 }, quantityControl: { flex: 1, height: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#d7dee6', borderRadius: 13, paddingHorizontal: 8 }, quantityButton: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: '#f0f3f5' }, quantityButtonActive: { backgroundColor: '#e4f5e9' }, quantityValue: { color: '#121820', fontSize: 21, fontWeight: '700' }, unitField: { width: 116, height: 58, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#d7dee6', borderRadius: 13, backgroundColor: '#f3f6f8' }, unitText: { color: '#2f3b49', fontSize: 17 },
-  field: { minHeight: 53, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, borderWidth: 1, borderColor: '#d7dee6', borderRadius: 13, backgroundColor: '#ffffff', marginTop: 9, paddingHorizontal: 16 }, currency: { color: '#2f3b49', fontSize: 20, fontWeight: '600' }, placeholder: { color: '#99a3b0', fontSize: 16 }, fieldValue: { color: '#27313d', fontSize: 17 }, notesField: { height: 126, borderWidth: 1, borderColor: '#d7dee6', borderRadius: 13, marginTop: 9, padding: 16 }, count: { position: 'absolute', right: 14, bottom: 11, color: '#7c8a9c', fontSize: 14 }, splitRow: { flexDirection: 'row', gap: 12 }, flexField: { flex: 1 }, editImageBox: { width: 138, height: 138, marginTop: 20 }, editImage: { width: 138, height: 138, borderRadius: 14 }, cameraBadge: { position: 'absolute', right: -4, bottom: -4, width: 43, height: 43, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#dce3e9', borderRadius: 12, backgroundColor: '#ffffff' }, editNotes: { height: 111, borderWidth: 1, borderColor: '#d7dee6', borderRadius: 12, marginTop: 9, padding: 15 },
-  actions: { flexDirection: 'row', gap: 14, marginTop: 24, paddingBottom: 2 }, actionButton: { flex: 1, height: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9, borderRadius: 13 }, cancelButton: { backgroundColor: '#eef2f5' }, cancelText: { color: '#536171', fontSize: 18, fontWeight: '700' }, deleteText: { color: '#e53935', fontSize: 17, fontWeight: '700' }, primaryButton: { backgroundColor: '#258143' }, primaryText: { color: '#ffffff', fontSize: 18, fontWeight: '700' },
-  successCard: { width: '100%', maxWidth: 430, alignItems: 'center', borderRadius: 26, backgroundColor: '#ffffff', paddingHorizontal: 26, paddingTop: 42, paddingBottom: 34, elevation: 12 }, successCircle: { width: 130, height: 130, alignItems: 'center', justifyContent: 'center', borderRadius: 65, backgroundColor: '#e2f5e9' }, successTitle: { color: '#111827', fontSize: 31, fontWeight: '700', textAlign: 'center', marginTop: 15 }, successMessage: { color: '#687789', fontSize: 18, lineHeight: 27, textAlign: 'center', marginTop: 22 }, doneButton: { width: '100%', height: 60, alignItems: 'center', justifyContent: 'center', borderRadius: 14, backgroundColor: '#258143', marginTop: 42 },
+  overlay: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(16, 24, 32, 0.65)",
+    padding: 18,
+  },
+  card: {
+    width: "100%",
+    maxWidth: 430,
+    maxHeight: "90%",
+    borderRadius: 26,
+    backgroundColor: "#ffffff",
+    padding: 22,
+    elevation: 12,
+  },
+  modalBackdrop: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
+  editCard: {
+    width: "100%",
+    maxWidth: 430,
+    maxHeight: "90%",
+    borderRadius: 26,
+    backgroundColor: "#ffffff",
+    elevation: 12,
+  },
+  editScroll: {
+    width: "100%",
+  },
+  editScrollContent: {
+    padding: 22,
+    paddingBottom: 28,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  modalTitleGroup: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  modalIconBox: {
+    width: 74,
+    height: 74,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 18,
+    backgroundColor: "#e4f5e9",
+  },
+  modalIconPlus: {
+    position: "absolute",
+    right: 8,
+    bottom: 9,
+    width: 25,
+    height: 25,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 13,
+    backgroundColor: "#258143",
+  },
+  modalTitleText: { flex: 1 },
+  modalTitle: { color: "#111827", fontSize: 29, fontWeight: "700" },
+  modalSubtitle: {
+    color: "#718096",
+    fontSize: 15,
+    lineHeight: 21,
+    marginTop: 3,
+  },
+  productRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    marginTop: 22,
+  },
+  productImage: { width: 96, height: 96, borderRadius: 13 },
+  productName: { color: "#121820", fontSize: 20, fontWeight: "700" },
+  mutedText: { color: "#718096", fontSize: 16, marginTop: 4 },
+  productPrice: {
+    color: "#258143",
+    fontSize: 19,
+    fontWeight: "700",
+    marginTop: 6,
+  },
+  label: { color: "#2f3b49", fontSize: 16, fontWeight: "600", marginTop: 20 },
+  optional: { fontWeight: "400" },
+  quantityRow: { flexDirection: "row", gap: 12, marginTop: 9 },
+  quantityControl: {
+    flex: 1,
+    height: 58,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "#d7dee6",
+    borderRadius: 13,
+    paddingHorizontal: 8,
+  },
+  quantityButton: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    backgroundColor: "#f0f3f5",
+  },
+  quantityButtonActive: { backgroundColor: "#e4f5e9" },
+  quantityValue: { color: "#121820", fontSize: 21, fontWeight: "700" },
+  unitField: {
+    width: 116,
+    height: 58,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#d7dee6",
+    borderRadius: 13,
+    backgroundColor: "#f3f6f8",
+  },
+  unitText: { color: "#2f3b49", fontSize: 17 },
+  field: {
+    minHeight: 53,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 16,
+    borderWidth: 1,
+    borderColor: "#d7dee6",
+    borderRadius: 13,
+    backgroundColor: "#ffffff",
+    marginTop: 9,
+    paddingHorizontal: 16,
+  },
+  currency: { color: "#2f3b49", fontSize: 20, fontWeight: "600" },
+  placeholder: { color: "#99a3b0", fontSize: 16 },
+  fieldValue: { color: "#27313d", fontSize: 17 },
+  notesField: {
+    height: 126,
+    borderWidth: 1,
+    borderColor: "#d7dee6",
+    borderRadius: 13,
+    marginTop: 9,
+    padding: 16,
+  },
+  count: {
+    position: "absolute",
+    right: 14,
+    bottom: 11,
+    color: "#7c8a9c",
+    fontSize: 14,
+  },
+  splitRow: { flexDirection: "row", gap: 12 },
+  flexField: { flex: 1 },
+  editImageBox: { width: 138, height: 138, marginTop: 20 },
+  editImage: { width: 138, height: 138, borderRadius: 14 },
+  cameraBadge: {
+    position: "absolute",
+    right: -4,
+    bottom: -4,
+    width: 43,
+    height: 43,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#dce3e9",
+    borderRadius: 12,
+    backgroundColor: "#ffffff",
+  },
+  editNotes: {
+    height: 111,
+    borderWidth: 1,
+    borderColor: "#d7dee6",
+    borderRadius: 12,
+    marginTop: 9,
+    padding: 15,
+  },
+  actions: { flexDirection: "row", gap: 14, marginTop: 24, paddingBottom: 2 },
+  actionButton: {
+    flex: 1,
+    height: 58,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 9,
+    borderRadius: 13,
+  },
+  cancelButton: { backgroundColor: "#eef2f5" },
+  cancelText: { color: "#536171", fontSize: 18, fontWeight: "700" },
+  deleteText: { color: "#e53935", fontSize: 17, fontWeight: "700" },
+  primaryButton: { backgroundColor: "#258143" },
+  primaryText: { color: "#ffffff", fontSize: 18, fontWeight: "700" },
+  successCard: {
+    width: "100%",
+    maxWidth: 430,
+    alignItems: "center",
+    borderRadius: 26,
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 26,
+    paddingTop: 42,
+    paddingBottom: 34,
+    elevation: 12,
+  },
+  successCircle: {
+    width: 130,
+    height: 130,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 65,
+    backgroundColor: "#e2f5e9",
+  },
+  successTitle: {
+    color: "#111827",
+    fontSize: 31,
+    fontWeight: "700",
+    textAlign: "center",
+    marginTop: 15,
+  },
+  successMessage: {
+    color: "#687789",
+    fontSize: 18,
+    lineHeight: 27,
+    textAlign: "center",
+    marginTop: 22,
+  },
+  doneButton: {
+    width: "100%",
+    height: 60,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 14,
+    backgroundColor: "#258143",
+    marginTop: 42,
+  },
 });

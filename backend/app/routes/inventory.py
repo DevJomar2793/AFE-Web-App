@@ -54,6 +54,7 @@ async def create_inventory_item(
         quantity=item_data.quantity,
         returns_count=0,
         price=item_data.price,
+        wholesale_price=item_data.wholesale_price,
         status=item_data.status,
     )
     session.add(inventory)
@@ -105,6 +106,8 @@ async def update_inventory_item(
 
         inventory.quantity = item_data.quantity
         inventory.price = item_data.price
+        if "wholesale_price" in item_data.model_fields_set:
+            inventory.wholesale_price = item_data.wholesale_price
         if item_data.quantity == 0:
             inventory.status = InventoryStatus.OUT_OF_STOCK
         elif inventory.status == InventoryStatus.OUT_OF_STOCK:

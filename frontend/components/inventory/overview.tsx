@@ -1,20 +1,25 @@
 "use client";
 
 import {
+  ArrowDownLeft,
+  ArrowUpRight,
   CircleDollarSign,
-  PackagePlus,
   RotateCcw,
   ShoppingBag,
   TrendingUp,
   TriangleAlert,
 } from "lucide-react";
 import { useMemo } from "react";
-import { RecentLocalActivity } from "@/components/inventory/recent-local-activity";
-import type { LocalInventoryState } from "@/lib/local-inventory";
+import type { InventoryItem, InventoryReturn, Sale } from "@/lib/api";
 
 type InventoryOverviewProps = {
-  state: LocalInventoryState;
-  onOpenRestock: (itemId?: string) => void;
+  items: InventoryItem[];
+  sales: Sale[];
+  returns: InventoryReturn[];
+  isLoading: boolean;
+  error: string;
+  onRetry: () => void;
+  onOpenInventory: () => void;
   onOpenReturns: () => void;
   onOpenSale: () => void;
   onViewActivity: () => void;
@@ -32,26 +37,44 @@ const compactNumber = new Intl.NumberFormat("en-PH", {
 });
 
 export function InventoryOverview({
-  state,
-  onOpenRestock,
-  onOpenReturns,
-  onOpenSale,
+  items,
+  sales,
+  returns,
+  isLoading,
+  error,
+  onRetry,
+  onOpenInventory,
   onViewActivity,
 }: InventoryOverviewProps) {
   const today = localDateKey(new Date());
-  const metrics = useMemo(() => calculateMetrics(state, today), [state, today]);
-  const chartDays = useMemo(() => calculateChartDays(state), [state]);
+  const metrics = useMemo(
+    () => calculateMetrics(items, sales, returns, today),
+    [items, sales, returns, today],
+  );
+  const chartDays = useMemo(() => calculateChartDays(sales), [sales]);
   const chartMax = Math.max(...chartDays.map((day) => day.total), 1);
+  const recentActivity = useMemo(
+    () => buildRecentActivity(sales, returns),
+    [sales, returns],
+  );
+
+  if (isLoading) {
+    return <OverviewLoadingState />;
+  }
+
+  if (error) {
+    return <OverviewErrorState error={error} onRetry={onRetry} />;
+  }
 
   return (
     <>
       <section
-        className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-5"
+        className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4 lg:gap-5"
         aria-label="Today's summary"
       >
         <MetricCard
-          label="Net sales today"
-          value={currency.format(metrics.netSales)}
+          label="Sales today"
+          value={currency.format(metrics.salesToday)}
           detail={`${metrics.saleCount} completed sale${metrics.saleCount === 1 ? "" : "s"}`}
           accent="bg-[#e4f1e4] text-[#2d7042]"
           icon={<CircleDollarSign size={20} />}
@@ -59,21 +82,21 @@ export function InventoryOverview({
         <MetricCard
           label="Units on hand"
           value={compactNumber.format(metrics.units)}
-          detail={`${state.items.length} active items`}
+          detail={`${items.length} inventory item${items.length === 1 ? "" : "s"}`}
           accent="bg-[#e8edf9] text-[#4566a0]"
           icon={<ShoppingBag size={20} />}
         />
         <MetricCard
           label="Returns today"
-          value={String(metrics.returnCount)}
-          detail="Stock restored instantly"
+          value={String(metrics.returnedUnits)}
+          detail={`${metrics.returnCount} return record${metrics.returnCount === 1 ? "" : "s"}`}
           accent="bg-[#fff0e5] text-[#b15b26]"
           icon={<RotateCcw size={20} />}
         />
         <MetricCard
           label="Inventory value"
           value={currency.format(metrics.inventoryValue)}
-          detail="Based on current unit cost"
+          detail="Based on regular prices"
           accent="bg-[#f1e9f5] text-[#7b5391]"
           icon={<TrendingUp size={20} />}
         />
@@ -81,93 +104,17 @@ export function InventoryOverview({
 
       <section className="mt-5 grid gap-5 xl:grid-cols-[1.45fr_1fr]">
         <SalesChart days={chartDays} maximum={chartMax} />
-        <article className="rounded-2xl border border-[#e1e6df] bg-white p-5 sm:p-6">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="font-black">Stock attention</h2>
-              <p className="mt-1 text-sm text-[#7a857d]">
-                Items at or below reorder level
-              </p>
-            </div>
-            <span className="grid size-10 place-items-center rounded-xl bg-[#fff0e5] text-[#b15b26]">
-              <TriangleAlert size={20} />
-            </span>
-          </div>
-          <div className="mt-5 space-y-3">
-            {metrics.lowStock.length ? (
-              metrics.lowStock.map((item) => (
-                <div
-                  className="flex items-center gap-3 rounded-xl border border-[#edf0eb] p-3"
-                  key={item.id}
-                >
-                  <div className="grid size-10 place-items-center rounded-lg bg-[#f4f6f1] text-sm font-black text-[#173b24]">
-                    {item.quantity}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-extrabold">
-                      {item.name}
-                    </p>
-                    <p className="text-xs text-[#828c84]">
-                      Reorder at {item.reorderLevel} {item.unit}s
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => onOpenRestock(item.id)}
-                    className="text-xs font-black text-[#a85620] hover:underline"
-                  >
-                    Restock
-                  </button>
-                </div>
-              ))
-            ) : (
-              <p className="rounded-xl bg-[#eef6ed] p-4 text-sm font-bold text-[#39704a]">
-                All items are above their reorder levels.
-              </p>
-            )}
-          </div>
-        </article>
+        <StockAttention
+          items={metrics.stockAttention}
+          onOpenInventory={onOpenInventory}
+        />
       </section>
 
-      <section className="mt-5 grid gap-5 lg:grid-cols-[1.5fr_1fr]">
-        <RecentLocalActivity
-          state={state}
-          limit={5}
+      <section className="mt-5">
+        <RecentDatabaseActivity
+          activity={recentActivity}
           onViewAll={onViewActivity}
         />
-        <article className="rounded-2xl bg-[#173b24] p-5 text-white sm:p-6">
-          <p className="text-xs font-black uppercase tracking-[0.14em] text-[#acd0b4]">
-            Quick actions
-          </p>
-          <h2 className="mt-2 text-xl font-black">Keep records current</h2>
-          <p className="mt-2 text-sm leading-6 text-[#d0dfd2]">
-            Every transaction updates quantities and dashboard totals
-            immediately.
-          </p>
-          <div className="mt-5 grid gap-2">
-            <button
-              type="button"
-              onClick={onOpenSale}
-              className="flex items-center gap-3 rounded-xl bg-white px-4 py-3 text-left text-sm font-black text-[#173b24]"
-            >
-              <CircleDollarSign size={18} /> Record a sale
-            </button>
-            <button
-              type="button"
-              onClick={onOpenReturns}
-              className="flex items-center gap-3 rounded-xl border border-white/20 px-4 py-3 text-left text-sm font-black text-white hover:bg-white/10"
-            >
-              <RotateCcw size={18} /> Record a return
-            </button>
-            <button
-              type="button"
-              onClick={() => onOpenRestock()}
-              className="flex items-center gap-3 rounded-xl border border-white/20 px-4 py-3 text-left text-sm font-black text-white hover:bg-white/10"
-            >
-              <PackagePlus size={18} /> Add stock
-            </button>
-          </div>
-        </article>
       </section>
     </>
   );
@@ -190,7 +137,9 @@ function MetricCard({
     <article className="rounded-2xl border border-[#e1e6df] bg-white p-5 shadow-[0_12px_30px_rgba(23,59,36,0.04)]">
       <div className="flex items-start justify-between gap-4">
         <p className="text-sm font-semibold text-[#758078]">{label}</p>
-        <span className={`grid size-10 place-items-center rounded-xl ${accent}`}>
+        <span
+          className={`grid size-10 place-items-center rounded-xl ${accent}`}
+        >
           {icon}
         </span>
       </div>
@@ -213,10 +162,8 @@ function SalesChart({
     <article className="rounded-2xl border border-[#e1e6df] bg-white p-5 sm:p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="font-black">7-day sales pulse</h2>
-          <p className="mt-1 text-sm text-[#7a857d]">
-            Net revenue after recorded returns
-          </p>
+          <h2 className="font-black">7-day sales</h2>
+          <p className="mt-1 text-sm text-[#7a857d]">Gross sales revenue</p>
         </div>
         <span className="rounded-full bg-[#e9f4e8] px-3 py-1 text-xs font-black text-[#2d7042]">
           Live
@@ -224,7 +171,7 @@ function SalesChart({
       </div>
       <div
         className="mt-8 flex h-48 items-end gap-2 sm:gap-4"
-        aria-label="Seven day net sales chart"
+        aria-label="Seven day sales chart"
       >
         {days.map((day) => (
           <div
@@ -253,63 +200,267 @@ function SalesChart({
   );
 }
 
-function calculateMetrics(state: LocalInventoryState, today: string) {
-  const todayTransactions = state.transactions.filter(
-    (transaction) => localDateKey(new Date(transaction.createdAt)) === today,
+function StockAttention({
+  items,
+  onOpenInventory,
+}: {
+  items: InventoryItem[];
+  onOpenInventory: () => void;
+}) {
+  return (
+    <article className="rounded-2xl border border-[#e1e6df] bg-white p-5 sm:p-6">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="font-black">Stock attention</h2>
+          <p className="mt-1 text-sm text-[#7a857d]">
+            Low and out-of-stock items
+          </p>
+        </div>
+        <span className="grid size-10 place-items-center rounded-xl bg-[#fff0e5] text-[#b15b26]">
+          <TriangleAlert size={20} />
+        </span>
+      </div>
+      <div className="mt-5 space-y-3">
+        {items.length ? (
+          items.map((item) => (
+            <div
+              className="flex items-center gap-3 rounded-xl border border-[#edf0eb] p-3"
+              key={item.id}
+            >
+              <div className="grid size-10 place-items-center rounded-lg bg-[#f4f6f1] text-sm font-black text-[#173b24]">
+                {item.quantity}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-extrabold">{item.item}</p>
+                <p className="text-xs capitalize text-[#828c84]">
+                  {item.status.replaceAll("_", " ")}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onOpenInventory}
+                className="text-xs font-black text-[#a85620] hover:underline"
+              >
+                Manage
+              </button>
+            </div>
+          ))
+        ) : (
+          <p className="rounded-xl bg-[#eef6ed] p-4 text-sm font-bold text-[#39704a]">
+            All items are currently in stock.
+          </p>
+        )}
+      </div>
+    </article>
   );
-  const sales = todayTransactions.filter(
-    (transaction) => transaction.type === "sale",
+}
+
+type ActivityItem = {
+  id: string;
+  type: "sale" | "return";
+  itemName: string;
+  customerName: string;
+  quantity: number;
+  detail: string;
+  createdAt: string;
+};
+
+function RecentDatabaseActivity({
+  activity,
+  onViewAll,
+}: {
+  activity: ActivityItem[];
+  onViewAll: () => void;
+}) {
+  return (
+    <article className="overflow-hidden rounded-2xl border border-[#e1e6df] bg-white">
+      <div className="flex items-center justify-between gap-4 border-b border-[#e8ece6] px-5 py-4 sm:px-6">
+        <div>
+          <h2 className="font-black">Recent database activity</h2>
+          <p className="mt-1 text-sm text-[#7a857d]">
+            Latest sales and returns
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onViewAll}
+          className="text-xs font-black text-[#2d7042] hover:underline"
+        >
+          View sales
+        </button>
+      </div>
+      {activity.length ? (
+        activity.map((entry) => (
+          <div
+            className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-b border-[#edf0eb] px-4 py-4 last:border-b-0 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-6"
+            key={entry.id}
+          >
+            <span
+              className={`grid size-10 shrink-0 place-items-center rounded-xl ${entry.type === "sale" ? "bg-[#e7f2e6] text-[#2f7043]" : "bg-[#fff0e5] text-[#b15b26]"}`}
+            >
+              {entry.type === "sale" ? (
+                <ArrowUpRight size={17} />
+              ) : (
+                <ArrowDownLeft size={17} />
+              )}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-extrabold capitalize">
+                {entry.type} · {entry.itemName}
+              </p>
+              <p className="mt-1 truncate text-xs font-semibold text-[#89928b]">
+                {entry.customerName}
+              </p>
+            </div>
+            <div className="col-start-2 min-w-0 text-left sm:col-start-3 sm:text-right">
+              <p className="text-sm font-black text-[#24362a]">
+                {entry.type === "sale" ? "−" : "+"}
+                {entry.quantity}
+              </p>
+              <p className="mt-1 max-w-40 truncate text-xs font-bold text-[#68736b]">
+                {entry.detail}
+              </p>
+              <p className="mt-1 text-[11px] font-semibold text-[#929a94]">
+                {formatActivityDate(entry.createdAt)}
+              </p>
+            </div>
+          </div>
+        ))
+      ) : (
+        <p className="p-10 text-center text-sm font-semibold text-[#7c867e]">
+          No sales or returns have been recorded yet.
+        </p>
+      )}
+    </article>
   );
-  const returns = todayTransactions.filter(
-    (transaction) => transaction.type === "return",
+}
+
+function OverviewLoadingState() {
+  return (
+    <div
+      className="grid gap-5"
+      role="status"
+      aria-label="Loading dashboard data"
+    >
+      <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4">
+        {[0, 1, 2, 3].map((item) => (
+          <div
+            className="h-36 animate-pulse rounded-2xl bg-[#e9ede7]"
+            key={item}
+          />
+        ))}
+      </div>
+      <div className="h-80 animate-pulse rounded-2xl bg-[#e9ede7]" />
+    </div>
   );
-  const grossSales = sales.reduce(
-    (sum, transaction) => sum + transaction.amount,
-    0,
+}
+
+function OverviewErrorState({
+  error,
+  onRetry,
+}: {
+  error: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div
+      className="rounded-2xl bg-[#fff0e8] p-6 text-center text-[#8f421f]"
+      role="alert"
+    >
+      <p className="font-bold">{error}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-white px-4 text-sm font-black shadow-sm"
+      >
+        <RotateCcw size={16} /> Retry dashboard
+      </button>
+    </div>
   );
-  const refunds = returns.reduce(
-    (sum, transaction) => sum + transaction.amount,
-    0,
+}
+
+function calculateMetrics(
+  items: InventoryItem[],
+  sales: Sale[],
+  returns: InventoryReturn[],
+  today: string,
+) {
+  const todaySales = sales.filter(
+    (sale) => localDateKey(new Date(sale.createdAt)) === today,
   );
-  const units = state.items.reduce((sum, item) => sum + item.quantity, 0);
-  const inventoryValue = state.items.reduce(
-    (sum, item) => sum + item.quantity * item.cost,
-    0,
+  const todayReturns = returns.filter(
+    (itemReturn) => localDateKey(new Date(itemReturn.createdAt)) === today,
   );
 
   return {
-    netSales: grossSales - refunds,
-    saleCount: sales.length,
-    returnCount: returns.length,
-    units,
-    inventoryValue,
-    lowStock: state.items.filter(
-      (item) => item.quantity <= item.reorderLevel,
+    salesToday: todaySales.reduce(
+      (sum, sale) => sum + sale.price * sale.quantity,
+      0,
     ),
+    saleCount: todaySales.length,
+    returnedUnits: todayReturns.reduce(
+      (sum, itemReturn) => sum + itemReturn.quantity,
+      0,
+    ),
+    returnCount: todayReturns.length,
+    units: items.reduce((sum, item) => sum + item.quantity, 0),
+    inventoryValue: items.reduce(
+      (sum, item) => sum + item.quantity * item.price,
+      0,
+    ),
+    stockAttention: items.filter((item) => item.status !== "in_stock"),
   };
 }
 
-function calculateChartDays(state: LocalInventoryState) {
+function calculateChartDays(sales: Sale[]) {
   return Array.from({ length: 7 }, (_, index) => {
     const date = new Date();
     date.setDate(date.getDate() - (6 - index));
     const key = localDateKey(date);
-    const total = state.transactions
-      .filter(
-        (transaction) =>
-          localDateKey(new Date(transaction.createdAt)) === key,
-      )
-      .reduce((sum, transaction) => {
-        if (transaction.type === "sale") return sum + transaction.amount;
-        if (transaction.type === "return") return sum - transaction.amount;
-        return sum;
-      }, 0);
-
+    const total = sales
+      .filter((sale) => localDateKey(new Date(sale.createdAt)) === key)
+      .reduce((sum, sale) => sum + sale.price * sale.quantity, 0);
     return {
       key,
       label: date.toLocaleDateString("en-PH", { weekday: "short" }),
-      total: Math.max(0, total),
+      total,
     };
+  });
+}
+
+function buildRecentActivity(
+  sales: Sale[],
+  returns: InventoryReturn[],
+): ActivityItem[] {
+  const saleActivity = sales.map((sale) => ({
+    id: `sale-${sale.id}`,
+    type: "sale" as const,
+    itemName: sale.item.name,
+    customerName: sale.customerName,
+    quantity: sale.quantity,
+    detail: currency.format(sale.price * sale.quantity),
+    createdAt: sale.createdAt,
+  }));
+  const returnActivity = returns.map((itemReturn) => ({
+    id: `return-${itemReturn.id}`,
+    type: "return" as const,
+    itemName: itemReturn.item.name,
+    customerName: itemReturn.customerName,
+    quantity: itemReturn.quantity,
+    detail: itemReturn.reason,
+    createdAt: itemReturn.createdAt,
+  }));
+  return [...saleActivity, ...returnActivity]
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+    .slice(0, 5);
+}
+
+function formatActivityDate(value: string) {
+  return new Date(value).toLocaleString("en-PH", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   });
 }
 

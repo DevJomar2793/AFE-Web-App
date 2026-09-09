@@ -40,15 +40,24 @@ export function NewSaleModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const selectedItem =
     items.find(
-      (item) =>
-        item.id === Number(selectedInventoryId) && item.quantity > 0,
+      (item) => item.id === Number(selectedInventoryId) && item.quantity > 0,
     ) ?? firstAvailableItem;
   const selectedItemId = selectedItem ? String(selectedItem.id) : "";
   const normalizedQuantity = Number(quantity);
-  const saleTotal =
-    selectedItem && Number.isFinite(normalizedQuantity)
-      ? selectedItem.price * Math.max(normalizedQuantity, 0)
-      : 0;
+  const usesWholesalePrice = Boolean(
+    selectedItem &&
+    normalizedQuantity >= 6 &&
+    selectedItem.wholesalePrice !== null,
+  );
+  const unitPrice =
+    selectedItem &&
+    normalizedQuantity >= 6 &&
+    selectedItem.wholesalePrice !== null
+      ? selectedItem.wholesalePrice
+      : (selectedItem?.price ?? 0);
+  const saleTotal = Number.isFinite(normalizedQuantity)
+    ? unitPrice * Math.max(normalizedQuantity, 0)
+    : 0;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -104,7 +113,7 @@ export function NewSaleModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="new-sale-title"
-        className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl sm:p-7"
+        className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl sm:p-7"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
@@ -221,9 +230,13 @@ export function NewSaleModal({
 
             <div className="flex items-center justify-between gap-4 rounded-2xl bg-[#f3f6f1] px-4 py-3">
               <div>
-                <p className="text-sm font-semibold text-[#68736b]">Sale total</p>
+                <p className="text-sm font-semibold text-[#68736b]">
+                  Sale total
+                </p>
                 <p className="mt-1 text-xs font-semibold text-[#89928b]">
-                  {selectedItem?.quantity ?? 0} units available
+                  {usesWholesalePrice
+                    ? "WholeSale/Batch Price applied for 6 or more units"
+                    : `${selectedItem?.quantity ?? 0} units available`}
                 </p>
               </div>
               <strong className="text-lg text-[#173b24]">

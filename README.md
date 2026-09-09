@@ -85,16 +85,54 @@ Visit `http://localhost:3000` for the storefront and
 ### Mobile development
 
 The React Native app uses Expo and requires Node.js 24 LTS. Install its
-dependencies and start the Expo development server:
+dependencies, create its environment file, and start the Expo development
+server:
 
 ```bash
 cd mobile
 npm install
+cp .env.example .env
 npx expo start
 ```
 
+`EXPO_PUBLIC_BACKEND_API_URL` connects the Inventory screen to FastAPI. Use the
+address that matches where the app runs:
+
+```text
+Physical phone:   http://YOUR_COMPUTER_LAN_IP:8000
+iOS simulator:    http://127.0.0.1:8000
+Android emulator: http://10.0.2.2:8000
+```
+
+For a physical phone, run FastAPI with `uvicorn app.main:app --reload --host
+0.0.0.0`, and keep the phone and computer on the same network. Local HTTP is
+for development; use HTTPS for a deployed mobile application.
+
 Install Expo Go on an Android or iOS phone, connect the phone and development
 machine to the same network, then scan the QR code shown in the terminal.
+
+## Environment variable security
+
+Real `.env` files are local configuration and must never be committed. Only
+the `.env.example` templates belong in Git. Keep production values in the
+environment-variable settings provided by your hosting platform instead of in
+repository files.
+
+- `DATABASE_PASSWORD` is private and belongs only in FastAPI's server
+  environment.
+- `NEXT_PUBLIC_BACKEND_API_URL` is public because Next.js includes
+  `NEXT_PUBLIC_` values in browser JavaScript.
+- `EXPO_PUBLIC_BACKEND_API_URL` is public because Expo includes
+  `EXPO_PUBLIC_` values in the installed application.
+- Never put passwords, private API keys, access tokens, or signing keys in a
+  `NEXT_PUBLIC_` or `EXPO_PUBLIC_` variable.
+- Use separate development, preview, and production values in Vercel, the
+  backend hosting platform, and EAS.
+
+If a credential is committed accidentally, rotate or revoke it immediately.
+Adding the file to `.gitignore` does not remove it from existing Git history.
+After rotation, remove it from history with `git-filter-repo` and force-push
+the rewritten branches.
 
 ## Validation
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, Pencil, RotateCcw } from "lucide-react";
+import { ArrowUpRight, Pencil, Plus, RotateCcw } from "lucide-react";
 import type { Sale } from "@/lib/api";
 
 type SalesActivityProps = {
@@ -8,6 +8,7 @@ type SalesActivityProps = {
   error: string;
   isLoading: boolean;
   onEdit: (sale: Sale) => void;
+  onAddSale: () => void;
   onRetry: () => void;
 };
 
@@ -16,15 +17,26 @@ export function SalesActivity({
   error,
   isLoading,
   onEdit,
+  onAddSale,
   onRetry,
 }: SalesActivityProps) {
   return (
     <section>
-      <div>
-        <h2 className="text-2xl font-black">Transaction activity</h2>
-        <p className="mt-1 text-sm text-[#768178]">
-          Sales recorded in the database.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-black">Transaction activity</h2>
+          <p className="mt-1 text-sm text-[#768178]">
+            Sales recorded in the database.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onAddSale}
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#173b24] px-4 text-sm font-black text-white transition hover:bg-[#245334]"
+        >
+          <Plus size={17} aria-hidden="true" />
+          Add sale
+        </button>
       </div>
 
       {isLoading && (
@@ -83,7 +95,7 @@ function SaleActivityRow({
   const total = sale.price * sale.quantity;
 
   return (
-    <div className="flex items-center gap-3 border-b border-[#edf0eb] px-4 py-4 last:border-b-0 sm:px-6">
+    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 border-b border-[#edf0eb] px-4 py-4 last:border-b-0 sm:flex sm:items-center sm:px-6">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#e7f2e6] text-[#2f7043]">
         <ArrowUpRight size={17} aria-hidden="true" />
       </span>
@@ -95,7 +107,7 @@ function SaleActivityRow({
           {sale.customerName}
         </p>
       </div>
-      <div className="min-w-0 text-right">
+      <div className="col-start-2 min-w-0 text-left sm:text-right">
         <p className="text-sm font-black text-[#24362a]">
           −{sale.quantity} <span className="hidden sm:inline">{unitLabel}</span>
         </p>

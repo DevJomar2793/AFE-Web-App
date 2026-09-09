@@ -8,10 +8,16 @@ import {
 } from 'react-native';
 
 import { AddStockModal, EditItemModal, SuccessModal } from './components/inventory-modals';
+import { BottomNavigation } from './components/bottom-navigation';
 import { InventoryScreen } from './components/inventory-screen';
+import { OverviewScreen } from './components/overview-screen';
+import { OrdersScreen } from './components/orders-screen';
+import { ReturnsScreen } from './components/returns-screen';
+import type { MobileTab } from './components/bottom-navigation';
 import type { InventoryItem, SuccessNotice } from './types/inventory';
 
 export default function App() {
+  const [activeTab, setActiveTab] = useState<MobileTab>('home');
   const [isAddStockModalVisible, setIsAddStockModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [successNotice, setSuccessNotice] = useState<SuccessNotice | null>(null);
@@ -43,14 +49,31 @@ export default function App() {
     });
   }
 
+  function showUnavailableNotice(featureName: string) {
+    setSuccessNotice({
+      title: `${featureName} coming soon`,
+      message: 'This feature is not available yet.',
+    });
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
-      <InventoryScreen
-        onAddItem={() => setIsAddStockModalVisible(true)}
-        onEditItem={setEditingItem}
-        onReturn={showReturnNotice}
-      />
+      {activeTab === 'home' ? (
+        <OverviewScreen onTabChange={setActiveTab} />
+      ) : activeTab === 'inventory' ? (
+        <InventoryScreen
+          onAddItem={() => setIsAddStockModalVisible(true)}
+          onEditItem={setEditingItem}
+          onReturn={showReturnNotice}
+        />
+      ) : activeTab === 'orders' ? (
+        <OrdersScreen onShowUnavailableNotice={showUnavailableNotice} />
+      ) : (
+        <ReturnsScreen onShowUnavailableNotice={showUnavailableNotice} />
+      )}
+
+      <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
       {isAddStockModalVisible && (
         <AddStockModal

@@ -33,6 +33,7 @@ async def test_create_inventory_item(
             "item": "  __create_inventory_item_test__  ",
             "quantity": 5,
             "price": "250.50",
+            "wholesale_price": "225.50",
         },
     )
 
@@ -43,6 +44,7 @@ async def test_create_inventory_item(
     assert data["quantity"] == 5
     assert data["returns_count"] == 0
     assert data["price"] == "250.50"
+    assert data["wholesale_price"] == "225.50"
     assert data["status"] == "in_stock"
     assert datetime.fromisoformat(data["created_at"])
     assert datetime.fromisoformat(data["updated_at"])
@@ -57,6 +59,7 @@ async def test_create_inventory_item(
     assert stored_inventory.quantity == 5
     assert stored_inventory.returns_count == 0
     assert stored_inventory.price == Decimal("250.50")
+    assert stored_inventory.wholesale_price == Decimal("225.50")
     assert stored_inventory.status == InventoryStatus.IN_STOCK
 
 
@@ -78,6 +81,7 @@ async def test_zero_quantity_defaults_to_out_of_stock(
     data = response.json()
     created_inventory_ids.append(data["id"])
     assert data["status"] == "out_of_stock"
+    assert data["wholesale_price"] is None
 
 
 @pytest.mark.asyncio
@@ -115,6 +119,43 @@ async def test_update_inventory_item_quantity_and_price(
     assert stored_inventory is not None
     assert stored_inventory.quantity == 12
     assert stored_inventory.price == Decimal("275.50")
+
+
+@pytest.mark.asyncio
+async def test_update_inventory_item_wholesale_price_can_be_set_and_cleared(
+    client: AsyncClient,
+    created_inventory_ids: list[int],
+) -> None:
+    create_response = await client.post(
+        "/api/v1/inventory/add-stock",
+        json={
+            "item": "__wholesale_price_test__",
+            "quantity": 5,
+            "price": 250,
+        },
+    )
+    inventory_id = create_response.json()["id"]
+    created_inventory_ids.append(inventory_id)
+
+    set_response = await client.patch(
+        f"/api/v1/inventory/{inventory_id}",
+        json={"quantity": 5, "price": 250, "wholesale_price": "220.50"},
+    )
+    clear_response = await client.patch(
+        f"/api/v1/inventory/{inventory_id}",
+        json={"quantity": 5, "price": 250, "wholesale_price": None},
+    )
+
+    assert set_response.status_code == 200
+    assert set_response.json()["wholesale_price"] == "220.50"
+    assert clear_response.status_code == 200
+    assert clear_response.json()["wholesale_price"] is None
+
+    async with async_session_factory() as session:
+        stored_inventory = await session.get(Inventory, inventory_id)
+
+    assert stored_inventory is not None
+    assert stored_inventory.wholesale_price is None
 
 
 @pytest.mark.asyncio
@@ -199,6 +240,8 @@ async def test_update_inventory_item_rejects_unknown_item(
         {"quantity": 1},
         {"price": 10},
         {"quantity": 1, "price": 10, "item": "Changed"},
+        {"quantity": 1, "price": 10, "wholesale_price": -1},
+        {"quantity": 1, "price": 10, "wholesale_price": 10.123},
     ],
 )
 async def test_update_inventory_item_rejects_invalid_data(
@@ -249,6 +292,13 @@ async def test_list_inventory_items(
         {"item": "Eggs", "quantity": -1, "price": 10},
         {"item": "Eggs", "quantity": 1.5, "price": 10},
         {"item": "Eggs", "quantity": 1, "price": -1},
+        {"item": "Eggs", "quantity": 1, "price": 10, "wholesale_price": -1},
+        {
+            "item": "Eggs",
+            "quantity": 1,
+            "price": 10,
+            "wholesale_price": 10.123,
+        },
         {
             "item": "Eggs",
             "quantity": 0,

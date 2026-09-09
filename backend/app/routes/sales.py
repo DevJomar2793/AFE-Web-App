@@ -81,6 +81,10 @@ async def create_sale(
                 ),
             )
 
+        sale_price = inventory_item.price
+        if sale_data.quantity >= 6 and inventory_item.wholesale_price is not None:
+            sale_price = inventory_item.wholesale_price
+
         inventory_item.quantity -= sale_data.quantity
         if inventory_item.quantity == 0:
             inventory_item.status = InventoryStatus.OUT_OF_STOCK
@@ -88,7 +92,7 @@ async def create_sale(
         sale = Sale(
             inventory_id=inventory_item.id,
             quantity=sale_data.quantity,
-            price=inventory_item.price,
+            price=sale_price,
             customer_name=sale_data.customer_name,
             item=inventory_item,
         )

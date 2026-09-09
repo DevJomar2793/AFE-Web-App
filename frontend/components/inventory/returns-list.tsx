@@ -43,7 +43,26 @@ export function ReturnsList({
       </div>
 
       <div className="mt-6 overflow-hidden rounded-2xl border border-[#e0e5de] bg-white">
-        <div className="overflow-x-auto">
+        <div className="xl:hidden">
+          {isLoading ? (
+            <ReturnsCardLoadingState />
+          ) : error ? (
+            <ReturnsCardErrorState error={error} onRetry={onRetry} />
+          ) : returns.length ? (
+            returns.map((inventoryReturn) => (
+              <ReturnCard
+                inventoryReturn={inventoryReturn}
+                key={inventoryReturn.id}
+              />
+            ))
+          ) : (
+            <p className="p-10 text-center text-sm font-semibold text-[#7c867e]">
+              No product returns have been recorded yet.
+            </p>
+          )}
+        </div>
+
+        <div className="hidden overflow-x-auto xl:block">
           <table className="w-full min-w-225 border-collapse text-left">
             <thead className="bg-[#f8f9f6] text-xs font-black uppercase tracking-widest text-[#818b83]">
               <tr>
@@ -82,6 +101,87 @@ export function ReturnsList({
         </div>
       </div>
     </section>
+  );
+}
+
+function ReturnCard({ inventoryReturn }: { inventoryReturn: InventoryReturn }) {
+  return (
+    <article className="border-b border-[#edf0eb] p-5 last:border-b-0 sm:p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="truncate font-extrabold text-[#26382a]">
+            {inventoryReturn.item.name}
+          </p>
+          <p className="mt-1 truncate text-sm font-semibold text-[#58645b]">
+            {inventoryReturn.customerName}
+          </p>
+        </div>
+        <span className="shrink-0 rounded-full bg-[#fff0e5] px-3 py-1 text-sm font-black text-[#a44f1f]">
+          {inventoryReturn.quantity} returned
+        </span>
+      </div>
+
+      <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
+        <div>
+          <dt className="text-xs font-bold uppercase tracking-wide text-[#89928b]">
+            Reason
+          </dt>
+          <dd className="mt-1 font-semibold text-[#58645b]">
+            {inventoryReturn.reason}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs font-bold uppercase tracking-wide text-[#89928b]">
+            Created
+          </dt>
+          <dd className="mt-1 font-semibold text-[#58645b]">
+            {dateTimeFormatter.format(new Date(inventoryReturn.createdAt))}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs font-bold uppercase tracking-wide text-[#89928b]">
+            Updated
+          </dt>
+          <dd className="mt-1 font-semibold text-[#58645b]">
+            {dateTimeFormatter.format(new Date(inventoryReturn.updatedAt))}
+          </dd>
+        </div>
+      </dl>
+    </article>
+  );
+}
+
+function ReturnsCardLoadingState() {
+  return (
+    <div className="space-y-3 p-5" role="status" aria-label="Loading returns">
+      {[0, 1, 2].map((placeholder) => (
+        <div
+          className="h-28 animate-pulse rounded-xl bg-[#f0f3ee]"
+          key={placeholder}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ReturnsCardErrorState({
+  error,
+  onRetry,
+}: {
+  error: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="p-10 text-center" role="alert">
+      <p className="text-sm font-semibold text-[#9b3f3f]">{error}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-4 inline-flex h-11 items-center gap-2 rounded-xl bg-[#173b24] px-4 text-sm font-black text-white hover:bg-[#245334]"
+      >
+        <RotateCcw size={16} aria-hidden="true" /> Try again
+      </button>
+    </div>
   );
 }
 

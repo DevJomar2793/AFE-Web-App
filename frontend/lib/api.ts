@@ -6,6 +6,7 @@ export type InventoryItem = {
   quantity: number;
   returnsCount: number;
   price: number;
+  wholesalePrice: number | null;
   status: InventoryStatus;
   createdAt: string;
   updatedAt: string;
@@ -37,11 +38,13 @@ export type CreateInventoryItemInput = {
   item: string;
   quantity: number;
   price: number;
+  wholesalePrice: number | null;
 };
 
 export type UpdateInventoryItemInput = {
   quantity: number;
   price: number;
+  wholesalePrice: number | null;
 };
 
 export type CreateSaleInput = {
@@ -83,7 +86,15 @@ export async function createInventoryItem(
 ): Promise<InventoryItem> {
   const response = await apiRequest(
     "/api/v1/inventory/add-stock",
-    { method: "POST", body: JSON.stringify(input) },
+    {
+      method: "POST",
+      body: JSON.stringify({
+        item: input.item,
+        quantity: input.quantity,
+        price: input.price,
+        wholesale_price: input.wholesalePrice,
+      }),
+    },
     "The inventory item could not be added.",
   );
   return parseInventoryItem(response);
@@ -95,7 +106,14 @@ export async function updateInventoryItem(
 ): Promise<InventoryItem> {
   const response = await apiRequest(
     `/api/v1/inventory/${inventoryId}`,
-    { method: "PATCH", body: JSON.stringify(input) },
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        quantity: input.quantity,
+        price: input.price,
+        wholesale_price: input.wholesalePrice,
+      }),
+    },
     "The inventory item could not be updated.",
   );
   return parseInventoryItem(response);
@@ -196,6 +214,7 @@ async function apiRequest(
 function parseInventoryItem(value: unknown): InventoryItem {
   if (!isRecord(value)) throw new Error("Invalid inventory item");
   const price = parsePrice(value.price);
+  const wholesalePrice = parseNullablePrice(value.wholesale_price);
 
   if (
     !isPositiveInteger(value.id) ||
@@ -205,6 +224,8 @@ function parseInventoryItem(value: unknown): InventoryItem {
     !isNonNegativeInteger(value.returns_count) ||
     !Number.isFinite(price) ||
     price < 0 ||
+    (wholesalePrice !== null &&
+      (!Number.isFinite(wholesalePrice) || wholesalePrice < 0)) ||
     !isInventoryStatus(value.status) ||
     typeof value.created_at !== "string" ||
     typeof value.updated_at !== "string"
@@ -218,6 +239,7 @@ function parseInventoryItem(value: unknown): InventoryItem {
     quantity: value.quantity,
     returnsCount: value.returns_count,
     price,
+    wholesalePrice,
     status: value.status,
     createdAt: value.created_at,
     updatedAt: value.updated_at,
@@ -311,6 +333,10 @@ function parsePrice(value: unknown) {
   return typeof value === "string" || typeof value === "number"
     ? Number(value)
     : Number.NaN;
+}
+
+function parseNullablePrice(value: unknown) {
+  return value === null ? null : parsePrice(value);
 }
 
 function isInventoryStatus(value: unknown): value is InventoryStatus {
