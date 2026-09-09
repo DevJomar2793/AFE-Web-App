@@ -10,6 +10,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "dev.jomarcerrado.afemobile",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -20,6 +21,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "fa6dd9e8-02c4-4f80-816c-346d84d9629c"
+      }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }
