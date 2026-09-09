@@ -1,8 +1,8 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from "@expo/vector-icons";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { inventoryItems } from '../data/inventory';
-import type { InventoryItem } from '../types/inventory';
+import { inventoryItems } from "../data/inventory";
+import type { InventoryItem } from "../types/inventory";
 
 interface InventoryScreenProps {
   onAddItem: () => void;
@@ -16,10 +16,10 @@ interface ProductPriceCardProps {
 }
 
 const productPriceCards = [
-  { item: inventoryItems[0], displayName: 'Small Eggs' },
-  { item: inventoryItems[1], displayName: 'Medium Eggs' },
-  { item: inventoryItems[2], displayName: 'Large Eggs' },
-  { item: inventoryItems[4], displayName: '1.5L BJ Oil' },
+  { item: inventoryItems[0], displayName: "Small Eggs" },
+  { item: inventoryItems[1], displayName: "Medium Eggs" },
+  { item: inventoryItems[2], displayName: "Large Eggs" },
+  { item: inventoryItems[4], displayName: "1.5L BJ Oil" },
 ];
 
 function ProductPriceCard({ item, displayName }: ProductPriceCardProps) {
@@ -36,19 +36,23 @@ function ProductPriceCard({ item, displayName }: ProductPriceCardProps) {
       <Text style={styles.priceValue}>{item.price}</Text>
       <View style={styles.wholesalePriceSection}>
         <Text style={styles.wholesalePriceLabel}>Wholesale/Batch Price</Text>
-        <Text style={styles.wholesalePriceValue}>
-          {item.wholesalePrice}
-        </Text>
+        <Text style={styles.wholesalePriceValue}>{item.wholesalePrice}</Text>
       </View>
     </View>
   );
 }
 
-function InventoryTableRow({ item, onPress }: { item: InventoryItem; onPress: () => void }) {
+function InventoryTableRow({
+  item,
+  onPress,
+}: {
+  item: InventoryItem;
+  onPress: () => void;
+}) {
   return (
     <View style={styles.tableRow}>
       <Text style={styles.itemCell} numberOfLines={2}>
-        {item.name.replace('Eggs - ', '')}
+        {item.name.replace("Eggs - ", "")}
       </Text>
       <Text style={styles.quantityCell} numberOfLines={1}>
         {item.stock}
@@ -80,7 +84,9 @@ export function InventoryScreen({
         <View style={styles.header}>
           <View style={styles.headerText}>
             <Text style={styles.title}>All inventory</Text>
-            <Text style={styles.subtitle}>Live inventory records from the database.</Text>
+            <Text style={styles.subtitle}>
+              Live inventory records from the database.
+            </Text>
           </View>
 
           <View style={styles.headerActions}>
@@ -99,7 +105,11 @@ export function InventoryScreen({
               onPress={onReturn}
               style={styles.returnButton}
             >
-              <Ionicons name="return-up-back-outline" size={20} color="#ffffff" />
+              <Ionicons
+                name="return-up-back-outline"
+                size={20}
+                color="#ffffff"
+              />
               <Text style={styles.returnButtonText}>Return</Text>
             </Pressable>
           </View>
@@ -107,12 +117,18 @@ export function InventoryScreen({
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Product prices</Text>
-          <Text style={styles.sectionSubtitle}>Current prices for all inventory products.</Text>
+          <Text style={styles.sectionSubtitle}>
+            Current prices for all inventory products.
+          </Text>
         </View>
 
         <View style={styles.priceGrid}>
           {productPriceCards.map(({ item, displayName }) => (
-            <ProductPriceCard key={item.id} item={item} displayName={displayName} />
+            <ProductPriceCard
+              key={item.id}
+              item={item}
+              displayName={displayName}
+            />
           ))}
         </View>
 
@@ -125,9 +141,15 @@ export function InventoryScreen({
 
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeading, styles.headerItemCell]}>Item</Text>
-            <Text style={[styles.tableHeading, styles.headerQuantityCell]}>Qty</Text>
-            <Text style={[styles.tableHeading, styles.actionHeading]}>Action</Text>
+            <Text style={[styles.tableHeading, styles.headerItemCell]}>
+              Item
+            </Text>
+            <Text style={[styles.tableHeading, styles.headerQuantityCell]}>
+              Qty
+            </Text>
+            <Text style={[styles.tableHeading, styles.actionHeading]}>
+              Action
+            </Text>
           </View>
 
           {inventoryItems.map((item) => (
@@ -139,7 +161,6 @@ export function InventoryScreen({
           ))}
         </View>
       </ScrollView>
-
     </View>
   );
 }
@@ -147,10 +168,10 @@ export function InventoryScreen({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    width: '100%',
+    width: "100%",
     maxWidth: 520,
-    alignSelf: 'center',
-    backgroundColor: '#f8faf8',
+    alignSelf: "center",
+    backgroundColor: "#f8faf8",
   },
   content: {
     padding: 20,
@@ -164,222 +185,222 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   title: {
-    color: '#121a15',
+    color: "#121a15",
     fontSize: 31,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   subtitle: {
-    color: '#74808a',
+    color: "#74808a",
     fontSize: 16,
   },
   headerActions: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
+    flexDirection: "row",
+    alignItems: "stretch",
     gap: 10,
   },
   addStockButton: {
     flex: 1,
     height: 54,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 7,
     borderWidth: 1,
-    borderColor: '#dce3dd',
+    borderColor: "#dce3dd",
     borderRadius: 14,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
   },
   addStockText: {
-    color: '#1d4c2d',
+    color: "#1d4c2d",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   returnButton: {
     flex: 1,
     height: 54,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 7,
     borderRadius: 14,
-    backgroundColor: '#173f28',
+    backgroundColor: "#173f28",
   },
   returnButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   sectionHeader: {
     marginTop: 34,
     marginBottom: 18,
   },
   sectionTitle: {
-    color: '#121a15',
+    color: "#121a15",
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   sectionSubtitle: {
-    color: '#74808a',
+    color: "#74808a",
     fontSize: 16,
     marginTop: 4,
   },
   priceGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
   },
   priceCard: {
-    width: '48%',
+    width: "48%",
     minHeight: 174,
     borderWidth: 1,
-    borderColor: '#dce3dd',
+    borderColor: "#dce3dd",
     borderRadius: 15,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     padding: 16,
   },
   priceCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 8,
   },
   priceCardName: {
     flex: 1,
-    color: '#17231b',
+    color: "#17231b",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   priceIcon: {
     width: 42,
     height: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 14,
-    backgroundColor: '#eef7ee',
+    backgroundColor: "#eef7ee",
   },
   pesoIcon: {
-    color: '#24663a',
+    color: "#24663a",
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   priceValue: {
-    color: '#173f28',
+    color: "#173f28",
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: "700",
     marginTop: 12,
   },
   wholesalePriceSection: {
     borderTopWidth: 1,
-    borderTopColor: '#e4e9e4',
+    borderTopColor: "#e4e9e4",
     marginTop: 12,
     paddingTop: 10,
   },
   wholesalePriceLabel: {
-    color: '#74808a',
+    color: "#74808a",
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: "600",
     letterSpacing: 0.35,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   wholesalePriceValue: {
-    color: '#258143',
+    color: "#258143",
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: "700",
     marginTop: 4,
   },
   searchBox: {
     height: 58,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
     borderWidth: 1,
-    borderColor: '#dce3dd',
+    borderColor: "#dce3dd",
     borderRadius: 15,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     marginTop: 24,
     paddingHorizontal: 18,
   },
   searchPlaceholder: {
-    color: '#8b969e',
+    color: "#8b969e",
     fontSize: 16,
   },
   inventoryLabel: {
-    color: '#17231b',
+    color: "#17231b",
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
     marginTop: 24,
   },
   table: {
     borderWidth: 1,
-    borderColor: '#dce3dd',
+    borderColor: "#dce3dd",
     borderRadius: 16,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     marginTop: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   tableHeader: {
     minHeight: 50,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderBottomWidth: 1,
-    borderBottomColor: '#e8ece8',
+    borderBottomColor: "#e8ece8",
     gap: 12,
     paddingHorizontal: 14,
   },
   tableRow: {
     minHeight: 84,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderBottomWidth: 1,
-    borderBottomColor: '#e8ece8',
+    borderBottomColor: "#e8ece8",
     gap: 12,
     paddingHorizontal: 14,
   },
   tableHeading: {
-    color: '#879198',
+    color: "#879198",
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   headerItemCell: {
     flex: 1,
   },
   headerQuantityCell: {
     width: 78,
-    textAlign: 'center',
+    textAlign: "center",
   },
   itemCell: {
     flex: 1,
-    color: '#17231b',
+    color: "#17231b",
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
     paddingRight: 5,
   },
   quantityCell: {
     width: 78,
-    color: '#17231b',
+    color: "#17231b",
     fontSize: 14,
-    fontWeight: '700',
-    textAlign: 'center',
+    fontWeight: "700",
+    textAlign: "center",
   },
   actionHeading: {
     width: 72,
-    textAlign: 'center',
+    textAlign: "center",
   },
   editButton: {
     width: 72,
     minHeight: 38,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 4,
     borderRadius: 9,
-    backgroundColor: '#173f28',
+    backgroundColor: "#173f28",
   },
   editButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });

@@ -1,7 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from "@expo/vector-icons";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-export type MobileTab = 'home' | 'inventory' | 'orders' | 'returns';
+export type MobileTab = "home" | "inventory" | "orders" | "returns";
 
 interface BottomNavigationProps {
   activeTab: MobileTab;
@@ -17,12 +17,17 @@ interface NavigationItemProps {
   onPress?: () => void;
 }
 
-function NavigationItem({ icon, label, isActive = false, onPress }: NavigationItemProps) {
-  const color = isActive ? '#2f8c48' : '#7c8996';
+function NavigationItem({
+  icon,
+  label,
+  isActive = false,
+  onPress,
+}: NavigationItemProps) {
+  const color = isActive ? "#2f8c48" : "#7c8996";
 
   return (
     <Pressable
-      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityRole={onPress ? "button" : undefined}
       accessibilityState={{ selected: isActive }}
       disabled={onPress === undefined}
       onPress={onPress}
@@ -36,21 +41,59 @@ function NavigationItem({ icon, label, isActive = false, onPress }: NavigationIt
   );
 }
 
-export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationProps) {
+export function BottomNavigation({
+  activeTab,
+  onTabChange,
+}: BottomNavigationProps) {
   return (
     <View style={styles.navigation}>
-      <NavigationItem icon="home-outline" label="Home" isActive={activeTab === 'home'} onPress={() => onTabChange('home')} />
-      <NavigationItem icon="cube-outline" label="Inventory" isActive={activeTab === 'inventory'} onPress={() => onTabChange('inventory')} />
-      <NavigationItem icon="receipt-outline" label="Orders" isActive={activeTab === 'orders'} onPress={() => onTabChange('orders')} />
-      <NavigationItem icon="bar-chart-outline" label="Return" isActive={activeTab === 'returns'} onPress={() => onTabChange('returns')} />
-      <NavigationItem icon="person-outline" label="Profile" />
+      <NavigationItem
+        icon="home-outline"
+        label="Home"
+        isActive={activeTab === "home"}
+        onPress={() => onTabChange("home")}
+      />
+      <NavigationItem
+        icon="cube-outline"
+        label="Inventory"
+        isActive={activeTab === "inventory"}
+        onPress={() => onTabChange("inventory")}
+      />
+      <NavigationItem
+        icon="receipt-outline"
+        label="Orders"
+        isActive={activeTab === "orders"}
+        onPress={() => onTabChange("orders")}
+      />
+      <NavigationItem
+        icon="bar-chart-outline"
+        label="Return"
+        isActive={activeTab === "returns"}
+        onPress={() => onTabChange("returns")}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  navigation: { minHeight: 78, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', borderTopWidth: 1, borderTopColor: '#e4e9e5', backgroundColor: '#ffffff', paddingHorizontal: 8, paddingTop: 8, paddingBottom: 10 },
-  navigationItem: { flex: 1, alignItems: 'center', gap: 3 },
-  activeIcon: { borderRadius: 12, backgroundColor: '#eaf7eb', paddingHorizontal: 8, paddingVertical: 3 },
+  navigation: {
+    minHeight: 78,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    borderTopWidth: 1,
+    borderTopColor: "#e4e9e5",
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 8,
+    paddingTop: 8,
+    paddingBottom: 10,
+  },
+  navigationItem: { flex: 1, alignItems: "center", gap: 3 },
+  activeIcon: {
+    borderRadius: 12,
+    backgroundColor: "#eaf7eb",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
   navigationLabel: { fontSize: 11 },
 });
