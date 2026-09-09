@@ -111,6 +111,29 @@ for development; use HTTPS for a deployed mobile application.
 Install Expo Go on an Android or iOS phone, connect the phone and development
 machine to the same network, then scan the QR code shown in the terminal.
 
+## Environment variable security
+
+Real `.env` files are local configuration and must never be committed. Only
+the `.env.example` templates belong in Git. Keep production values in the
+environment-variable settings provided by your hosting platform instead of in
+repository files.
+
+- `DATABASE_PASSWORD` is private and belongs only in FastAPI's server
+  environment.
+- `NEXT_PUBLIC_BACKEND_API_URL` is public because Next.js includes
+  `NEXT_PUBLIC_` values in browser JavaScript.
+- `EXPO_PUBLIC_BACKEND_API_URL` is public because Expo includes
+  `EXPO_PUBLIC_` values in the installed application.
+- Never put passwords, private API keys, access tokens, or signing keys in a
+  `NEXT_PUBLIC_` or `EXPO_PUBLIC_` variable.
+- Use separate development, preview, and production values in Vercel, the
+  backend hosting platform, and EAS.
+
+If a credential is committed accidentally, rotate or revoke it immediately.
+Adding the file to `.gitignore` does not remove it from existing Git history.
+After rotation, remove it from history with `git-filter-repo` and force-push
+the rewritten branches.
+
 ## Validation
 
 Run these commands before submitting changes:
