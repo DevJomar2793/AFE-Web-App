@@ -65,8 +65,13 @@ export type CreateReturnInput = {
   reason: string;
 };
 
+const DEFAULT_API_BASE_URL =
+  process.env.NODE_ENV === "production"
+    ? "https://atbackend-web-app-afe.onrender.com"
+    : "http://127.0.0.1:8000";
+
 const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_BACKEND_API_URL ?? "http://127.0.0.1:8000"
+  process.env.NEXT_PUBLIC_BACKEND_API_URL ?? DEFAULT_API_BASE_URL
 ).replace(/\/+$/, "");
 
 export async function getInventoryItems(
