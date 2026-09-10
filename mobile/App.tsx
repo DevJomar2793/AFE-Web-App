@@ -68,12 +68,17 @@ export default function App() {
           onReturn={showReturnNotice}
         />
       ) : activeTab === 'orders' ? (
-        <OrdersScreen onShowUnavailableNotice={showUnavailableNotice} />
+        <OrdersScreen
+          onBack={() => setActiveTab('home')}
+          onShowUnavailableNotice={showUnavailableNotice}
+        />
       ) : (
         <ReturnsScreen onShowUnavailableNotice={showUnavailableNotice} />
       )}
 
-      <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+      {activeTab !== 'orders' && (
+        <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+      )}
 
       {isAddStockModalVisible && (
         <AddStockModal
