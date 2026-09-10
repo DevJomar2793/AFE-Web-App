@@ -16,7 +16,8 @@ class Settings(BaseSettings):
     database_user: str
     database_password: SecretStr
     cors_allowed_origins: str = (
-        "http://localhost:3000,http://127.0.0.1:3000"
+        "http://localhost:3000,http://127.0.0.1:3000,"
+        "https://adamosfresheggs.vercel.app"
     )
 
     model_config = SettingsConfigDict(
