@@ -39,12 +39,16 @@ export function SalesActivity({
   onTransactionRangeChange,
 }: SalesActivityProps) {
   const todayKey = manilaDateKey(new Date());
-  const [selectedDate, setSelectedDate] = useState(todayKey);
+  const [rangeEndDate, setRangeEndDate] = useState(todayKey);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const dateInputRef = useRef<HTMLInputElement>(null);
-  const days = buildLastSevenDays(sales, selectedDate);
-  const selectedDay = days[0];
+  const days = buildLastSevenDays(sales, rangeEndDate);
+  const rangeEndDay = days[0];
   const oldestDay = days[days.length - 1];
+  const selectedDay = selectedDate
+    ? buildSalesDay(sales, selectedDate)
+    : undefined;
   const weeklyDateKeys = new Set(days.map((day) => day.key));
   const normalizedSearchQuery = searchQuery.trim().toLocaleLowerCase("en-PH");
   const selectedSales = sales
@@ -52,7 +56,7 @@ export function SalesActivity({
       const saleDateKey = manilaDateKey(new Date(sale.createdAt));
       const isInSelectedRange =
         transactionRange === "daily"
-          ? saleDateKey === selectedDate
+          ? selectedDate !== null && saleDateKey === selectedDate
           : weeklyDateKeys.has(saleDateKey);
 
       if (!isInSelectedRange) return false;
@@ -78,6 +82,13 @@ export function SalesActivity({
     }
 
     dateInput.click();
+  };
+
+  const moveDateRange = (numberOfDays: number) => {
+    setRangeEndDate((currentDate) =>
+      shiftDateKey(currentDate, numberOfDays),
+    );
+    setSelectedDate(null);
   };
 
   return (
@@ -121,7 +132,7 @@ export function SalesActivity({
           <button
             type="button"
             aria-label="Show previous seven days"
-            onClick={() => setSelectedDate(shiftDateKey(selectedDate, -7))}
+            onClick={() => moveDateRange(-7)}
             className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#d5ddd3] bg-white text-[#173b24] transition hover:bg-[#edf4eb]"
           >
             <ChevronLeft size={20} aria-hidden="true" />
@@ -129,39 +140,53 @@ export function SalesActivity({
 
           <div className="min-w-0 flex-1 overflow-x-auto pb-1">
             <div className="grid min-w-225 grid-cols-7 gap-2">
-              {[...days].reverse().map((day) => (
-                <button
-                  type="button"
-                  key={day.key}
-                  aria-pressed={day.key === selectedDate}
-                  onClick={() => {
-                    setSelectedDate(day.key);
-                    onTransactionRangeChange("daily");
-                  }}
-                  className={`rounded-xl border px-3 py-3 text-center ${
-                    day.key === selectedDate
-                      ? "border-[#4f9a66] bg-[#edf7ec] shadow-[inset_0_0_0_1px_rgba(79,154,102,0.08)]"
-                      : "border-[#e1e6df] bg-[#fbfcfa] transition hover:border-[#8eb99a] hover:bg-[#f4f9f3]"
-                  }`}
-                >
-                  <p className="text-sm font-black text-[#17261b]">
-                    {day.shortDate}
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-[#77837a]">
-                    {day.weekday}
-                  </p>
-                  <p className="mt-1 text-xs font-bold text-[#344238]">
-                    {day.saleCount} {day.saleCount === 1 ? "sale" : "sales"}
-                  </p>
-                </button>
-              ))}
+              {[...days].reverse().map((day) => {
+                const isSelected = day.key === selectedDate;
+                const isToday = day.key === todayKey;
+
+                return (
+                  <button
+                    type="button"
+                    key={day.key}
+                    aria-label={`${day.fullDate}${isToday ? ", today" : ""}`}
+                    aria-pressed={isSelected}
+                    onClick={() => {
+                      setSelectedDate(day.key);
+                      onTransactionRangeChange("daily");
+                    }}
+                    className={`rounded-xl border px-3 py-3 text-center transition ${
+                      isSelected
+                        ? "border-[#4f9a66] bg-[#e5f3e4] shadow-[inset_0_0_0_1px_rgba(79,154,102,0.12)]"
+                        : isToday
+                          ? "border-[#8fbd9a] bg-[#f0f8ee] shadow-[inset_0_0_0_1px_rgba(79,154,102,0.08)]"
+                          : "border-[#e1e6df] bg-[#fbfcfa] hover:border-[#8eb99a] hover:bg-[#f4f9f3]"
+                    }`}
+                  >
+                    <p className="text-sm font-black text-[#17261b]">
+                      {day.shortDate}
+                    </p>
+                    <p
+                      className={`mt-1 text-xs font-medium ${
+                        isToday
+                          ? "font-black text-[#39704a]"
+                          : "text-[#77837a]"
+                      }`}
+                    >
+                      {isToday ? `Today · ${day.weekday}` : day.weekday}
+                    </p>
+                    <p className="mt-1 text-xs font-bold text-[#344238]">
+                      {day.saleCount} {day.saleCount === 1 ? "sale" : "sales"}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           <button
             type="button"
             aria-label="Show next seven days"
-            onClick={() => setSelectedDate(shiftDateKey(selectedDate, 7))}
+            onClick={() => moveDateRange(7)}
             className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#d5ddd3] bg-white text-[#173b24] transition hover:bg-[#edf4eb]"
           >
             <ChevronRight size={20} aria-hidden="true" />
@@ -188,23 +213,26 @@ export function SalesActivity({
               onClick={openDatePicker}
               className="min-w-0 flex-1 truncate text-left text-sm font-black"
             >
-              {selectedDay.longDate}
+              {selectedDay?.longDate ?? "Select date"}
             </button>
             <input
               ref={dateInputRef}
               aria-label="Select transaction date"
               className="absolute h-px w-px opacity-0"
               type="date"
-              value={selectedDate}
+              value={selectedDate ?? ""}
               onChange={(event) => {
-                if (event.target.value) setSelectedDate(event.target.value);
+                if (!event.target.value) return;
+                setSelectedDate(event.target.value);
+                onTransactionRangeChange("daily");
               }}
             />
             <button
               type="button"
-              aria-label="Reset transaction date to today"
-              onClick={() => setSelectedDate(todayKey)}
-              className="grid size-7 shrink-0 place-items-center rounded-md hover:bg-[#edf2eb]"
+              aria-label="Clear selected transaction date"
+              disabled={selectedDate === null}
+              onClick={() => setSelectedDate(null)}
+              className="grid size-7 shrink-0 place-items-center rounded-md hover:bg-[#edf2eb] disabled:cursor-default disabled:opacity-35"
             >
               <X size={17} aria-hidden="true" />
             </button>
@@ -255,6 +283,7 @@ export function SalesActivity({
                 selectedSales.length,
                 transactionRange,
                 selectedDay,
+                rangeEndDay,
                 oldestDay,
               )}
             </p>
@@ -272,11 +301,11 @@ export function SalesActivity({
           ))
         ) : (
           <p className="p-10 text-center text-sm font-semibold text-[#7c867e]">
-            {normalizedSearchQuery
-              ? "No sales match your search."
-              : transactionRange === "daily"
-                ? "No sales were recorded on this date."
-                : "No sales were recorded in this seven-day period."}
+            {buildEmptyMessage(
+              normalizedSearchQuery,
+              transactionRange,
+              selectedDay,
+            )}
           </p>
         )}
       </article>
@@ -378,52 +407,74 @@ function buildLastSevenDays(sales: Sale[], selectedDate: string): SalesDay[] {
         selectedDateParts[2] - index,
       ),
     );
-    const key = date.toISOString().slice(0, 10);
-    const saleCount = sales.filter(
-      (sale) => manilaDateKey(new Date(sale.createdAt)) === key,
-    ).length;
-
-    return {
-      key,
-      shortDate: date.toLocaleDateString("en-PH", {
-        month: "short",
-        day: "numeric",
-        timeZone: "UTC",
-      }),
-      weekday: date.toLocaleDateString("en-PH", {
-        weekday: "short",
-        timeZone: "UTC",
-      }),
-      longDate: date.toLocaleDateString("en-PH", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        timeZone: "UTC",
-      }),
-      fullDate: date.toLocaleDateString("en-PH", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-        timeZone: "UTC",
-      }),
-      saleCount,
-    };
+    return buildSalesDay(sales, date.toISOString().slice(0, 10));
   });
+}
+
+function buildSalesDay(sales: Sale[], dateKey: string): SalesDay {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const saleCount = sales.filter(
+    (sale) => manilaDateKey(new Date(sale.createdAt)) === dateKey,
+  ).length;
+
+  return {
+    key: dateKey,
+    shortDate: date.toLocaleDateString("en-PH", {
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    }),
+    weekday: date.toLocaleDateString("en-PH", {
+      weekday: "short",
+      timeZone: "UTC",
+    }),
+    longDate: date.toLocaleDateString("en-PH", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
+    }),
+    fullDate: date.toLocaleDateString("en-PH", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
+    }),
+    saleCount,
+  };
 }
 
 function buildSalesSummary(
   saleCount: number,
   transactionRange: TransactionRange,
-  selectedDay: SalesDay,
+  selectedDay: SalesDay | undefined,
+  rangeEndDay: SalesDay,
   oldestDay: SalesDay,
 ) {
   const saleLabel = saleCount === 1 ? "sale" : "sales";
 
   if (transactionRange === "daily") {
+    if (!selectedDay) return "Select a date to view daily sales.";
     return `${saleCount} ${saleLabel} on ${selectedDay.fullDate}`;
   }
 
-  return `${saleCount} ${saleLabel} from ${oldestDay.longDate} to ${selectedDay.longDate}`;
+  return `${saleCount} ${saleLabel} from ${oldestDay.longDate} to ${rangeEndDay.longDate}`;
+}
+
+function buildEmptyMessage(
+  normalizedSearchQuery: string,
+  transactionRange: TransactionRange,
+  selectedDay: SalesDay | undefined,
+) {
+  if (transactionRange === "daily" && !selectedDay) {
+    return "Select a date card to view its sales.";
+  }
+  if (normalizedSearchQuery) return "No sales match your search.";
+  if (transactionRange === "daily") {
+    return "No sales were recorded on this date.";
+  }
+  return "No sales were recorded in this seven-day period.";
 }
 
 function shiftDateKey(dateKey: string, numberOfDays: number) {
