@@ -13,6 +13,7 @@ import {
   InventoryHeader,
   InventorySidebar,
   type InventoryViewName,
+  type TransactionRange,
 } from "@/components/inventory/inventory-navigation";
 import { InventoryList } from "@/components/inventory/inventory-list";
 import { NewReturnModal } from "@/components/inventory/new-return-modal";
@@ -41,6 +42,8 @@ export function InventoryDashboard() {
   const [saleInventoryItemId, setSaleInventoryItemId] = useState<number>();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [transactionRange, setTransactionRange] =
+    useState<TransactionRange>("weekly");
   const [notice, setNotice] = useState<Notice | null>(null);
 
   // Inventory, sales, and returns below are loaded from the FastAPI database.
@@ -163,6 +166,8 @@ export function InventoryDashboard() {
         <InventoryHeader
           currentView={currentView}
           onOpenMenu={() => setIsMenuOpen(true)}
+          transactionRange={transactionRange}
+          onTransactionRangeChange={setTransactionRange}
         />
 
         <main className="mx-auto max-w-375 px-4 pb-28 pt-6 sm:px-7 lg:px-10 lg:pb-10 lg:pt-8">
@@ -203,6 +208,8 @@ export function InventoryDashboard() {
               onAddSale={() => openNewSale()}
               onEdit={setEditingSale}
               onRetry={retrySales}
+              transactionRange={transactionRange}
+              onTransactionRangeChange={setTransactionRange}
             />
           )}
 

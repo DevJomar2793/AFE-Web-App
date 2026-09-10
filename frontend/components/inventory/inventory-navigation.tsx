@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  BarChart3,
   Boxes,
   ClipboardList,
   House,
@@ -18,6 +19,8 @@ export type InventoryViewName =
   | "inventory"
   | "activity"
   | "returns";
+
+export type TransactionRange = "daily" | "weekly";
 
 type NavigationProps = {
   currentView: InventoryViewName;
@@ -95,9 +98,13 @@ export function InventorySidebar({
 export function InventoryHeader({
   currentView,
   onOpenMenu,
+  transactionRange,
+  onTransactionRangeChange,
 }: {
   currentView: InventoryViewName;
   onOpenMenu: () => void;
+  transactionRange: TransactionRange;
+  onTransactionRangeChange: (range: TransactionRange) => void;
 }) {
   const titles: Record<InventoryViewName, string> = {
     overview: "Operations overview",
@@ -106,9 +113,11 @@ export function InventoryHeader({
     returns: "Returns",
   };
 
+  const isTransactionView = currentView === "activity";
+
   return (
     <header className="sticky top-0 z-40 border-b border-[#dfe5dd] bg-[#f4f6f1]/90 backdrop-blur-xl">
-      <div className="mx-auto flex h-18 max-w-375 items-center gap-3 px-4 sm:px-7 lg:px-10">
+      <div className="mx-auto flex min-h-18 max-w-375 items-center gap-3 px-4 py-3 sm:px-7 lg:px-10">
         <button
           type="button"
           aria-label="Open navigation"
@@ -117,7 +126,7 @@ export function InventoryHeader({
         >
           <Menu size={20} />
         </button>
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-xs font-bold text-[#7d887f]">
             {new Date().toLocaleDateString("en-PH", {
               weekday: "long",
@@ -129,7 +138,45 @@ export function InventoryHeader({
           <h1 className="text-lg font-black sm:text-xl">
             {titles[currentView]}
           </h1>
+          {isTransactionView && (
+            <p className="mt-0.5 hidden text-sm text-[#768178] sm:block">
+              Sales recorded in the database.
+            </p>
+          )}
         </div>
+
+        {isTransactionView && (
+          <div
+            className="hidden items-center gap-1.5 sm:flex"
+            aria-label="Transaction date range"
+          >
+            <button
+              type="button"
+              aria-pressed={transactionRange === "daily"}
+              onClick={() => onTransactionRangeChange("daily")}
+              className={`inline-flex h-11 min-w-24 items-center justify-center rounded-xl border px-4 text-sm font-black transition ${
+                transactionRange === "daily"
+                  ? "border-[#173b24] bg-[#173b24] text-white shadow-sm"
+                  : "border-[#d5ddd3] bg-white text-[#173b24] hover:bg-[#f5f8f4]"
+              }`}
+            >
+              Daily
+            </button>
+            <button
+              type="button"
+              aria-pressed={transactionRange === "weekly"}
+              onClick={() => onTransactionRangeChange("weekly")}
+              className={`inline-flex h-11 min-w-28 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-black transition ${
+                transactionRange === "weekly"
+                  ? "border-[#173b24] bg-[#173b24] text-white shadow-sm"
+                  : "border-[#d5ddd3] bg-white text-[#173b24] hover:bg-[#f5f8f4]"
+              }`}
+            >
+              <BarChart3 size={17} aria-hidden="true" />
+              Weekly
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );
