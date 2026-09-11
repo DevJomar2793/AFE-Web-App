@@ -1,11 +1,10 @@
 import { Eye, Target } from "lucide-react";
-import { Reveal } from "@/components/ui/reveal";
 
 export function MissionVisionSection() {
   return (
     <section id="promise" className="section-shell scroll-mt-24 bg-[#f9f7f0]">
       <div className="mx-auto max-w-7xl">
-        <Reveal className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
+        <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
           <div>
             <p className="eyebrow">Purpose &amp; direction</p>
             <h2 className="section-title mt-4">
@@ -16,13 +15,10 @@ export function MissionVisionSection() {
             Our mission guides how we serve customers today. Our vision shapes
             how we grow alongside nearby communities.
           </p>
-        </Reveal>
+        </div>
 
         <div className="mt-12 grid gap-5 md:grid-cols-2">
-          <Reveal
-            as="article"
-            className="border border-[#dcd7ca] bg-white p-7 sm:p-9"
-          >
+          <article className="border border-[#dcd7ca] bg-white p-7 sm:p-9">
             <div className="flex items-center justify-between gap-4">
               <span className="grid size-12 place-items-center rounded-full bg-[#e3ebdc] text-[#173b24]">
                 <Target aria-hidden="true" size={23} />
@@ -41,13 +37,9 @@ export function MissionVisionSection() {
               directly from our farm to your doorstep, we make farm-fresh
               quality easier to bring to your table.
             </p>
-          </Reveal>
+          </article>
 
-          <Reveal
-            as="article"
-            className="bg-[#173b24] p-7 text-white sm:p-9"
-            delay={100}
-          >
+          <article className="bg-[#173b24] p-7 text-white sm:p-9">
             <div className="flex items-center justify-between gap-4">
               <span className="grid size-12 place-items-center rounded-full bg-[#f5bd78] text-[#173b24]">
                 <Eye aria-hidden="true" size={23} />
@@ -65,7 +57,7 @@ export function MissionVisionSection() {
               affordable eggs more accessible while maintaining excellent
               customer service and dependable delivery.
             </p>
-          </Reveal>
+          </article>
         </div>
       </div>
     </section>

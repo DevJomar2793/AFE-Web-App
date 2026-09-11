@@ -15,11 +15,11 @@ backend/
   alembic/          Database migrations
   tests/            API integration tests
 frontend/
-  app/              Next.js pages, layout, manifest, and global styles
-  components/       Storefront, inventory, and shared UI components
+  app/              Next.js pages, layout, metadata, and global styles
+  components/       Storefront and inventory components
   lib/api.ts        All typed FastAPI requests and response parsing
   lib/local-inventory.ts  Browser-local overview demo data
-  public/           Images, manifest, and service worker
+  public/           Storefront images and icons
 mobile/
   App.tsx           Minimal Expo and React Native entry component
   app.json          Expo application configuration

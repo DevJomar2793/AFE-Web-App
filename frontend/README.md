@@ -46,7 +46,6 @@ reflect the latest database response.
 - `app/` contains only Next.js routes, layout, metadata, and global styles.
 - `components/storefront/` contains the public website and its small hooks.
 - `components/inventory/` contains dashboard screens, modals, and data hooks.
-- `components/ui/` contains the shared `Reveal` presentation component.
 - `lib/api.ts` contains every FastAPI URL, request function, API type, and
   response parser.
 - `lib/local-inventory.ts` contains the browser-local Overview demo state.

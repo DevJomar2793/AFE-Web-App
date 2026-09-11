@@ -1,28 +1,21 @@
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
-import type { CSSProperties } from "react";
-import { Reveal } from "@/components/ui/reveal";
 import { products, type Product } from "@/components/storefront/data";
 
 type ProductCardProps = {
   product: Product;
-  imageDelay: number;
 };
 
-function ProductCard({ product, imageDelay }: ProductCardProps) {
-  const imageStyle = {
-    "--image-delay": `${imageDelay}ms`,
-  } as CSSProperties;
-
+function ProductCard({ product }: ProductCardProps) {
   return (
     <article className="group overflow-hidden border border-[#dedbd2] bg-[#fdfcf8] transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_55px_rgba(30,45,31,0.12)]">
-      <div className="image-load-frame relative aspect-4/3" style={imageStyle}>
+      <div className="relative aspect-4/3 overflow-hidden bg-[#efe6d2]">
         <Image
           src={product.image}
           alt={product.alt}
           fill
           sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
-          className="image-load-in object-cover transition duration-700 group-hover:scale-105"
+          className="object-cover transition duration-700 group-hover:scale-105"
         />
       </div>
       <div className="p-6">
@@ -44,7 +37,7 @@ export function ProductsSection() {
       className="section-shell scroll-mt-24 border-t border-[#e1ddd2] bg-white"
     >
       <div className="mx-auto max-w-7xl">
-        <Reveal className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div className="max-w-2xl">
             <p className="eyebrow">Our products</p>
             <h2 className="section-title mt-4">
@@ -58,13 +51,11 @@ export function ProductsSection() {
           <a className="text-link" href="#contact">
             Ask about availability <ArrowRight aria-hidden="true" size={17} />
           </a>
-        </Reveal>
+        </div>
 
         <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {products.map((product, index) => (
-            <Reveal key={product.name} delay={index * 90} variant="scale">
-              <ProductCard product={product} imageDelay={100 + index * 100} />
-            </Reveal>
+          {products.map((product) => (
+            <ProductCard key={product.name} product={product} />
           ))}
         </div>
       </div>

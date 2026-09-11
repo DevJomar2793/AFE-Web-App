@@ -1,4 +1,3 @@
-import { Reveal } from "@/components/ui/reveal";
 import { CustomerOrdersCarousel } from "@/components/storefront/customer-orders-carousel";
 import { customerOrders } from "@/components/storefront/data";
 
@@ -9,7 +8,7 @@ export function CustomerOrdersSection() {
       className="scroll-mt-24 bg-[#173b24] px-5 py-20 text-white sm:px-8 lg:py-24"
     >
       <div className="mx-auto max-w-7xl">
-        <Reveal className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
+        <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
           <div>
             <p className="eyebrow text-[#f5bd78]">Customer orders</p>
             <h2 className="section-title mt-4 max-w-xl text-white">
@@ -20,11 +19,9 @@ export function CustomerOrdersSection() {
             From households to local businesses, see the egg sizes our
             customers are ordering from Adamos Fresh Eggs.
           </p>
-        </Reveal>
+        </div>
 
-        <Reveal delay={100}>
-          <CustomerOrdersCarousel orders={customerOrders} />
-        </Reveal>
+        <CustomerOrdersCarousel orders={customerOrders} />
       </div>
     </section>
   );
