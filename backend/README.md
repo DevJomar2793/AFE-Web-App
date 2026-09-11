@@ -25,6 +25,9 @@ The file is ignored by Git. If credentials from an earlier example file were
 real, rotate them because removing them from the current file does not remove
 them from Git history.
 
+Keep `DATABASE_SSL=false` for local PostgreSQL. Set it to `true` when using a
+hosted database such as Supabase so database traffic is encrypted.
+
 `CORS_ALLOWED_ORIGINS` is a comma-separated list of frontend origins that may
 call FastAPI directly from a browser. The example permits the local Next.js
 development URLs. Add the exact deployed frontend origin for deployment; do not

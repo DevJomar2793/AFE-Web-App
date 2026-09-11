@@ -15,10 +15,10 @@ class Settings(BaseSettings):
     database_name: str
     database_user: str
     database_password: SecretStr
+    database_ssl: bool = False
     cors_allowed_origins: str = (
-        "https://adamosfresheggs.vercel.app",
-        "http://localhost:3000,http://127.0.0.1:3000",
-        
+        "http://localhost:3000,http://127.0.0.1:3000,"
+        "https://adamosfresheggs.vercel.app"
     )
 
     model_config = SettingsConfigDict(
@@ -38,6 +38,12 @@ class Settings(BaseSettings):
             port=self.database_port,
             database=self.database_name,
         )
+
+    @property
+    def database_connect_args(self) -> dict[str, str]:
+        if self.database_ssl:
+            return {"ssl": "require"}
+        return {}
 
     @property
     def cors_origins(self) -> list[str]:

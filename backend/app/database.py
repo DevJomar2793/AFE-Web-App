@@ -14,7 +14,11 @@ class Base(DeclarativeBase):
     """Base class for application database models."""
 
 
-engine = create_async_engine(settings.database_url, pool_pre_ping=True)
+engine = create_async_engine(
+    settings.database_url,
+    connect_args=settings.database_connect_args,
+    pool_pre_ping=True,
+)
 async_session_factory = async_sessionmaker(
     bind=engine,
     class_=AsyncSession,
