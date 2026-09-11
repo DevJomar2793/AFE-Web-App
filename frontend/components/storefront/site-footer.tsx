@@ -2,6 +2,7 @@ import { Mail } from "lucide-react";
 import { BrandMark } from "@/components/storefront/brand-mark";
 import { ContactForm } from "@/components/storefront/contact-form";
 import { contactEmail } from "@/components/storefront/data";
+import { FadeIn } from "@/components/storefront/fade-in";
 
 const emailSteps = [
   {
@@ -33,7 +34,7 @@ export function SiteFooter() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(245,189,120,0.12),transparent_34%)]" />
 
         <div className="relative mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-start lg:gap-20">
-          <div>
+          <FadeIn>
             <p className="eyebrow text-[#f5bd78]">Contact the farm</p>
             <h2 className="section-title mt-4 max-w-xl text-white">
               Let&apos;s talk about your next order.
@@ -81,11 +82,11 @@ export function SiteFooter() {
                 </li>
               ))}
             </ol>
-          </div>
+          </FadeIn>
 
-          <div>
+          <FadeIn delay={100}>
             <ContactForm contactEmail={contactEmail} />
-          </div>
+          </FadeIn>
         </div>
       </section>
 

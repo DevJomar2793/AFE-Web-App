@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 import { products, type Product } from "@/components/storefront/data";
+import { FadeIn } from "@/components/storefront/fade-in";
 
 type ProductCardProps = {
   product: Product;
@@ -37,7 +38,7 @@ export function ProductsSection() {
       className="section-shell scroll-mt-24 border-t border-[#e1ddd2] bg-white"
     >
       <div className="mx-auto max-w-7xl">
-        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        <FadeIn className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div className="max-w-2xl">
             <p className="eyebrow">Our products</p>
             <h2 className="section-title mt-4">
@@ -51,11 +52,13 @@ export function ProductsSection() {
           <a className="text-link" href="#contact">
             Ask about availability <ArrowRight aria-hidden="true" size={17} />
           </a>
-        </div>
+        </FadeIn>
 
         <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {products.map((product) => (
-            <ProductCard key={product.name} product={product} />
+          {products.map((product, index) => (
+            <FadeIn key={product.name} delay={index * 100}>
+              <ProductCard product={product} />
+            </FadeIn>
           ))}
         </div>
       </div>

@@ -194,6 +194,19 @@ html {
   color: #fffaf0;
 }
 
+.fade-in {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 700ms ease,
+    transform 700ms ease;
+}
+
+.fade-in-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .hero-ken-burns {
   animation: hero-ken-burns 16s ease-out both;
 }
@@ -304,4 +317,8 @@ html {
     transition-duration: 1ms !important;
   }
 
+  .fade-in {
+    opacity: 1;
+    transform: none;
+  }
 }
