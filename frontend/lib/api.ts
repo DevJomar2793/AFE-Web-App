@@ -198,6 +198,14 @@ export async function updateSale(
   return parseSale(response);
 }
 
+export async function deleteSale(saleId: number): Promise<void> {
+  await apiRequest(
+    `/api/v1/sales/${saleId}`,
+    { method: "DELETE" },
+    "The sale could not be removed.",
+  );
+}
+
 export async function getReturns(
   signal?: AbortSignal,
 ): Promise<InventoryReturn[]> {
@@ -243,7 +251,8 @@ async function apiRequest(
       ...options.headers,
     },
   });
-  const responseBody: unknown = await response.json();
+  const responseBody: unknown =
+    response.status === 204 ? null : await response.json();
 
   if (!response.ok) {
     throw new Error(getApiErrorMessage(responseBody, fallbackMessage));

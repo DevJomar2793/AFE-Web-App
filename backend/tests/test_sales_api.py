@@ -459,3 +459,65 @@ async def test_update_sale_rejects_invalid_data(
 ) -> None:
     response = await client.patch("/api/v1/sales/1", json=payload)
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_delete_sale_restores_inventory_and_removes_transaction(
+    client: AsyncClient,
+    inventory_item: Inventory,
+    second_inventory_item: Inventory,
+) -> None:
+    create_response = await client.post(
+        "/api/v1/sales/add-sales-batch",
+        json={
+            "customer_name": "Customer",
+            "items": [
+                {"inventory_id": inventory_item.id, "quantity": 10},
+                {"inventory_id": second_inventory_item.id, "quantity": 3},
+            ],
+        },
+    )
+    sale_id = create_response.json()["id"]
+
+    response = await client.delete(f"/api/v1/sales/{sale_id}")
+
+    assert response.status_code == 204
+    assert response.content == b""
+
+    async with async_session_factory() as session:
+        stored_sale = await session.get(Sale, sale_id)
+        stored_sale_items = list(
+            (
+                await session.scalars(
+                    select(SaleItem).where(SaleItem.sale_id == sale_id),
+                )
+            ).all(),
+        )
+        first_inventory = await session.get(Inventory, inventory_item.id)
+        second_inventory = await session.get(Inventory, second_inventory_item.id)
+
+    assert stored_sale is None
+    assert stored_sale_items == []
+    assert first_inventory is not None
+    assert first_inventory.quantity == 10
+    assert first_inventory.status == InventoryStatus.IN_STOCK
+    assert second_inventory is not None
+    assert second_inventory.quantity == 20
+    assert second_inventory.status == InventoryStatus.LOW_STOCK
+
+
+@pytest.mark.asyncio
+async def test_delete_missing_sale_leaves_inventory_unchanged(
+    client: AsyncClient,
+    inventory_item: Inventory,
+) -> None:
+    response = await client.delete("/api/v1/sales/2147483647")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Sale not found"
+
+    async with async_session_factory() as session:
+        stored_inventory = await session.get(Inventory, inventory_item.id)
+
+    assert stored_inventory is not None
+    assert stored_inventory.quantity == 10

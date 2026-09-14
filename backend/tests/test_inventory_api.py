@@ -346,6 +346,7 @@ async def test_cors_allows_local_frontend(client: AsyncClient) -> None:
         "http://localhost:3000"
     )
     assert "POST" in response.headers["access-control-allow-methods"]
+    assert "DELETE" in response.headers["access-control-allow-methods"]
 
 
 @pytest.mark.asyncio

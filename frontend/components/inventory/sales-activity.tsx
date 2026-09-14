@@ -11,6 +11,7 @@ import {
   RotateCcw,
   Search,
   SlidersHorizontal,
+  Trash2,
   X,
 } from "lucide-react";
 import { useRef, useState } from "react";
@@ -22,8 +23,10 @@ type SalesActivityProps = {
   error: string;
   isLoading: boolean;
   onEdit: (sale: Sale) => void;
+  onRemove: (sale: Sale) => void;
   onAddSale: () => void;
   onRetry: () => void;
+  removingSaleId: number | null;
   transactionRange: TransactionRange;
   onTransactionRangeChange: (range: TransactionRange) => void;
 };
@@ -33,8 +36,10 @@ export function SalesActivity({
   error,
   isLoading,
   onEdit,
+  onRemove,
   onAddSale,
   onRetry,
+  removingSaleId,
   transactionRange,
   onTransactionRangeChange,
 }: SalesActivityProps) {
@@ -300,7 +305,14 @@ export function SalesActivity({
 
         {selectedSales.length ? (
           selectedSales.map((sale) => (
-            <SaleActivityRow key={sale.id} sale={sale} onEdit={onEdit} />
+            <SaleActivityRow
+              key={sale.id}
+              sale={sale}
+              onEdit={onEdit}
+              onRemove={onRemove}
+              isRemoving={removingSaleId === sale.id}
+              isRemoveDisabled={removingSaleId !== null}
+            />
           ))
         ) : (
           <p className="p-10 text-center text-sm font-semibold text-[#7c867e]">
@@ -319,9 +331,15 @@ export function SalesActivity({
 function SaleActivityRow({
   sale,
   onEdit,
+  onRemove,
+  isRemoving,
+  isRemoveDisabled,
 }: {
   sale: Sale;
   onEdit: (sale: Sale) => void;
+  onRemove: (sale: Sale) => void;
+  isRemoving: boolean;
+  isRemoveDisabled: boolean;
 }) {
   const totalQuantity = sale.items.reduce(
     (total, item) => total + item.quantity,
@@ -369,15 +387,30 @@ function SaleActivityRow({
           {formatActivityDate(sale.createdAt)}
         </p>
       </div>
-      <button
-        type="button"
-        aria-label={`Edit sale ${sale.id} for ${sale.customerName}`}
-        onClick={() => onEdit(sale)}
-        className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#cfd8cd] bg-white px-3 text-xs font-black text-[#173b24] hover:bg-[#f8faf7]"
-      >
-        <Pencil size={14} aria-hidden="true" />
-        <span className="hidden sm:inline">Edit</span>
-      </button>
+      <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+        <button
+          type="button"
+          aria-label={`Edit sale ${sale.id} for ${sale.customerName}`}
+          onClick={() => onEdit(sale)}
+          disabled={isRemoving}
+          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[#cfd8cd] bg-white px-3 text-xs font-black text-[#173b24] hover:bg-[#f8faf7] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Pencil size={14} aria-hidden="true" />
+          <span className="hidden sm:inline">Edit</span>
+        </button>
+        <button
+          type="button"
+          aria-label={`Remove sale ${sale.id} for ${sale.customerName}`}
+          onClick={() => onRemove(sale)}
+          disabled={isRemoveDisabled}
+          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[#e8c7bc] bg-white px-3 text-xs font-black text-[#9b431f] hover:bg-[#fff0e8] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Trash2 size={14} aria-hidden="true" />
+          <span className="hidden sm:inline">
+            {isRemoving ? "Removing..." : "Remove"}
+          </span>
+        </button>
+      </div>
     </div>
   );
 }

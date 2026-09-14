@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -282,6 +282,72 @@ async def update_sale(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to update sale",
+        ) from error
+
+
+@router.delete(
+    "/{sale_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove a sale transaction and restore its inventory",
+    responses={
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Sale or inventory item not found",
+        },
+    },
+)
+async def delete_sale(
+    sale_id: int,
+    session: DatabaseSession,
+) -> Response:
+    try:
+        sale = await session.scalar(
+            select(Sale).where(Sale.id == sale_id).with_for_update(),
+        )
+        if sale is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Sale not found",
+            )
+
+        sale_items_result = await session.scalars(
+            select(SaleItem)
+            .where(SaleItem.sale_id == sale_id)
+            .order_by(SaleItem.id)
+            .with_for_update(),
+        )
+        sale_items = list(sale_items_result.all())
+        inventory_ids = sorted({item.inventory_id for item in sale_items})
+
+        inventory_result = await session.scalars(
+            select(Inventory)
+            .where(Inventory.id.in_(inventory_ids))
+            .order_by(Inventory.id)
+            .with_for_update(),
+        )
+        inventory_by_id = {item.id: item for item in inventory_result.all()}
+        if len(inventory_by_id) != len(inventory_ids):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="One or more inventory items were not found",
+            )
+
+        for sale_item in sale_items:
+            inventory_item = inventory_by_id[sale_item.inventory_id]
+            inventory_item.quantity += sale_item.quantity
+            update_inventory_status(inventory_item)
+
+        await session.delete(sale)
+        await session.commit()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except HTTPException:
+        await session.rollback()
+        raise
+    except SQLAlchemyError as error:
+        await session.rollback()
+        logger.exception("Failed to delete sale")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to remove sale",
         ) from error
 
 

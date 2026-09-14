@@ -35,7 +35,8 @@ and leave item names, return counts, and historical sales unchanged.
 The backend stores one sale transaction per customer purchase. A sale can have
 multiple item lines, and each line keeps its own unit-price snapshot. Creating
 or editing a sale adjusts every linked inventory quantity atomically through
-the sales API.
+the sales API. Removing a sale returns every sold quantity to inventory before
+deleting the transaction.
 
 Returns are available through `GET /api/v1/returns/get-returns` and
 `POST /api/v1/returns/add-returns`. Recording a return stores its customer and

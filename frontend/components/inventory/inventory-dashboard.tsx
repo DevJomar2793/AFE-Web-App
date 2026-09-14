@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, TriangleAlert } from "lucide-react";
+import { CheckCircle2, Trash2, TriangleAlert, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AddInventoryItemModal } from "@/components/inventory/add-inventory-item-modal";
 import { EditInventoryItemModal } from "@/components/inventory/edit-inventory-item-modal";
@@ -21,7 +21,7 @@ import { NewSaleModal } from "@/components/inventory/new-sale-modal";
 import { InventoryOverview } from "@/components/inventory/overview";
 import { ReturnsList } from "@/components/inventory/returns-list";
 import { SalesActivity } from "@/components/inventory/sales-activity";
-import type { InventoryItem, Sale } from "@/lib/api";
+import { deleteSale, type InventoryItem, type Sale } from "@/lib/api";
 
 type Notice = {
   message: string;
@@ -39,6 +39,9 @@ export function InventoryDashboard() {
   const [editingInventoryItem, setEditingInventoryItem] =
     useState<InventoryItem | null>(null);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
+  const [saleToRemove, setSaleToRemove] = useState<Sale | null>(null);
+  const [removingSaleId, setRemovingSaleId] = useState<number | null>(null);
+  const [removeSaleError, setRemoveSaleError] = useState("");
   const [saleInventoryItemId, setSaleInventoryItemId] = useState<number>();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -132,6 +135,32 @@ export function InventoryDashboard() {
     });
   };
 
+  const handleSaleRemoved = async () => {
+    if (!saleToRemove || removingSaleId !== null) return;
+
+    setRemovingSaleId(saleToRemove.id);
+    setRemoveSaleError("");
+
+    try {
+      await deleteSale(saleToRemove.id);
+      setSaleToRemove(null);
+      retryInventory();
+      retrySales();
+      setNotice({
+        message: "Sale removed and inventory restored.",
+        tone: "success",
+      });
+    } catch (removeError) {
+      setRemoveSaleError(
+        removeError instanceof Error
+          ? removeError.message
+          : "The sale could not be removed.",
+      );
+    } finally {
+      setRemovingSaleId(null);
+    }
+  };
+
   const handleReturnCreated = () => {
     setIsNewReturnOpen(false);
     retryInventory();
@@ -208,7 +237,12 @@ export function InventoryDashboard() {
               isLoading={areSalesLoading}
               onAddSale={() => openNewSale()}
               onEdit={setEditingSale}
+              onRemove={(sale) => {
+                setSaleToRemove(sale);
+                setRemoveSaleError("");
+              }}
               onRetry={retrySales}
+              removingSaleId={removingSaleId}
               transactionRange={transactionRange}
               onTransactionRangeChange={setTransactionRange}
             />
@@ -237,6 +271,19 @@ export function InventoryDashboard() {
       />
 
       {notice && <InventoryNotice notice={notice} />}
+
+      {saleToRemove && (
+        <RemoveSaleConfirmationModal
+          sale={saleToRemove}
+          error={removeSaleError}
+          isRemoving={removingSaleId === saleToRemove.id}
+          onClose={() => {
+            setSaleToRemove(null);
+            setRemoveSaleError("");
+          }}
+          onConfirm={() => void handleSaleRemoved()}
+        />
+      )}
 
       {isNewSaleOpen && (
         <NewSaleModal
@@ -285,6 +332,104 @@ export function InventoryDashboard() {
           onCreated={handleInventoryItemCreated}
         />
       )}
+    </div>
+  );
+}
+
+function RemoveSaleConfirmationModal({
+  sale,
+  error,
+  isRemoving,
+  onClose,
+  onConfirm,
+}: {
+  sale: Sale;
+  error: string;
+  isRemoving: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const totalQuantity = sale.items.reduce(
+    (total, item) => total + item.quantity,
+    0,
+  );
+  const unitLabel = totalQuantity === 1 ? "unit" : "units";
+
+  return (
+    <div
+      className="fixed inset-0 z-90 flex items-end justify-center bg-[#0d2417]/55 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+      role="presentation"
+      onMouseDown={() => {
+        if (!isRemoving) onClose();
+      }}
+    >
+      <section
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="remove-sale-title"
+        aria-describedby="remove-sale-description"
+        className="w-full max-w-md rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl sm:p-7"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[#fff0e8] text-[#9b431f]">
+            <Trash2 size={21} aria-hidden="true" />
+          </span>
+          <button
+            type="button"
+            aria-label="Close remove sale confirmation"
+            onClick={onClose}
+            disabled={isRemoving}
+            className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#dfe4dd] text-[#566159] hover:bg-[#f3f5f1] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <X size={19} aria-hidden="true" />
+          </button>
+        </div>
+
+        <h2
+          id="remove-sale-title"
+          className="mt-5 text-2xl font-black text-[#17281b]"
+        >
+          Remove sale #{sale.id}?
+        </h2>
+        <p
+          id="remove-sale-description"
+          className="mt-2 text-sm leading-6 text-[#6d776f]"
+        >
+          This will remove the sale for <strong>{sale.customerName}</strong> and
+          return {totalQuantity} {unitLabel} to inventory. This action cannot be
+          undone.
+        </p>
+
+        {error && (
+          <p
+            role="alert"
+            className="mt-4 rounded-xl bg-[#fff0e8] px-4 py-3 text-sm font-bold text-[#9b431f]"
+          >
+            {error}
+          </p>
+        )}
+
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isRemoving}
+            className="h-12 rounded-xl border border-[#cfd8cd] bg-white px-4 text-sm font-black text-[#173b24] hover:bg-[#f8faf7] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isRemoving}
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#9b431f] px-4 text-sm font-black text-white hover:bg-[#803719] disabled:cursor-wait disabled:opacity-70"
+          >
+            <Trash2 size={17} aria-hidden="true" />
+            {isRemoving ? "Removing..." : "Remove sale"}
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
