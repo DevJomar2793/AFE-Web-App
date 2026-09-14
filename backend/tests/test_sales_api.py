@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from sqlalchemy import delete, select
 
 from app.database import async_session_factory
-from app.models import Inventory, InventoryStatus, Sale
+from app.models import Inventory, InventoryStatus, Sale, SaleItem
 
 
 @pytest.fixture
@@ -25,20 +25,17 @@ async def inventory_item() -> AsyncIterator[Inventory]:
         await session.refresh(item)
 
     yield item
-
-    async with async_session_factory() as session:
-        await session.execute(delete(Sale).where(Sale.inventory_id == item.id))
-        await session.execute(delete(Inventory).where(Inventory.id == item.id))
-        await session.commit()
+    await remove_inventory_test_data(item.id)
 
 
 @pytest.fixture
-async def unrelated_inventory_item() -> AsyncIterator[Inventory]:
+async def second_inventory_item() -> AsyncIterator[Inventory]:
     async with async_session_factory() as session:
         item = Inventory(
-            item="__unrelated_sale_inventory_test__",
+            item="__second_sale_inventory_test__",
             quantity=20,
             price=Decimal("180.00"),
+            wholesale_price=Decimal("150.00"),
             status=InventoryStatus.LOW_STOCK,
         )
         session.add(item)
@@ -46,15 +43,23 @@ async def unrelated_inventory_item() -> AsyncIterator[Inventory]:
         await session.refresh(item)
 
     yield item
+    await remove_inventory_test_data(item.id)
 
+
+async def remove_inventory_test_data(inventory_id: int) -> None:
     async with async_session_factory() as session:
-        await session.execute(delete(Sale).where(Sale.inventory_id == item.id))
-        await session.execute(delete(Inventory).where(Inventory.id == item.id))
+        sale_ids = await session.scalars(
+            select(SaleItem.sale_id).where(SaleItem.inventory_id == inventory_id),
+        )
+        stored_sale_ids = list(sale_ids.all())
+        if stored_sale_ids:
+            await session.execute(delete(Sale).where(Sale.id.in_(stored_sale_ids)))
+        await session.execute(delete(Inventory).where(Inventory.id == inventory_id))
         await session.commit()
 
 
 @pytest.mark.asyncio
-async def test_create_sale_deducts_inventory(
+async def test_create_single_item_sale_transaction(
     client: AsyncClient,
     inventory_item: Inventory,
 ) -> None:
@@ -62,563 +67,395 @@ async def test_create_sale_deducts_inventory(
         "/api/v1/sales/add-sales",
         json={
             "inventory_id": inventory_item.id,
-            "quantity": 3,
+            "quantity": 2,
             "customer_name": "  Maria Santos  ",
         },
     )
 
     assert response.status_code == 201
     sale_data = response.json()
-    assert sale_data["inventory_id"] == inventory_item.id
-    assert sale_data["item"] == {
-        "id": inventory_item.id,
-        "item": inventory_item.item,
-    }
-    assert sale_data["quantity"] == 3
-    assert Decimal(sale_data["price"]) == inventory_item.price
     assert sale_data["customer_name"] == "Maria Santos"
+    assert len(sale_data["items"]) == 1
+    assert sale_data["items"][0]["inventory_id"] == inventory_item.id
+    assert sale_data["items"][0]["quantity"] == 2
+    assert Decimal(sale_data["items"][0]["price"]) == Decimal("250.00")
 
     async with async_session_factory() as session:
         stored_sale = await session.get(Sale, sale_data["id"])
         stored_item = await session.get(Inventory, inventory_item.id)
+        sale_items = await session.scalars(
+            select(SaleItem).where(SaleItem.sale_id == sale_data["id"]),
+        )
 
     assert stored_sale is not None
     assert stored_item is not None
-    assert stored_item.quantity == 7
-    assert stored_item.status == InventoryStatus.IN_STOCK
+    assert stored_item.quantity == 8
+    assert len(list(sale_items.all())) == 1
 
 
 @pytest.mark.asyncio
-async def test_create_sale_batch_saves_all_items_and_deducts_inventory(
+async def test_create_multi_item_purchase_creates_one_sale(
     client: AsyncClient,
     inventory_item: Inventory,
-    unrelated_inventory_item: Inventory,
+    second_inventory_item: Inventory,
 ) -> None:
     response = await client.post(
         "/api/v1/sales/add-sales-batch",
         json={
-            "customer_name": "  Maria Santos  ",
+            "customer_name": "John",
             "items": [
-                {"inventory_id": inventory_item.id, "quantity": 6},
-                {"inventory_id": unrelated_inventory_item.id, "quantity": 3},
+                {"inventory_id": inventory_item.id, "quantity": 2},
+                {"inventory_id": second_inventory_item.id, "quantity": 3},
             ],
         },
     )
 
     assert response.status_code == 201
-    sales = response.json()
-    assert [sale["inventory_id"] for sale in sales] == [
-        inventory_item.id,
-        unrelated_inventory_item.id,
-    ]
-    assert [sale["customer_name"] for sale in sales] == [
-        "Maria Santos",
-        "Maria Santos",
-    ]
-    assert Decimal(sales[0]["price"]) == Decimal("200.00")
-    assert Decimal(sales[1]["price"]) == Decimal("180.00")
+    sale_data = response.json()
+    assert sale_data["customer_name"] == "John"
+    assert len(sale_data["items"]) == 2
 
     async with async_session_factory() as session:
-        first_stored_item = await session.get(Inventory, inventory_item.id)
-        second_stored_item = await session.get(
-            Inventory,
-            unrelated_inventory_item.id,
+        sales = list((await session.scalars(select(Sale))).all())
+        sale_items = list(
+            (
+                await session.scalars(
+                    select(SaleItem).where(SaleItem.sale_id == sale_data["id"]),
+                )
+            ).all(),
         )
+        first_inventory = await session.get(Inventory, inventory_item.id)
+        second_inventory = await session.get(Inventory, second_inventory_item.id)
 
-    assert first_stored_item is not None
-    assert second_stored_item is not None
-    assert first_stored_item.quantity == 4
-    assert second_stored_item.quantity == 17
+    matching_sales = [sale for sale in sales if sale.id == sale_data["id"]]
+    assert len(matching_sales) == 1
+    assert len(sale_items) == 2
+    assert first_inventory is not None
+    assert first_inventory.quantity == 8
+    assert second_inventory is not None
+    assert second_inventory.quantity == 17
 
 
 @pytest.mark.asyncio
-async def test_sale_batch_rolls_back_when_one_item_has_insufficient_stock(
+async def test_create_sale_uses_wholesale_price_per_item(
     client: AsyncClient,
     inventory_item: Inventory,
-    unrelated_inventory_item: Inventory,
+    second_inventory_item: Inventory,
 ) -> None:
     response = await client.post(
         "/api/v1/sales/add-sales-batch",
         json={
-            "customer_name": "Maria Santos",
+            "customer_name": "Wholesale Customer",
             "items": [
-                {"inventory_id": unrelated_inventory_item.id, "quantity": 2},
+                {"inventory_id": inventory_item.id, "quantity": 6},
+                {"inventory_id": second_inventory_item.id, "quantity": 2},
+            ],
+        },
+    )
+
+    assert response.status_code == 201
+    items_by_inventory_id = {
+        item["inventory_id"]: item for item in response.json()["items"]
+    }
+    assert Decimal(items_by_inventory_id[inventory_item.id]["price"]) == Decimal(
+        "200.00",
+    )
+    assert Decimal(
+        items_by_inventory_id[second_inventory_item.id]["price"],
+    ) == Decimal("180.00")
+
+
+@pytest.mark.asyncio
+async def test_batch_failure_rolls_back_sale_and_inventory(
+    client: AsyncClient,
+    inventory_item: Inventory,
+    second_inventory_item: Inventory,
+) -> None:
+    response = await client.post(
+        "/api/v1/sales/add-sales-batch",
+        json={
+            "customer_name": "Customer",
+            "items": [
+                {"inventory_id": inventory_item.id, "quantity": 2},
+                {"inventory_id": second_inventory_item.id, "quantity": 21},
+            ],
+        },
+    )
+
+    assert response.status_code == 409
+    async with async_session_factory() as session:
+        first_inventory = await session.get(Inventory, inventory_item.id)
+        second_inventory = await session.get(Inventory, second_inventory_item.id)
+        sale_items = list(
+            (
+                await session.scalars(
+                    select(SaleItem).where(
+                        SaleItem.inventory_id.in_(
+                            [inventory_item.id, second_inventory_item.id],
+                        ),
+                    ),
+                )
+            ).all(),
+        )
+
+    assert first_inventory is not None
+    assert first_inventory.quantity == 10
+    assert second_inventory is not None
+    assert second_inventory.quantity == 20
+    assert sale_items == []
+
+
+@pytest.mark.asyncio
+async def test_batch_rejects_missing_and_duplicate_items(
+    client: AsyncClient,
+    inventory_item: Inventory,
+) -> None:
+    missing_response = await client.post(
+        "/api/v1/sales/add-sales-batch",
+        json={
+            "customer_name": "Customer",
+            "items": [
+                {"inventory_id": inventory_item.id, "quantity": 1},
+                {"inventory_id": 2_147_483_647, "quantity": 1},
+            ],
+        },
+    )
+    duplicate_response = await client.post(
+        "/api/v1/sales/add-sales-batch",
+        json={
+            "customer_name": "Customer",
+            "items": [
+                {"inventory_id": inventory_item.id, "quantity": 1},
+                {"inventory_id": inventory_item.id, "quantity": 2},
+            ],
+        },
+    )
+
+    assert missing_response.status_code == 404
+    assert duplicate_response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_get_sales_returns_one_transaction_with_all_items(
+    client: AsyncClient,
+    inventory_item: Inventory,
+    second_inventory_item: Inventory,
+) -> None:
+    create_response = await client.post(
+        "/api/v1/sales/add-sales-batch",
+        json={
+            "customer_name": "Customer",
+            "items": [
+                {"inventory_id": inventory_item.id, "quantity": 1},
+                {"inventory_id": second_inventory_item.id, "quantity": 2},
+            ],
+        },
+    )
+
+    response = await client.get("/api/v1/sales/get-sales")
+
+    assert response.status_code == 200
+    matching_sales = [
+        sale for sale in response.json() if sale["id"] == create_response.json()["id"]
+    ]
+    assert len(matching_sales) == 1
+    assert len(matching_sales[0]["items"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_update_sale_adjusts_every_inventory_quantity_and_price(
+    client: AsyncClient,
+    inventory_item: Inventory,
+    second_inventory_item: Inventory,
+) -> None:
+    create_response = await client.post(
+        "/api/v1/sales/add-sales-batch",
+        json={
+            "customer_name": "Customer",
+            "items": [
+                {"inventory_id": inventory_item.id, "quantity": 2},
+                {"inventory_id": second_inventory_item.id, "quantity": 3},
+            ],
+        },
+    )
+    sale_data = create_response.json()
+    items_by_inventory_id = {
+        item["inventory_id"]: item for item in sale_data["items"]
+    }
+
+    response = await client.patch(
+        f"/api/v1/sales/{sale_data['id']}",
+        json={
+            "items": [
                 {
-                    "inventory_id": inventory_item.id,
-                    "quantity": inventory_item.quantity + 1,
+                    "id": items_by_inventory_id[inventory_item.id]["id"],
+                    "quantity": 4,
+                    "price": 300.50,
+                },
+                {
+                    "id": items_by_inventory_id[second_inventory_item.id]["id"],
+                    "quantity": 1,
+                    "price": 175,
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    updated_items = {
+        item["inventory_id"]: item for item in response.json()["items"]
+    }
+    assert updated_items[inventory_item.id]["quantity"] == 4
+    assert updated_items[second_inventory_item.id]["quantity"] == 1
+
+    async with async_session_factory() as session:
+        first_inventory = await session.get(Inventory, inventory_item.id)
+        second_inventory = await session.get(Inventory, second_inventory_item.id)
+
+    assert first_inventory is not None
+    assert first_inventory.quantity == 6
+    assert first_inventory.price == Decimal("300.50")
+    assert second_inventory is not None
+    assert second_inventory.quantity == 19
+    assert second_inventory.price == Decimal("175.00")
+
+
+@pytest.mark.asyncio
+async def test_update_sale_rejects_changed_item_list(
+    client: AsyncClient,
+    inventory_item: Inventory,
+) -> None:
+    create_response = await client.post(
+        "/api/v1/sales/add-sales",
+        json={
+            "inventory_id": inventory_item.id,
+            "quantity": 2,
+            "customer_name": "Customer",
+        },
+    )
+    sale_data = create_response.json()
+
+    response = await client.patch(
+        f"/api/v1/sales/{sale_data['id']}",
+        json={"items": [{"id": 2_147_483_647, "quantity": 1, "price": 250}]},
+    )
+
+    assert response.status_code == 422
+    async with async_session_factory() as session:
+        stored_inventory = await session.get(Inventory, inventory_item.id)
+    assert stored_inventory is not None
+    assert stored_inventory.quantity == 8
+
+
+@pytest.mark.asyncio
+async def test_insufficient_stock_update_rolls_back_all_items(
+    client: AsyncClient,
+    inventory_item: Inventory,
+    second_inventory_item: Inventory,
+) -> None:
+    create_response = await client.post(
+        "/api/v1/sales/add-sales-batch",
+        json={
+            "customer_name": "Customer",
+            "items": [
+                {"inventory_id": inventory_item.id, "quantity": 2},
+                {"inventory_id": second_inventory_item.id, "quantity": 2},
+            ],
+        },
+    )
+    sale_data = create_response.json()
+
+    response = await client.patch(
+        f"/api/v1/sales/{sale_data['id']}",
+        json={
+            "items": [
+                {
+                    "id": sale_data["items"][0]["id"],
+                    "quantity": 11,
+                    "price": 300,
+                },
+                {
+                    "id": sale_data["items"][1]["id"],
+                    "quantity": 1,
+                    "price": 170,
                 },
             ],
         },
     )
 
     assert response.status_code == 409
-
     async with async_session_factory() as session:
-        first_stored_item = await session.get(Inventory, inventory_item.id)
-        second_stored_item = await session.get(
-            Inventory,
-            unrelated_inventory_item.id,
-        )
-        stored_sales = await session.scalars(
-            select(Sale).where(
-                Sale.inventory_id.in_(
-                    [inventory_item.id, unrelated_inventory_item.id],
-                ),
-            ),
+        first_inventory = await session.get(Inventory, inventory_item.id)
+        second_inventory = await session.get(Inventory, second_inventory_item.id)
+        stored_items = list(
+            (
+                await session.scalars(
+                    select(SaleItem).where(SaleItem.sale_id == sale_data["id"]),
+                )
+            ).all(),
         )
 
-    assert first_stored_item is not None
-    assert second_stored_item is not None
-    assert first_stored_item.quantity == 10
-    assert second_stored_item.quantity == 20
-    assert list(stored_sales.all()) == []
+    assert first_inventory is not None
+    assert first_inventory.quantity == 8
+    assert first_inventory.price == Decimal("250.00")
+    assert second_inventory is not None
+    assert second_inventory.quantity == 18
+    assert second_inventory.price == Decimal("180.00")
+    assert sorted(item.quantity for item in stored_items) == [2, 2]
 
 
 @pytest.mark.asyncio
-async def test_sale_batch_rolls_back_when_one_item_is_missing(
+async def test_concurrent_sales_do_not_oversell_inventory(
     client: AsyncClient,
     inventory_item: Inventory,
 ) -> None:
-    response = await client.post(
-        "/api/v1/sales/add-sales-batch",
-        json={
-            "customer_name": "Maria Santos",
-            "items": [
-                {"inventory_id": inventory_item.id, "quantity": 2},
-                {"inventory_id": 2_147_483_647, "quantity": 1},
-            ],
-        },
-    )
-
-    assert response.status_code == 404
-
-    async with async_session_factory() as session:
-        stored_item = await session.get(Inventory, inventory_item.id)
-        stored_sales = await session.scalars(
-            select(Sale).where(Sale.inventory_id == inventory_item.id),
-        )
-
-    assert stored_item is not None
-    assert stored_item.quantity == 10
-    assert list(stored_sales.all()) == []
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "payload",
-    [
-        {"customer_name": "Customer", "items": []},
-        {
-            "customer_name": "Customer",
-            "items": [
-                {"inventory_id": 1, "quantity": 1},
-                {"inventory_id": 1, "quantity": 2},
-            ],
-        },
-        {
-            "customer_name": "Customer",
-            "items": [{"inventory_id": 1, "quantity": 0}],
-        },
-        {
-            "customer_name": "   ",
-            "items": [{"inventory_id": 1, "quantity": 1}],
-        },
-    ],
-)
-async def test_create_sale_batch_rejects_invalid_data(
-    client: AsyncClient,
-    payload: dict[str, object],
-) -> None:
-    response = await client.post("/api/v1/sales/add-sales-batch", json=payload)
-    assert response.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_sale_of_six_or_more_uses_wholesale_price(
-    client: AsyncClient,
-    inventory_item: Inventory,
-) -> None:
-    response = await client.post(
-        "/api/v1/sales/add-sales",
-        json={
-            "inventory_id": inventory_item.id,
-            "quantity": 6,
-            "customer_name": "Wholesale Customer",
-        },
-    )
-
-    assert response.status_code == 201
-    assert Decimal(response.json()["price"]) == Decimal("200.00")
-
-    async with async_session_factory() as session:
-        stored_item = await session.get(Inventory, inventory_item.id)
-
-    assert stored_item is not None
-    assert stored_item.price == Decimal("250.00")
-    assert stored_item.quantity == 4
-
-
-@pytest.mark.asyncio
-async def test_sale_of_remaining_stock_marks_item_out_of_stock(
-    client: AsyncClient,
-    inventory_item: Inventory,
-) -> None:
-    response = await client.post(
-        "/api/v1/sales/add-sales",
-        json={
-            "inventory_id": inventory_item.id,
-            "quantity": inventory_item.quantity,
-            "customer_name": "Ana Reyes",
-        },
-    )
-
-    assert response.status_code == 201
-
-    async with async_session_factory() as session:
-        stored_item = await session.get(Inventory, inventory_item.id)
-
-    assert stored_item is not None
-    assert stored_item.quantity == 0
-    assert stored_item.status == InventoryStatus.OUT_OF_STOCK
-
-
-@pytest.mark.asyncio
-async def test_list_sales_returns_newest_first_with_item_details(
-    client: AsyncClient,
-    inventory_item: Inventory,
-) -> None:
-    first_response = await client.post(
-        "/api/v1/sales/add-sales",
-        json={
-            "inventory_id": inventory_item.id,
-            "quantity": 1,
-            "customer_name": "First Customer",
-        },
-    )
-    second_response = await client.post(
-        "/api/v1/sales/add-sales",
-        json={
-            "inventory_id": inventory_item.id,
-            "quantity": 1,
-            "customer_name": "Second Customer",
-        },
-    )
-    assert first_response.status_code == 201
-    assert second_response.status_code == 201
-
-    response = await client.get("/api/v1/sales/get-sales")
-
-    assert response.status_code == 200
-    sales = response.json()
-    sale_ids = [sale["id"] for sale in sales]
-    first_id = first_response.json()["id"]
-    second_id = second_response.json()["id"]
-    assert sale_ids.index(second_id) < sale_ids.index(first_id)
-    second_sale = next(sale for sale in sales if sale["id"] == second_id)
-    assert second_sale["item"]["item"] == inventory_item.item
-    assert Decimal(second_sale["price"]) == inventory_item.price
-
-
-@pytest.mark.asyncio
-async def test_create_sale_rejects_unknown_inventory_item(
-    client: AsyncClient,
-) -> None:
-    response = await client.post(
-        "/api/v1/sales/add-sales",
-        json={
-            "inventory_id": 2_147_483_647,
-            "quantity": 1,
-            "customer_name": "Maria Santos",
-        },
-    )
-
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Inventory item not found"
-
-
-@pytest.mark.asyncio
-async def test_insufficient_stock_does_not_change_inventory(
-    client: AsyncClient,
-    inventory_item: Inventory,
-) -> None:
-    response = await client.post(
-        "/api/v1/sales/add-sales",
-        json={
-            "inventory_id": inventory_item.id,
-            "quantity": inventory_item.quantity + 1,
-            "customer_name": "Maria Santos",
-        },
-    )
-
-    assert response.status_code == 409
-
-    async with async_session_factory() as session:
-        stored_item = await session.get(Inventory, inventory_item.id)
-        sales = await session.scalars(
-            select(Sale).where(Sale.inventory_id == inventory_item.id),
-        )
-
-    assert stored_item is not None
-    assert stored_item.quantity == inventory_item.quantity
-    assert list(sales.all()) == []
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "payload",
-    [
-        {"inventory_id": 1, "quantity": 0, "customer_name": "Customer"},
-        {"inventory_id": 1, "quantity": -1, "customer_name": "Customer"},
-        {"inventory_id": 1, "quantity": 1.5, "customer_name": "Customer"},
-        {"inventory_id": 1, "quantity": 1, "customer_name": ""},
-        {"inventory_id": 1, "quantity": 1, "customer_name": "   "},
-        {"inventory_id": 1, "quantity": 1},
-    ],
-)
-async def test_create_sale_rejects_invalid_data(
-    client: AsyncClient,
-    payload: dict[str, object],
-) -> None:
-    response = await client.post("/api/v1/sales/add-sales", json=payload)
-    assert response.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_concurrent_sales_cannot_oversell_inventory(
-    client: AsyncClient,
-    inventory_item: Inventory,
-) -> None:
-    sale_payload = {
+    payload = {
         "inventory_id": inventory_item.id,
         "quantity": 6,
-        "customer_name": "Concurrent Customer",
+        "customer_name": "Customer",
     }
 
     first_response, second_response = await asyncio.gather(
-        client.post("/api/v1/sales/add-sales", json=sale_payload),
-        client.post("/api/v1/sales/add-sales", json=sale_payload),
+        client.post("/api/v1/sales/add-sales", json=payload),
+        client.post("/api/v1/sales/add-sales", json=payload),
     )
 
     assert sorted([first_response.status_code, second_response.status_code]) == [
         201,
         409,
     ]
-
     async with async_session_factory() as session:
-        stored_item = await session.get(Inventory, inventory_item.id)
-        sales = await session.scalars(
-            select(Sale).where(Sale.inventory_id == inventory_item.id),
+        stored_inventory = await session.get(Inventory, inventory_item.id)
+        sale_items = list(
+            (
+                await session.scalars(
+                    select(SaleItem).where(
+                        SaleItem.inventory_id == inventory_item.id,
+                    ),
+                )
+            ).all(),
         )
 
-    assert stored_item is not None
-    assert stored_item.quantity == 4
-    assert len(list(sales.all())) == 1
-
-
-@pytest.mark.asyncio
-async def test_update_sale_adjusts_inventory_by_quantity_delta_and_updates_price(
-    client: AsyncClient,
-    inventory_item: Inventory,
-    unrelated_inventory_item: Inventory,
-) -> None:
-    first_response = await client.post(
-        "/api/v1/sales/add-sales",
-        json={
-            "inventory_id": inventory_item.id,
-            "quantity": 1,
-            "customer_name": "First Customer",
-        },
-    )
-    second_response = await client.post(
-        "/api/v1/sales/add-sales",
-        json={
-            "inventory_id": inventory_item.id,
-            "quantity": 2,
-            "customer_name": "Second Customer",
-        },
-    )
-    first_sale_id = first_response.json()["id"]
-    second_sale_id = second_response.json()["id"]
-
-    response = await client.patch(
-        f"/api/v1/sales/{first_sale_id}",
-        json={"price": 300.50, "quantity": 3},
-    )
-
-    assert response.status_code == 200
-    updated_sale = response.json()
-    assert updated_sale["id"] == first_sale_id
-    assert updated_sale["quantity"] == 3
-    assert Decimal(updated_sale["price"]) == Decimal("300.50")
-
-    async with async_session_factory() as session:
-        stored_item = await session.get(Inventory, inventory_item.id)
-        first_sale = await session.get(Sale, first_sale_id)
-        second_sale = await session.get(Sale, second_sale_id)
-        unrelated_item = await session.get(
-            Inventory,
-            unrelated_inventory_item.id,
-        )
-        sales = await session.scalars(
-            select(Sale).where(Sale.inventory_id == inventory_item.id),
-        )
-
-    assert stored_item is not None
-    assert stored_item.quantity == 5
-    assert stored_item.price == Decimal("300.50")
-    assert first_sale is not None
-    assert first_sale.quantity == 3
-    assert first_sale.price == Decimal("300.50")
-    assert second_sale is not None
-    assert second_sale.quantity == 2
-    assert second_sale.price == Decimal("250.00")
-    assert unrelated_item is not None
-    assert unrelated_item.quantity == 20
-    assert unrelated_item.price == Decimal("180.00")
-    assert unrelated_item.status == InventoryStatus.LOW_STOCK
-    assert len(list(sales.all())) == 2
-
-
-@pytest.mark.asyncio
-async def test_decreasing_sale_quantity_restores_inventory_and_status(
-    client: AsyncClient,
-    inventory_item: Inventory,
-) -> None:
-    create_response = await client.post(
-        "/api/v1/sales/add-sales",
-        json={
-            "inventory_id": inventory_item.id,
-            "quantity": 10,
-            "customer_name": "Customer",
-        },
-    )
-    sale_id = create_response.json()["id"]
-
-    response = await client.patch(
-        f"/api/v1/sales/{sale_id}",
-        json={"price": 0, "quantity": 4},
-    )
-
-    assert response.status_code == 200
-    async with async_session_factory() as session:
-        stored_item = await session.get(Inventory, inventory_item.id)
-
-    assert stored_item is not None
-    assert stored_item.quantity == 6
-    assert stored_item.price == Decimal("0.00")
-    assert stored_item.status == InventoryStatus.IN_STOCK
-
-
-@pytest.mark.asyncio
-async def test_update_sale_preserves_low_stock_status(
-    client: AsyncClient,
-    inventory_item: Inventory,
-) -> None:
-    create_response = await client.post(
-        "/api/v1/sales/add-sales",
-        json={
-            "inventory_id": inventory_item.id,
-            "quantity": 2,
-            "customer_name": "Customer",
-        },
-    )
-    sale_id = create_response.json()["id"]
-    async with async_session_factory() as session:
-        stored_item = await session.get(Inventory, inventory_item.id)
-        assert stored_item is not None
-        stored_item.status = InventoryStatus.LOW_STOCK
-        await session.commit()
-
-    response = await client.patch(
-        f"/api/v1/sales/{sale_id}",
-        json={"price": 250, "quantity": 3},
-    )
-
-    assert response.status_code == 200
-    async with async_session_factory() as session:
-        stored_item = await session.get(Inventory, inventory_item.id)
-
-    assert stored_item is not None
-    assert stored_item.quantity == 7
-    assert stored_item.status == InventoryStatus.LOW_STOCK
-
-
-@pytest.mark.asyncio
-async def test_insufficient_stock_update_rolls_back_sale_and_inventory(
-    client: AsyncClient,
-    inventory_item: Inventory,
-) -> None:
-    create_response = await client.post(
-        "/api/v1/sales/add-sales",
-        json={
-            "inventory_id": inventory_item.id,
-            "quantity": 3,
-            "customer_name": "Customer",
-        },
-    )
-    sale_id = create_response.json()["id"]
-
-    response = await client.patch(
-        f"/api/v1/sales/{sale_id}",
-        json={"price": 300, "quantity": 11},
-    )
-
-    assert response.status_code == 409
-    async with async_session_factory() as session:
-        stored_item = await session.get(Inventory, inventory_item.id)
-        stored_sale = await session.get(Sale, sale_id)
-
-    assert stored_item is not None
-    assert stored_item.quantity == 7
-    assert stored_item.price == Decimal("250.00")
-    assert stored_sale is not None
-    assert stored_sale.quantity == 3
-    assert stored_sale.price == Decimal("250.00")
-
-
-@pytest.mark.asyncio
-async def test_update_sale_rejects_unknown_sale(client: AsyncClient) -> None:
-    response = await client.patch(
-        "/api/v1/sales/2147483647",
-        json={"price": 250, "quantity": 1},
-    )
-
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Sale not found"
+    assert stored_inventory is not None
+    assert stored_inventory.quantity == 4
+    assert len(sale_items) == 1
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "payload",
     [
-        {"price": 250, "quantity": 0},
-        {"price": 250, "quantity": -1},
-        {"price": 250, "quantity": 1.5},
-        {"price": -1, "quantity": 1},
-        {"price": 10.123, "quantity": 1},
-        {"price": 10_000_000_000, "quantity": 1},
-        {"quantity": 1},
-        {"price": 250},
-        {"price": 250, "quantity": 1, "customer_name": "Changed"},
+        {"items": []},
+        {"items": [{"id": 1, "quantity": 0, "price": 250}]},
+        {"items": [{"id": 1, "quantity": 1.5, "price": 250}]},
+        {"items": [{"id": 1, "quantity": 1, "price": -1}]},
+        {"items": [{"id": 1, "quantity": 1, "price": 10.123}]},
+        {"items": [{"id": 1, "quantity": 1}]},
     ],
 )
 async def test_update_sale_rejects_invalid_data(
     client: AsyncClient,
-    inventory_item: Inventory,
     payload: dict[str, object],
 ) -> None:
-    create_response = await client.post(
-        "/api/v1/sales/add-sales",
-        json={
-            "inventory_id": inventory_item.id,
-            "quantity": 1,
-            "customer_name": "Customer",
-        },
-    )
-
-    response = await client.patch(
-        f"/api/v1/sales/{create_response.json()['id']}",
-        json=payload,
-    )
-
+    response = await client.patch("/api/v1/sales/1", json=payload)
     assert response.status_code == 422

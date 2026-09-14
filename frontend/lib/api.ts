@@ -14,13 +14,18 @@ export type InventoryItem = {
 
 export type Sale = {
   id: number;
+  customerName: string;
+  items: SaleItem[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SaleItem = {
+  id: number;
   inventoryId: number;
   item: { id: number; name: string };
   quantity: number;
   price: number;
-  customerName: string;
-  createdAt: string;
-  updatedAt: string;
 };
 
 export type InventoryReturn = {
@@ -62,8 +67,11 @@ export type CreateSaleBatchInput = {
 };
 
 export type UpdateSaleInput = {
-  price: number;
-  quantity: number;
+  items: {
+    id: number;
+    price: number;
+    quantity: number;
+  }[];
 };
 
 export type CreateReturnInput = {
@@ -160,7 +168,7 @@ export async function createSale(input: CreateSaleInput): Promise<Sale> {
 
 export async function createSaleBatch(
   input: CreateSaleBatchInput,
-): Promise<Sale[]> {
+): Promise<Sale> {
   const response = await apiRequest(
     "/api/v1/sales/add-sales-batch",
     {
@@ -175,8 +183,7 @@ export async function createSaleBatch(
     },
     "The sale could not be saved.",
   );
-  if (!Array.isArray(response)) throw new Error("Invalid sale response");
-  return response.map(parseSale);
+  return parseSale(response);
 }
 
 export async function updateSale(
@@ -281,8 +288,33 @@ function parseInventoryItem(value: unknown): InventoryItem {
 }
 
 function parseSale(value: unknown): Sale {
-  if (!isRecord(value) || !isRecord(value.item)) {
+  if (!isRecord(value) || !Array.isArray(value.items)) {
     throw new Error("Invalid sale");
+  }
+
+  if (
+    !isPositiveInteger(value.id) ||
+    typeof value.customer_name !== "string" ||
+    !value.customer_name.trim() ||
+    value.items.length === 0 ||
+    !isValidDate(value.created_at) ||
+    !isValidDate(value.updated_at)
+  ) {
+    throw new Error("Invalid sale");
+  }
+
+  return {
+    id: value.id,
+    customerName: value.customer_name,
+    items: value.items.map(parseSaleItem),
+    createdAt: value.created_at,
+    updatedAt: value.updated_at,
+  };
+}
+
+function parseSaleItem(value: unknown): SaleItem {
+  if (!isRecord(value) || !isRecord(value.item)) {
+    throw new Error("Invalid sale item");
   }
   const price = parsePrice(value.price);
 
@@ -295,24 +327,20 @@ function parseSale(value: unknown): Sale {
     !value.item.item.trim() ||
     !isPositiveInteger(value.quantity) ||
     !Number.isFinite(price) ||
-    price < 0 ||
-    typeof value.customer_name !== "string" ||
-    !value.customer_name.trim() ||
-    !isValidDate(value.created_at) ||
-    !isValidDate(value.updated_at)
+    price < 0
   ) {
-    throw new Error("Invalid sale");
+    throw new Error("Invalid sale item");
   }
 
   return {
     id: value.id,
     inventoryId: value.inventory_id,
-    item: { id: value.item.id, name: value.item.item },
+    item: {
+      id: value.item.id,
+      name: value.item.item,
+    },
     quantity: value.quantity,
     price,
-    customerName: value.customer_name,
-    createdAt: value.created_at,
-    updatedAt: value.updated_at,
   };
 }
 

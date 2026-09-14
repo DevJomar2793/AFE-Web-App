@@ -404,12 +404,12 @@ function calculateMetrics(
 
   return {
     salesToday: todaySales.reduce(
-      (sum, sale) => sum + sale.price * sale.quantity,
+      (sum, sale) => sum + calculateSaleTotal(sale),
       0,
     ),
     saleCount: todaySales.length,
     last30DaysSales: last30DaysSales.reduce(
-      (sum, sale) => sum + sale.price * sale.quantity,
+      (sum, sale) => sum + calculateSaleTotal(sale),
       0,
     ),
     last30DaysSaleCount: last30DaysSales.length,
@@ -430,7 +430,7 @@ function calculateChartDays(sales: Sale[]) {
     const key = localDateKey(date);
     const total = sales
       .filter((sale) => localDateKey(new Date(sale.createdAt)) === key)
-      .reduce((sum, sale) => sum + sale.price * sale.quantity, 0);
+      .reduce((sum, sale) => sum + calculateSaleTotal(sale), 0);
     return {
       key,
       label: date.toLocaleDateString("en-PH", { weekday: "short" }),
@@ -446,10 +446,10 @@ function buildRecentActivity(
   const saleActivity = sales.map((sale) => ({
     id: `sale-${sale.id}`,
     type: "sale" as const,
-    itemName: sale.item.name,
+    itemName: sale.items.map((item) => item.item.name).join(", "),
     customerName: sale.customerName,
-    quantity: sale.quantity,
-    detail: currency.format(sale.price * sale.quantity),
+    quantity: sale.items.reduce((sum, item) => sum + item.quantity, 0),
+    detail: currency.format(calculateSaleTotal(sale)),
     createdAt: sale.createdAt,
   }));
   const returnActivity = returns.map((itemReturn) => ({
@@ -464,6 +464,13 @@ function buildRecentActivity(
   return [...saleActivity, ...returnActivity]
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
     .slice(0, 5);
+}
+
+function calculateSaleTotal(sale: Sale) {
+  return sale.items.reduce(
+    (total, item) => total + item.price * item.quantity,
+    0,
+  );
 }
 
 function formatActivityDate(value: string) {

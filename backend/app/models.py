@@ -10,6 +10,7 @@ from sqlalchemy import (
     Integer,
     Numeric,
     String,
+    UniqueConstraint,
     func,
     text,
 )
@@ -93,15 +94,15 @@ class Inventory(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
-    sales: Mapped[list["Sale"]] = relationship(back_populates="item")
+    sale_items: Mapped[list["SaleItem"]] = relationship(
+        back_populates="item",
+    )
     returns: Mapped[list["Return"]] = relationship(back_populates="item")
 
 
 class Sale(Base):
     __tablename__ = "sales"
     __table_args__ = (
-        CheckConstraint("quantity > 0", name="ck_sales_quantity_positive"),
-        CheckConstraint("price >= 0", name="ck_sales_price_non_negative"),
         CheckConstraint(
             "char_length(trim(customer_name)) > 0",
             name="ck_sales_customer_name_not_blank",
@@ -109,13 +110,6 @@ class Sale(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    inventory_id: Mapped[int] = mapped_column(
-        ForeignKey("inventory.id", ondelete="RESTRICT"),
-        nullable=False,
-        index=True,
-    )
-    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
-    price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     customer_name: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -128,7 +122,44 @@ class Sale(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
-    item: Mapped[Inventory] = relationship(back_populates="sales")
+    items: Mapped[list["SaleItem"]] = relationship(
+        back_populates="sale",
+        cascade="all, delete-orphan",
+        order_by="SaleItem.id",
+    )
+
+
+class SaleItem(Base):
+    __tablename__ = "sale_items"
+    __table_args__ = (
+        CheckConstraint(
+            "quantity > 0",
+            name="ck_sale_items_quantity_positive",
+        ),
+        CheckConstraint("price >= 0", name="ck_sale_items_price_non_negative"),
+        UniqueConstraint(
+            "sale_id",
+            "inventory_id",
+            name="uq_sale_items_sale_inventory",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    sale_id: Mapped[int] = mapped_column(
+        ForeignKey("sales.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    inventory_id: Mapped[int] = mapped_column(
+        ForeignKey("inventory.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+
+    sale: Mapped[Sale] = relationship(back_populates="items")
+    item: Mapped[Inventory] = relationship(back_populates="sale_items")
 
 
 class Return(Base):

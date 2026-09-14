@@ -62,7 +62,10 @@ export function SalesActivity({
       if (!isInSelectedRange) return false;
       if (!normalizedSearchQuery) return true;
 
-      return [sale.item.name, sale.customerName].some((value) =>
+      return [
+        sale.customerName,
+        ...sale.items.map((item) => item.item.name),
+      ].some((value) =>
         value.toLocaleLowerCase("en-PH").includes(normalizedSearchQuery),
       );
     })
@@ -320,28 +323,47 @@ function SaleActivityRow({
   sale: Sale;
   onEdit: (sale: Sale) => void;
 }) {
-  const unitLabel = sale.quantity === 1 ? "Tray" : "Trays";
-  const total = sale.price * sale.quantity;
+  const totalQuantity = sale.items.reduce(
+    (total, item) => total + item.quantity,
+    0,
+  );
+  const total = sale.items.reduce(
+    (saleTotal, item) => saleTotal + item.price * item.quantity,
+    0,
+  );
 
   return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 border-b border-[#e8ede6] px-4 py-4 last:border-b-0 sm:flex sm:items-center sm:px-5">
+    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 border-b border-[#e8ede6] px-4 py-4 last:border-b-0 sm:flex sm:px-5">
       <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#e7f2e6] text-[#2f7043]">
         <ArrowUpRight size={17} aria-hidden="true" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-extrabold">
-          Sale · {sale.item.name}
+        <p className="text-sm font-extrabold">
+          Sale #{sale.id} · {sale.customerName}
         </p>
-        <p className="mt-1 truncate text-xs font-semibold text-[#89928b]">
-          {sale.customerName}
-        </p>
+        <div className="mt-2 space-y-1.5">
+          {sale.items.map((item) => (
+            <div
+              className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs"
+              key={item.id}
+            >
+              <span className="font-bold text-[#526057]">
+                {item.item.name} · {item.quantity}
+              </span>
+              <span className="font-semibold text-[#7a857d]">
+                {currency.format(item.price)} each ·{" "}
+                {currency.format(item.price * item.quantity)}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
       <div className="col-start-2 min-w-0 text-left sm:text-right">
         <p className="text-sm font-black text-[#24362a]">
-          −{sale.quantity} <span className="hidden sm:inline">{unitLabel}</span>
+          −{totalQuantity} {totalQuantity === 1 ? "unit" : "units"}
         </p>
         <p className="mt-1 text-xs font-bold text-[#68736b]">
-          {currency.format(sale.price)} each · {currency.format(total)}
+          {currency.format(total)} total
         </p>
         <p className="mt-1 text-[11px] font-semibold text-[#929a94]">
           {formatActivityDate(sale.createdAt)}
@@ -349,7 +371,7 @@ function SaleActivityRow({
       </div>
       <button
         type="button"
-        aria-label={`Edit sale for ${sale.item.name}, ${sale.customerName}`}
+        aria-label={`Edit sale ${sale.id} for ${sale.customerName}`}
         onClick={() => onEdit(sale)}
         className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#cfd8cd] bg-white px-3 text-xs font-black text-[#173b24] hover:bg-[#f8faf7]"
       >

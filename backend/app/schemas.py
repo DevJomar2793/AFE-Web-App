@@ -103,29 +103,50 @@ class SaleBatchCreate(BaseModel):
         return self
 
 
+class SaleItemUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: int = Field(gt=0, strict=True)
+    quantity: int = Field(gt=0, strict=True)
+    price: Decimal = Field(ge=0, max_digits=12, decimal_places=2)
+
+
 class SaleUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    price: Decimal = Field(ge=0, max_digits=12, decimal_places=2)
-    quantity: int = Field(gt=0, strict=True)
+    items: list[SaleItemUpdate] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_unique_sale_items(self) -> "SaleUpdate":
+        item_ids = [item.id for item in self.items]
+        if len(item_ids) != len(set(item_ids)):
+            raise ValueError("Each sale item can only appear once")
+        return self
 
 
-class SaleItemResponse(BaseModel):
+class InventoryReferenceResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     item: str
 
 
-class SaleResponse(BaseModel):
+class SaleItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     inventory_id: int
-    item: SaleItemResponse
+    item: InventoryReferenceResponse
     quantity: int
     price: Decimal
+
+
+class SaleResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
     customer_name: str
+    items: list[SaleItemResponse]
     created_at: datetime
     updated_at: datetime
 
