@@ -55,6 +55,7 @@ export function InventoryDashboard() {
   } = useInventoryItems(
     currentView === "overview" ||
       currentView === "inventory" ||
+      currentView === "activity" ||
       isNewSaleOpen ||
       isNewReturnOpen,
   );

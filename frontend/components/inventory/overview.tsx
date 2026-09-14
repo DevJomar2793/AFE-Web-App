@@ -6,6 +6,7 @@ import {
   CircleDollarSign,
   RotateCcw,
   ShoppingBag,
+  TrendingUp,
   TriangleAlert,
 } from "lucide-react";
 import { useMemo } from "react";
@@ -45,10 +46,15 @@ export function InventoryOverview({
   onOpenInventory,
   onViewActivity,
 }: InventoryOverviewProps) {
-  const today = localDateKey(new Date());
+  const currentDate = new Date();
+  const today = localDateKey(currentDate);
+  const last30DaysStart = new Date(currentDate);
+  last30DaysStart.setDate(last30DaysStart.getDate() - 29);
+  const last30DaysStartKey = localDateKey(last30DaysStart);
   const metrics = useMemo(
-    () => calculateMetrics(items, sales, returns, today),
-    [items, sales, returns, today],
+    () =>
+      calculateMetrics(items, sales, returns, today, last30DaysStartKey),
+    [items, sales, returns, today, last30DaysStartKey],
   );
   const chartDays = useMemo(() => calculateChartDays(sales), [sales]);
   const chartMax = Math.max(...chartDays.map((day) => day.total), 1);
@@ -69,7 +75,7 @@ export function InventoryOverview({
     <>
       <section
         className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4 lg:gap-5"
-        aria-label="Today's summary"
+        aria-label="Inventory and sales summary"
       >
         <MetricCard
           label="Sales today"
@@ -91,6 +97,13 @@ export function InventoryOverview({
           detail={`${metrics.returnCount} return record${metrics.returnCount === 1 ? "" : "s"}`}
           accent="bg-[#fff0e5] text-[#b15b26]"
           icon={<RotateCcw size={20} />}
+        />
+        <MetricCard
+          label="Sales last 30 days"
+          value={currency.format(metrics.last30DaysSales)}
+          detail={`${metrics.last30DaysSaleCount} completed sale${metrics.last30DaysSaleCount === 1 ? "" : "s"}`}
+          accent="bg-[#f1e9f5] text-[#7b5391]"
+          icon={<TrendingUp size={20} />}
         />
       </section>
 
@@ -376,10 +389,15 @@ function calculateMetrics(
   sales: Sale[],
   returns: InventoryReturn[],
   today: string,
+  last30DaysStart: string,
 ) {
   const todaySales = sales.filter(
     (sale) => localDateKey(new Date(sale.createdAt)) === today,
   );
+  const last30DaysSales = sales.filter((sale) => {
+    const saleDate = localDateKey(new Date(sale.createdAt));
+    return saleDate >= last30DaysStart && saleDate <= today;
+  });
   const todayReturns = returns.filter(
     (itemReturn) => localDateKey(new Date(itemReturn.createdAt)) === today,
   );
@@ -390,16 +408,17 @@ function calculateMetrics(
       0,
     ),
     saleCount: todaySales.length,
+    last30DaysSales: last30DaysSales.reduce(
+      (sum, sale) => sum + sale.price * sale.quantity,
+      0,
+    ),
+    last30DaysSaleCount: last30DaysSales.length,
     returnedUnits: todayReturns.reduce(
       (sum, itemReturn) => sum + itemReturn.quantity,
       0,
     ),
     returnCount: todayReturns.length,
     units: items.reduce((sum, item) => sum + item.quantity, 0),
-    inventoryValue: items.reduce(
-      (sum, item) => sum + item.quantity * item.price,
-      0,
-    ),
     stockAttention: items.filter((item) => item.status !== "in_stock"),
   };
 }
