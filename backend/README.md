@@ -53,6 +53,7 @@ POST /api/v1/inventory/add-stock
 PATCH /api/v1/inventory/{inventory_id}
 GET  /api/v1/sales/get-sales
 POST /api/v1/sales/add-sales
+POST /api/v1/sales/add-sales-batch
 PATCH /api/v1/sales/{sale_id}
 GET  /api/v1/returns/get-returns
 POST /api/v1/returns/add-returns
@@ -96,23 +97,36 @@ The API returns `404` when the item does not exist and `409` when there is not
 enough stock. The inventory row is locked during the operation to prevent two
 simultaneous sales from overselling it.
 
+Create one sale containing multiple inventory items:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/sales/add-sales-batch \
+  -H "Content-Type: application/json" \
+  -d '{"customer_name":"Maria Santos","items":[{"inventory_id":1,"quantity":2},{"inventory_id":2,"quantity":3}]}'
+```
+
+The batch endpoint creates one sale transaction with multiple item rows. If any
+item is missing or does not have enough stock, neither the sale nor any
+inventory deductions are saved. Each inventory item may appear only once.
+
 List sales, newest first, with:
 
 ```bash
 curl http://127.0.0.1:8000/api/v1/sales/get-sales
 ```
 
-Update only a sale's unit price and quantity:
+Update every item in a sale using the item-line IDs returned by the API:
 
 ```bash
 curl -X PATCH http://127.0.0.1:8000/api/v1/sales/1 \
   -H "Content-Type: application/json" \
-  -d '{"price": "275.00", "quantity": 3}'
+  -d '{"items":[{"id":11,"price":"275.00","quantity":3},{"id":12,"price":"180.00","quantity":2}]}'
 ```
 
-Updating a sale adjusts inventory by the quantity difference and updates the
-linked inventory item's current price. Existing sales keep their own price
-snapshots. The API returns `409` if the additional quantity is unavailable.
+Products cannot be added, removed, or replaced while editing. Quantity changes
+adjust each linked inventory item by the difference, and price changes update
+that inventory item's current regular price. The API returns `409` if an
+additional quantity is unavailable and rolls back every change.
 
 Create a return with the related inventory ID, a positive whole quantity, a
 customer name, and a reason:

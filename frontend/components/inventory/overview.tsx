@@ -46,10 +46,15 @@ export function InventoryOverview({
   onOpenInventory,
   onViewActivity,
 }: InventoryOverviewProps) {
-  const today = localDateKey(new Date());
+  const currentDate = new Date();
+  const today = localDateKey(currentDate);
+  const last30DaysStart = new Date(currentDate);
+  last30DaysStart.setDate(last30DaysStart.getDate() - 29);
+  const last30DaysStartKey = localDateKey(last30DaysStart);
   const metrics = useMemo(
-    () => calculateMetrics(items, sales, returns, today),
-    [items, sales, returns, today],
+    () =>
+      calculateMetrics(items, sales, returns, today, last30DaysStartKey),
+    [items, sales, returns, today, last30DaysStartKey],
   );
   const chartDays = useMemo(() => calculateChartDays(sales), [sales]);
   const chartMax = Math.max(...chartDays.map((day) => day.total), 1);
@@ -70,7 +75,7 @@ export function InventoryOverview({
     <>
       <section
         className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4 lg:gap-5"
-        aria-label="Today's summary"
+        aria-label="Inventory and sales summary"
       >
         <MetricCard
           label="Sales today"
@@ -94,9 +99,9 @@ export function InventoryOverview({
           icon={<RotateCcw size={20} />}
         />
         <MetricCard
-          label="Inventory value"
-          value={currency.format(metrics.inventoryValue)}
-          detail="Based on regular prices"
+          label="Sales last 30 days"
+          value={currency.format(metrics.last30DaysSales)}
+          detail={`${metrics.last30DaysSaleCount} completed sale${metrics.last30DaysSaleCount === 1 ? "" : "s"}`}
           accent="bg-[#f1e9f5] text-[#7b5391]"
           icon={<TrendingUp size={20} />}
         />
@@ -384,30 +389,36 @@ function calculateMetrics(
   sales: Sale[],
   returns: InventoryReturn[],
   today: string,
+  last30DaysStart: string,
 ) {
   const todaySales = sales.filter(
     (sale) => localDateKey(new Date(sale.createdAt)) === today,
   );
+  const last30DaysSales = sales.filter((sale) => {
+    const saleDate = localDateKey(new Date(sale.createdAt));
+    return saleDate >= last30DaysStart && saleDate <= today;
+  });
   const todayReturns = returns.filter(
     (itemReturn) => localDateKey(new Date(itemReturn.createdAt)) === today,
   );
 
   return {
     salesToday: todaySales.reduce(
-      (sum, sale) => sum + sale.price * sale.quantity,
+      (sum, sale) => sum + calculateSaleTotal(sale),
       0,
     ),
     saleCount: todaySales.length,
+    last30DaysSales: last30DaysSales.reduce(
+      (sum, sale) => sum + calculateSaleTotal(sale),
+      0,
+    ),
+    last30DaysSaleCount: last30DaysSales.length,
     returnedUnits: todayReturns.reduce(
       (sum, itemReturn) => sum + itemReturn.quantity,
       0,
     ),
     returnCount: todayReturns.length,
     units: items.reduce((sum, item) => sum + item.quantity, 0),
-    inventoryValue: items.reduce(
-      (sum, item) => sum + item.quantity * item.price,
-      0,
-    ),
     stockAttention: items.filter((item) => item.status !== "in_stock"),
   };
 }
@@ -419,7 +430,7 @@ function calculateChartDays(sales: Sale[]) {
     const key = localDateKey(date);
     const total = sales
       .filter((sale) => localDateKey(new Date(sale.createdAt)) === key)
-      .reduce((sum, sale) => sum + sale.price * sale.quantity, 0);
+      .reduce((sum, sale) => sum + calculateSaleTotal(sale), 0);
     return {
       key,
       label: date.toLocaleDateString("en-PH", { weekday: "short" }),
@@ -435,10 +446,10 @@ function buildRecentActivity(
   const saleActivity = sales.map((sale) => ({
     id: `sale-${sale.id}`,
     type: "sale" as const,
-    itemName: sale.item.name,
+    itemName: sale.items.map((item) => item.item.name).join(", "),
     customerName: sale.customerName,
-    quantity: sale.quantity,
-    detail: currency.format(sale.price * sale.quantity),
+    quantity: sale.items.reduce((sum, item) => sum + item.quantity, 0),
+    detail: currency.format(calculateSaleTotal(sale)),
     createdAt: sale.createdAt,
   }));
   const returnActivity = returns.map((itemReturn) => ({
@@ -453,6 +464,13 @@ function buildRecentActivity(
   return [...saleActivity, ...returnActivity]
     .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
     .slice(0, 5);
+}
+
+function calculateSaleTotal(sale: Sale) {
+  return sale.items.reduce(
+    (total, item) => total + item.price * item.quantity,
+    0,
+  );
 }
 
 function formatActivityDate(value: string) {

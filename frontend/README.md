@@ -59,11 +59,11 @@ The Inventory view updates an item's current quantity and price through
 `PATCH /api/v1/inventory/{inventory_id}`. The edit form does not change item
 names, return counts, or historical sale records.
 
-The New Sale form stores sales through `POST /api/v1/sales/add-sales` using
-database inventory records. Transaction Activity loads those records from
-`GET /api/v1/sales/get-sales` and updates existing records through
-`PATCH /api/v1/sales/{sale_id}`. Sales are not duplicated in browser storage;
-the Overview metrics and Recent Activity card remain local-only.
+The New Sale form stores one multi-item transaction through
+`POST /api/v1/sales/add-sales-batch`. Transaction Activity and Overview load
+those records from `GET /api/v1/sales/get-sales`. Editing a transaction through
+`PATCH /api/v1/sales/{sale_id}` updates all of its item quantities and prices.
+Sales are not duplicated in browser storage.
 
 The Returns page loads database return history from
 `GET /api/v1/returns/get-returns` and submits new returns directly to

@@ -14,13 +14,18 @@ export type InventoryItem = {
 
 export type Sale = {
   id: number;
+  customerName: string;
+  items: SaleItem[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SaleItem = {
+  id: number;
   inventoryId: number;
   item: { id: number; name: string };
   quantity: number;
   price: number;
-  customerName: string;
-  createdAt: string;
-  updatedAt: string;
 };
 
 export type InventoryReturn = {
@@ -53,9 +58,20 @@ export type CreateSaleInput = {
   customerName: string;
 };
 
+export type CreateSaleBatchInput = {
+  customerName: string;
+  items: {
+    inventoryId: number;
+    quantity: number;
+  }[];
+};
+
 export type UpdateSaleInput = {
-  price: number;
-  quantity: number;
+  items: {
+    id: number;
+    price: number;
+    quantity: number;
+  }[];
 };
 
 export type CreateReturnInput = {
@@ -150,6 +166,26 @@ export async function createSale(input: CreateSaleInput): Promise<Sale> {
   return parseSale(response);
 }
 
+export async function createSaleBatch(
+  input: CreateSaleBatchInput,
+): Promise<Sale> {
+  const response = await apiRequest(
+    "/api/v1/sales/add-sales-batch",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        customer_name: input.customerName,
+        items: input.items.map((item) => ({
+          inventory_id: item.inventoryId,
+          quantity: item.quantity,
+        })),
+      }),
+    },
+    "The sale could not be saved.",
+  );
+  return parseSale(response);
+}
+
 export async function updateSale(
   saleId: number,
   input: UpdateSaleInput,
@@ -160,6 +196,14 @@ export async function updateSale(
     "The sale could not be updated.",
   );
   return parseSale(response);
+}
+
+export async function deleteSale(saleId: number): Promise<void> {
+  await apiRequest(
+    `/api/v1/sales/${saleId}`,
+    { method: "DELETE" },
+    "The sale could not be removed.",
+  );
 }
 
 export async function getReturns(
@@ -207,7 +251,8 @@ async function apiRequest(
       ...options.headers,
     },
   });
-  const responseBody: unknown = await response.json();
+  const responseBody: unknown =
+    response.status === 204 ? null : await response.json();
 
   if (!response.ok) {
     throw new Error(getApiErrorMessage(responseBody, fallbackMessage));
@@ -252,8 +297,33 @@ function parseInventoryItem(value: unknown): InventoryItem {
 }
 
 function parseSale(value: unknown): Sale {
-  if (!isRecord(value) || !isRecord(value.item)) {
+  if (!isRecord(value) || !Array.isArray(value.items)) {
     throw new Error("Invalid sale");
+  }
+
+  if (
+    !isPositiveInteger(value.id) ||
+    typeof value.customer_name !== "string" ||
+    !value.customer_name.trim() ||
+    value.items.length === 0 ||
+    !isValidDate(value.created_at) ||
+    !isValidDate(value.updated_at)
+  ) {
+    throw new Error("Invalid sale");
+  }
+
+  return {
+    id: value.id,
+    customerName: value.customer_name,
+    items: value.items.map(parseSaleItem),
+    createdAt: value.created_at,
+    updatedAt: value.updated_at,
+  };
+}
+
+function parseSaleItem(value: unknown): SaleItem {
+  if (!isRecord(value) || !isRecord(value.item)) {
+    throw new Error("Invalid sale item");
   }
   const price = parsePrice(value.price);
 
@@ -266,24 +336,20 @@ function parseSale(value: unknown): Sale {
     !value.item.item.trim() ||
     !isPositiveInteger(value.quantity) ||
     !Number.isFinite(price) ||
-    price < 0 ||
-    typeof value.customer_name !== "string" ||
-    !value.customer_name.trim() ||
-    !isValidDate(value.created_at) ||
-    !isValidDate(value.updated_at)
+    price < 0
   ) {
-    throw new Error("Invalid sale");
+    throw new Error("Invalid sale item");
   }
 
   return {
     id: value.id,
     inventoryId: value.inventory_id,
-    item: { id: value.item.id, name: value.item.item },
+    item: {
+      id: value.item.id,
+      name: value.item.item,
+    },
     quantity: value.quantity,
     price,
-    customerName: value.customer_name,
-    createdAt: value.created_at,
-    updatedAt: value.updated_at,
   };
 }
 

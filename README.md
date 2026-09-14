@@ -32,20 +32,18 @@ The inventory table and the Add Item form read and write PostgreSQL through
 Inventory quantity and price edits use `PATCH /api/v1/inventory/{inventory_id}`
 and leave item names, return counts, and historical sales unchanged.
 
-The backend also stores sales through `GET /api/v1/sales/get-sales` and
-`POST /api/v1/sales/add-sales`, and updates existing records through
-`PATCH /api/v1/sales/{sale_id}`. Each sale keeps a unit-price snapshot, and
-quantity changes adjust its linked inventory atomically.
+The backend stores one sale transaction per customer purchase. A sale can have
+multiple item lines, and each line keeps its own unit-price snapshot. Creating
+or editing a sale adjusts every linked inventory quantity atomically through
+the sales API. Removing a sale returns every sold quantity to inventory before
+deleting the transaction.
 
 Returns are available through `GET /api/v1/returns/get-returns` and
 `POST /api/v1/returns/add-returns`. Recording a return stores its customer and
 reason while incrementing the related inventory `returns_count` atomically;
 the inventory quantity is unchanged.
 
-The Inventory, Activity, and Returns views use database records. The Overview
-metrics, Overview recent activity, and quick Restock form are the original
-browser-local demo. That local state is stored under `afe-inventory-v1` in
-`localStorage` and synchronizes only between tabs on the same device.
+The Overview, Inventory, Activity, and Returns views use database records.
 
 This split preserves the current application behavior, but it is not suitable
 for multi-user production use. Authentication and database-backed transaction
