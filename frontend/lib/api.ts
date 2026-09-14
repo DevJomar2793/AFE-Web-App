@@ -53,6 +53,14 @@ export type CreateSaleInput = {
   customerName: string;
 };
 
+export type CreateSaleBatchInput = {
+  customerName: string;
+  items: {
+    inventoryId: number;
+    quantity: number;
+  }[];
+};
+
 export type UpdateSaleInput = {
   price: number;
   quantity: number;
@@ -148,6 +156,27 @@ export async function createSale(input: CreateSaleInput): Promise<Sale> {
     "The sale could not be saved.",
   );
   return parseSale(response);
+}
+
+export async function createSaleBatch(
+  input: CreateSaleBatchInput,
+): Promise<Sale[]> {
+  const response = await apiRequest(
+    "/api/v1/sales/add-sales-batch",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        customer_name: input.customerName,
+        items: input.items.map((item) => ({
+          inventory_id: item.inventoryId,
+          quantity: item.quantity,
+        })),
+      }),
+    },
+    "The sale could not be saved.",
+  );
+  if (!Array.isArray(response)) throw new Error("Invalid sale response");
+  return response.map(parseSale);
 }
 
 export async function updateSale(

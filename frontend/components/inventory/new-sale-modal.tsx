@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { Plus, RotateCcw, X } from "lucide-react";
-import { createSale, type InventoryItem } from "@/lib/api";
+import { type FormEvent, useRef, useState } from "react";
+import { Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { createSaleBatch, type InventoryItem } from "@/lib/api";
 
 type NewSaleModalProps = {
   initialInventoryId?: number;
@@ -12,6 +12,12 @@ type NewSaleModalProps = {
   onClose: () => void;
   onCreated: () => void;
   onRetryInventory: () => void;
+};
+
+type SaleLine = {
+  id: number;
+  inventoryId: string;
+  quantity: string;
 };
 
 const currency = new Intl.NumberFormat("en-PH", {
@@ -30,51 +36,127 @@ export function NewSaleModal({
   onCreated,
   onRetryInventory,
 }: NewSaleModalProps) {
-  const firstAvailableItem = items.find((item) => item.quantity > 0);
-  const [selectedInventoryId, setSelectedInventoryId] = useState(
-    initialInventoryId ? String(initialInventoryId) : "",
-  );
-  const [quantity, setQuantity] = useState("1");
+  const availableItems = items.filter((item) => item.quantity > 0);
+  const preferredItem =
+    availableItems.find((item) => item.id === initialInventoryId) ??
+    availableItems[0];
+  const nextSaleLineId = useRef(2);
+  const [saleLines, setSaleLines] = useState<SaleLine[]>([
+    {
+      id: 1,
+      inventoryId: initialInventoryId ? String(initialInventoryId) : "",
+      quantity: "1",
+    },
+  ]);
   const [customerName, setCustomerName] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const selectedItem =
-    items.find(
-      (item) => item.id === Number(selectedInventoryId) && item.quantity > 0,
-    ) ?? firstAvailableItem;
-  const selectedItemId = selectedItem ? String(selectedItem.id) : "";
-  const normalizedQuantity = Number(quantity);
-  const usesWholesalePrice = Boolean(
-    selectedItem &&
-    normalizedQuantity >= 6 &&
-    selectedItem.wholesalePrice !== null,
+
+  const saleLineDetails = saleLines.map((line, index) => {
+    const selectedItem = availableItems.find(
+      (item) => item.id === Number(line.inventoryId),
+    );
+    const item = selectedItem ?? (index === 0 ? preferredItem : undefined);
+    const quantity = Number(line.quantity);
+    const usesWholesalePrice = Boolean(
+      item && quantity >= 6 && item.wholesalePrice !== null,
+    );
+    const unitPrice = usesWholesalePrice
+      ? (item?.wholesalePrice ?? 0)
+      : (item?.price ?? 0);
+    const total = Number.isFinite(quantity)
+      ? unitPrice * Math.max(quantity, 0)
+      : 0;
+
+    return { item, quantity, total, unitPrice, usesWholesalePrice };
+  });
+  const selectedInventoryIds = new Set(
+    saleLineDetails.flatMap((line) => (line.item ? [line.item.id] : [])),
   );
-  const unitPrice =
-    selectedItem &&
-    normalizedQuantity >= 6 &&
-    selectedItem.wholesalePrice !== null
-      ? selectedItem.wholesalePrice
-      : (selectedItem?.price ?? 0);
-  const saleTotal = Number.isFinite(normalizedQuantity)
-    ? unitPrice * Math.max(normalizedQuantity, 0)
-    : 0;
+  const saleTotal = saleLineDetails.reduce(
+    (total, line) => total + line.total,
+    0,
+  );
+  const hasWholesalePrice = saleLineDetails.some(
+    (line) => line.usesWholesalePrice,
+  );
+  const canAddAnotherItem = saleLines.length < availableItems.length;
+
+  const updateSaleLine = (
+    lineId: number,
+    changes: Partial<Pick<SaleLine, "inventoryId" | "quantity">>,
+  ) => {
+    setSaleLines((currentLines) =>
+      currentLines.map((line) =>
+        line.id === lineId ? { ...line, ...changes } : line,
+      ),
+    );
+    setError("");
+  };
+
+  const addSaleLine = () => {
+    const nextItem = availableItems.find(
+      (item) => !selectedInventoryIds.has(item.id),
+    );
+    if (!nextItem) return;
+
+    setSaleLines((currentLines) => [
+      ...currentLines,
+      {
+        id: nextSaleLineId.current,
+        inventoryId: String(nextItem.id),
+        quantity: "1",
+      },
+    ]);
+    nextSaleLineId.current += 1;
+    setError("");
+  };
+
+  const removeSaleLine = (lineId: number) => {
+    if (saleLines.length === 1) return;
+    setSaleLines((currentLines) =>
+      currentLines.filter((line) => line.id !== lineId),
+    );
+    setError("");
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const normalizedCustomerName = customerName.trim();
-    if (!selectedItem) {
-      setError("Choose an available inventory item.");
-      return;
+    const selectedIds = new Set<number>();
+    const requestedItems: { inventoryId: number; quantity: number }[] = [];
+
+    for (const [index] of saleLines.entries()) {
+      const details = saleLineDetails[index];
+      if (!details.item) {
+        setError(`Choose an available inventory item for item ${index + 1}.`);
+        return;
+      }
+      if (selectedIds.has(details.item.id)) {
+        setError("Each inventory item can only be added once.");
+        return;
+      }
+      if (!Number.isInteger(details.quantity) || details.quantity < 1) {
+        setError(
+          `Enter a whole quantity of at least one for ${details.item.item}.`,
+        );
+        return;
+      }
+      if (details.quantity > details.item.quantity) {
+        setError(
+          `Only ${details.item.quantity} units of ${details.item.item} are available.`,
+        );
+        return;
+      }
+
+      selectedIds.add(details.item.id);
+      requestedItems.push({
+        inventoryId: details.item.id,
+        quantity: details.quantity,
+      });
     }
-    if (!Number.isInteger(normalizedQuantity) || normalizedQuantity < 1) {
-      setError("Enter a whole quantity of at least one.");
-      return;
-    }
-    if (normalizedQuantity > selectedItem.quantity) {
-      setError(`Only ${selectedItem.quantity} units are available.`);
-      return;
-    }
+
     if (!normalizedCustomerName) {
       setError("Enter a customer name.");
       return;
@@ -84,10 +166,9 @@ export function NewSaleModal({
     setError("");
 
     try {
-      await createSale({
-        inventoryId: selectedItem.id,
-        quantity: normalizedQuantity,
+      await createSaleBatch({
         customerName: normalizedCustomerName,
+        items: requestedItems,
       });
       onCreated();
     } catch (submitError) {
@@ -163,53 +244,120 @@ export function NewSaleModal({
               <RotateCcw size={15} aria-hidden="true" /> Retry
             </button>
           </div>
-        ) : !firstAvailableItem ? (
+        ) : !preferredItem ? (
           <p className="mt-6 rounded-xl bg-[#fff0e8] px-4 py-4 text-sm font-semibold text-[#8f421f]">
             No inventory items are currently available for sale.
           </p>
         ) : (
           <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
-            <label className="block text-sm font-extrabold text-[#283b2c]">
-              Item
-              <select
-                className="inventory-field mt-2"
-                value={selectedItemId}
-                disabled={isSubmitting}
-                onChange={(event) => {
-                  setSelectedInventoryId(event.target.value);
-                  setError("");
-                }}
-              >
-                {items.map((item) => (
-                  <option
-                    value={item.id}
-                    disabled={item.quantity === 0}
-                    key={item.id}
-                  >
-                    {item.item} · {item.quantity} available
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="space-y-3">
+              {saleLines.map((line, index) => {
+                const details = saleLineDetails[index];
 
-            <label className="block text-sm font-extrabold text-[#283b2c]">
-              Quantity
-              <input
-                className="inventory-field mt-2"
-                type="number"
-                inputMode="numeric"
-                min="1"
-                max={selectedItem?.quantity}
-                step="1"
-                required
-                disabled={isSubmitting}
-                value={quantity}
-                onChange={(event) => {
-                  setQuantity(event.target.value);
-                  setError("");
-                }}
-              />
-            </label>
+                return (
+                  <div
+                    className="rounded-2xl border border-[#dfe4dd] bg-[#fbfcfa] p-4"
+                    key={line.id}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-black text-[#283b2c]">
+                        Item {index + 1}
+                      </p>
+                      {saleLines.length > 1 && (
+                        <button
+                          type="button"
+                          aria-label={`Remove item ${index + 1}`}
+                          onClick={() => removeSaleLine(line.id)}
+                          disabled={isSubmitting}
+                          className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-black text-[#9b431f] hover:bg-[#fff0e8] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <Trash2 size={14} aria-hidden="true" /> Remove
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_7rem]">
+                      <label className="block text-sm font-extrabold text-[#283b2c]">
+                        Product
+                        <select
+                          className="inventory-field mt-2"
+                          value={details.item ? String(details.item.id) : ""}
+                          required
+                          disabled={isSubmitting}
+                          onChange={(event) =>
+                            updateSaleLine(line.id, {
+                              inventoryId: event.target.value,
+                              quantity: "1",
+                            })
+                          }
+                        >
+                          {items.map((item) => {
+                            const isSelectedByAnotherLine = saleLines.some(
+                              (otherLine) =>
+                                otherLine.id !== line.id &&
+                                Number(otherLine.inventoryId) === item.id,
+                            );
+
+                            return (
+                              <option
+                                value={item.id}
+                                disabled={
+                                  item.quantity === 0 || isSelectedByAnotherLine
+                                }
+                                key={item.id}
+                              >
+                                {item.item} · {item.quantity} available
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </label>
+
+                      <label className="block text-sm font-extrabold text-[#283b2c]">
+                        Quantity
+                        <input
+                          className="inventory-field mt-2"
+                          type="number"
+                          inputMode="numeric"
+                          min="1"
+                          max={details.item?.quantity}
+                          step="1"
+                          required
+                          disabled={isSubmitting}
+                          value={line.quantity}
+                          onChange={(event) =>
+                            updateSaleLine(line.id, {
+                              quantity: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+
+                    {details.item && (
+                      <p className="mt-3 text-xs font-semibold text-[#7a857d]">
+                        {currency.format(details.unitPrice)} each
+                        {details.usesWholesalePrice
+                          ? " · Wholesale price applied"
+                          : ""}
+                        {" · "}
+                        {currency.format(details.total)} subtotal
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={addSaleLine}
+              disabled={isSubmitting || !canAddAnotherItem}
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#b9c8b8] bg-white px-4 text-sm font-black text-[#173b24] transition hover:bg-[#f3f6f1] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Plus size={17} aria-hidden="true" />
+              {canAddAnotherItem ? "Add another item" : "All items added"}
+            </button>
 
             <label className="block text-sm font-extrabold text-[#283b2c]">
               Customer
@@ -234,9 +382,8 @@ export function NewSaleModal({
                   Sale total
                 </p>
                 <p className="mt-1 text-xs font-semibold text-[#89928b]">
-                  {usesWholesalePrice
-                    ? "WholeSale/Batch Price applied for 6 or more units"
-                    : `${selectedItem?.quantity ?? 0} units available`}
+                  {saleLines.length} {saleLines.length === 1 ? "item" : "items"}
+                  {hasWholesalePrice ? " · Wholesale pricing applied" : ""}
                 </p>
               </div>
               <strong className="text-lg text-[#173b24]">

@@ -89,7 +89,152 @@ async def test_create_sale_deducts_inventory(
 
 
 @pytest.mark.asyncio
-async def test_sale_of_five_or_more_uses_wholesale_price(
+async def test_create_sale_batch_saves_all_items_and_deducts_inventory(
+    client: AsyncClient,
+    inventory_item: Inventory,
+    unrelated_inventory_item: Inventory,
+) -> None:
+    response = await client.post(
+        "/api/v1/sales/add-sales-batch",
+        json={
+            "customer_name": "  Maria Santos  ",
+            "items": [
+                {"inventory_id": inventory_item.id, "quantity": 6},
+                {"inventory_id": unrelated_inventory_item.id, "quantity": 3},
+            ],
+        },
+    )
+
+    assert response.status_code == 201
+    sales = response.json()
+    assert [sale["inventory_id"] for sale in sales] == [
+        inventory_item.id,
+        unrelated_inventory_item.id,
+    ]
+    assert [sale["customer_name"] for sale in sales] == [
+        "Maria Santos",
+        "Maria Santos",
+    ]
+    assert Decimal(sales[0]["price"]) == Decimal("200.00")
+    assert Decimal(sales[1]["price"]) == Decimal("180.00")
+
+    async with async_session_factory() as session:
+        first_stored_item = await session.get(Inventory, inventory_item.id)
+        second_stored_item = await session.get(
+            Inventory,
+            unrelated_inventory_item.id,
+        )
+
+    assert first_stored_item is not None
+    assert second_stored_item is not None
+    assert first_stored_item.quantity == 4
+    assert second_stored_item.quantity == 17
+
+
+@pytest.mark.asyncio
+async def test_sale_batch_rolls_back_when_one_item_has_insufficient_stock(
+    client: AsyncClient,
+    inventory_item: Inventory,
+    unrelated_inventory_item: Inventory,
+) -> None:
+    response = await client.post(
+        "/api/v1/sales/add-sales-batch",
+        json={
+            "customer_name": "Maria Santos",
+            "items": [
+                {"inventory_id": unrelated_inventory_item.id, "quantity": 2},
+                {
+                    "inventory_id": inventory_item.id,
+                    "quantity": inventory_item.quantity + 1,
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 409
+
+    async with async_session_factory() as session:
+        first_stored_item = await session.get(Inventory, inventory_item.id)
+        second_stored_item = await session.get(
+            Inventory,
+            unrelated_inventory_item.id,
+        )
+        stored_sales = await session.scalars(
+            select(Sale).where(
+                Sale.inventory_id.in_(
+                    [inventory_item.id, unrelated_inventory_item.id],
+                ),
+            ),
+        )
+
+    assert first_stored_item is not None
+    assert second_stored_item is not None
+    assert first_stored_item.quantity == 10
+    assert second_stored_item.quantity == 20
+    assert list(stored_sales.all()) == []
+
+
+@pytest.mark.asyncio
+async def test_sale_batch_rolls_back_when_one_item_is_missing(
+    client: AsyncClient,
+    inventory_item: Inventory,
+) -> None:
+    response = await client.post(
+        "/api/v1/sales/add-sales-batch",
+        json={
+            "customer_name": "Maria Santos",
+            "items": [
+                {"inventory_id": inventory_item.id, "quantity": 2},
+                {"inventory_id": 2_147_483_647, "quantity": 1},
+            ],
+        },
+    )
+
+    assert response.status_code == 404
+
+    async with async_session_factory() as session:
+        stored_item = await session.get(Inventory, inventory_item.id)
+        stored_sales = await session.scalars(
+            select(Sale).where(Sale.inventory_id == inventory_item.id),
+        )
+
+    assert stored_item is not None
+    assert stored_item.quantity == 10
+    assert list(stored_sales.all()) == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"customer_name": "Customer", "items": []},
+        {
+            "customer_name": "Customer",
+            "items": [
+                {"inventory_id": 1, "quantity": 1},
+                {"inventory_id": 1, "quantity": 2},
+            ],
+        },
+        {
+            "customer_name": "Customer",
+            "items": [{"inventory_id": 1, "quantity": 0}],
+        },
+        {
+            "customer_name": "   ",
+            "items": [{"inventory_id": 1, "quantity": 1}],
+        },
+    ],
+)
+async def test_create_sale_batch_rejects_invalid_data(
+    client: AsyncClient,
+    payload: dict[str, object],
+) -> None:
+    response = await client.post("/api/v1/sales/add-sales-batch", json=payload)
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_sale_of_six_or_more_uses_wholesale_price(
     client: AsyncClient,
     inventory_item: Inventory,
 ) -> None:
@@ -97,7 +242,7 @@ async def test_sale_of_five_or_more_uses_wholesale_price(
         "/api/v1/sales/add-sales",
         json={
             "inventory_id": inventory_item.id,
-            "quantity": 5,
+            "quantity": 6,
             "customer_name": "Wholesale Customer",
         },
     )
@@ -110,7 +255,7 @@ async def test_sale_of_five_or_more_uses_wholesale_price(
 
     assert stored_item is not None
     assert stored_item.price == Decimal("250.00")
-    assert stored_item.quantity == 5
+    assert stored_item.quantity == 4
 
 
 @pytest.mark.asyncio

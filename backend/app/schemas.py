@@ -81,6 +81,28 @@ class SaleCreate(BaseModel):
         return value.strip() if isinstance(value, str) else value
 
 
+class SaleBatchItemCreate(BaseModel):
+    inventory_id: int = Field(gt=0, strict=True)
+    quantity: int = Field(gt=0, strict=True)
+
+
+class SaleBatchCreate(BaseModel):
+    customer_name: str = Field(min_length=1, max_length=255)
+    items: list[SaleBatchItemCreate] = Field(min_length=1)
+
+    @field_validator("customer_name", mode="before")
+    @classmethod
+    def strip_customer_name(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+    @model_validator(mode="after")
+    def validate_unique_inventory_items(self) -> "SaleBatchCreate":
+        inventory_ids = [item.inventory_id for item in self.items]
+        if len(inventory_ids) != len(set(inventory_ids)):
+            raise ValueError("Each inventory item can only appear once in a sale")
+        return self
+
+
 class SaleUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

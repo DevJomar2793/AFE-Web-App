@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.database import get_database_session
 from app.models import Inventory, InventoryStatus, Sale
-from app.schemas import SaleCreate, SaleResponse, SaleUpdate
+from app.schemas import SaleBatchCreate, SaleCreate, SaleResponse, SaleUpdate
 
 
 logger = logging.getLogger(__name__)
@@ -106,6 +106,98 @@ async def create_sale(
     except SQLAlchemyError as error:
         await session.rollback()
         logger.exception("Failed to create sale")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to create sale",
+        ) from error
+
+
+@router.post(
+    "/add-sales-batch",
+    response_model=list[SaleResponse],
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a sale with multiple items",
+    responses={
+        status.HTTP_404_NOT_FOUND: {
+            "description": "One or more inventory items were not found",
+        },
+        status.HTTP_409_CONFLICT: {
+            "description": "Insufficient inventory quantity",
+        },
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {
+            "description": "Invalid sale data",
+        },
+    },
+)
+async def create_sale_batch(
+    sale_data: SaleBatchCreate,
+    session: DatabaseSession,
+) -> list[Sale]:
+    try:
+        requested_inventory_ids = [item.inventory_id for item in sale_data.items]
+        statement = (
+            select(Inventory)
+            .where(Inventory.id.in_(requested_inventory_ids))
+            .order_by(Inventory.id)
+            .with_for_update()
+        )
+        result = await session.scalars(statement)
+        inventory_by_id = {item.id: item for item in result.all()}
+
+        missing_inventory_ids = [
+            inventory_id
+            for inventory_id in requested_inventory_ids
+            if inventory_id not in inventory_by_id
+        ]
+        if missing_inventory_ids:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="One or more inventory items were not found",
+            )
+
+        created_sales: list[Sale] = []
+        for requested_item in sale_data.items:
+            inventory_item = inventory_by_id[requested_item.inventory_id]
+            if requested_item.quantity > inventory_item.quantity:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        f"Insufficient inventory quantity for {inventory_item.item}. "
+                        f"Only {inventory_item.quantity} available."
+                    ),
+                )
+
+            sale_price = inventory_item.price
+            if (
+                requested_item.quantity >= 6
+                and inventory_item.wholesale_price is not None
+            ):
+                sale_price = inventory_item.wholesale_price
+
+            inventory_item.quantity -= requested_item.quantity
+            if inventory_item.quantity == 0:
+                inventory_item.status = InventoryStatus.OUT_OF_STOCK
+
+            sale = Sale(
+                inventory_id=inventory_item.id,
+                quantity=requested_item.quantity,
+                price=sale_price,
+                customer_name=sale_data.customer_name,
+                item=inventory_item,
+            )
+            session.add(sale)
+            created_sales.append(sale)
+
+        await session.commit()
+        for sale in created_sales:
+            await session.refresh(sale, attribute_names=["item"])
+        return created_sales
+    except HTTPException:
+        await session.rollback()
+        raise
+    except SQLAlchemyError as error:
+        await session.rollback()
+        logger.exception("Failed to create sale batch")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to create sale",

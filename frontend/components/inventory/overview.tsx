@@ -6,7 +6,6 @@ import {
   CircleDollarSign,
   RotateCcw,
   ShoppingBag,
-  TrendingUp,
   TriangleAlert,
 } from "lucide-react";
 import { useMemo } from "react";
@@ -92,13 +91,6 @@ export function InventoryOverview({
           detail={`${metrics.returnCount} return record${metrics.returnCount === 1 ? "" : "s"}`}
           accent="bg-[#fff0e5] text-[#b15b26]"
           icon={<RotateCcw size={20} />}
-        />
-        <MetricCard
-          label="Inventory value"
-          value={currency.format(metrics.inventoryValue)}
-          detail="Based on regular prices"
-          accent="bg-[#f1e9f5] text-[#7b5391]"
-          icon={<TrendingUp size={20} />}
         />
       </section>
 
