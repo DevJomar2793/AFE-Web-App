@@ -13,10 +13,13 @@
     },
     "production": {
       "autoIncrement": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_BACKEND_API_URL": "https://atbackend-web-app-afe.onrender.com"
+      }
     }
-  },
-  "submit": {
-    "production": {}
   }
 }

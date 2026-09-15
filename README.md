@@ -109,6 +109,42 @@ for development; use HTTPS for a deployed mobile application.
 Install Expo Go on an Android or iOS phone, connect the phone and development
 machine to the same network, then scan the QR code shown in the terminal.
 
+### Standalone Android APK
+
+The production APK is built with EAS Build and does not require Expo Go. Its
+production profile embeds the live HTTPS backend URL:
+
+```text
+https://atbackend-web-app-afe.onrender.com
+```
+
+Before building, confirm the live backend and database are available. The APK
+uses this live backend only; it does not use values from local mobile `.env`
+files.
+
+Build the APK on EAS:
+
+```bash
+cd mobile
+npx eas-cli@latest login
+npx eas-cli@latest whoami
+npx eas-cli@latest build --platform android --profile production
+```
+
+When the build finishes, open the EAS build URL printed in the terminal and
+download the APK. Transfer it to an Android device, open it from the Files app,
+allow installs from that source when Android asks, then install it directly.
+
+To install over USB with Android Platform Tools:
+
+```bash
+adb install -r path/to/afe-mobile.apk
+```
+
+After installation, open the app without Expo Go and verify that inventory,
+sales, and returns load from the live database. Test a non-production-critical
+record first, then confirm the change appears in the live backend.
+
 ## Environment variable security
 
 Real `.env` files are local configuration and must never be committed. Only
