@@ -4,6 +4,7 @@ import type {
 } from '../types/inventory';
 
 const INVENTORY_PATH = '/api/v1/inventory/get-item';
+const ADD_INVENTORY_PATH = '/api/v1/inventory/add-stock';
 const SALES_PATH = '/api/v1/sales/get-sales';
 const RETURNS_PATH = '/api/v1/returns/get-returns';
 
@@ -34,6 +35,28 @@ export interface ReturnRecord {
   updatedAt: string;
 }
 
+export interface CreateInventoryItemInput {
+  item: string;
+  quantity: number;
+  price: number;
+  wholesalePrice: number | null;
+}
+
+export interface UpdateInventoryItemInput {
+  quantity: number;
+  price: number;
+  wholesalePrice: number | null;
+}
+
+export interface CreateSaleBatchInput {
+  customerName: string;
+  items: { inventoryId: number; quantity: number }[];
+}
+
+export interface UpdateSaleInput {
+  items: { id: number; price: number; quantity: number }[];
+}
+
 export async function getInventoryItems(
   signal?: AbortSignal,
 ): Promise<InventoryRecord[]> {
@@ -49,6 +72,42 @@ export async function getInventoryItems(
   return responseBody.map(parseInventoryItem);
 }
 
+export async function createInventoryItem(
+  input: CreateInventoryItemInput,
+): Promise<InventoryRecord> {
+  const responseBody = await sendApiRequest(
+    ADD_INVENTORY_PATH,
+    'POST',
+    {
+      item: input.item,
+      quantity: input.quantity,
+      price: input.price,
+      wholesale_price: input.wholesalePrice,
+    },
+    'The inventory item could not be added.',
+  );
+
+  return parseInventoryItem(responseBody);
+}
+
+export async function updateInventoryItem(
+  inventoryId: number,
+  input: UpdateInventoryItemInput,
+): Promise<InventoryRecord> {
+  const responseBody = await sendApiRequest(
+    `/api/v1/inventory/${inventoryId}`,
+    'PATCH',
+    {
+      quantity: input.quantity,
+      price: input.price,
+      wholesale_price: input.wholesalePrice,
+    },
+    'The inventory item could not be updated.',
+  );
+
+  return parseInventoryItem(responseBody);
+}
+
 export async function getSales(signal?: AbortSignal): Promise<SaleRecord[]> {
   const responseBody = await getApiResponse(
     SALES_PATH,
@@ -60,6 +119,59 @@ export async function getSales(signal?: AbortSignal): Promise<SaleRecord[]> {
   }
 
   return responseBody.map(parseSale);
+}
+
+export async function createSaleBatch(
+  input: CreateSaleBatchInput,
+): Promise<SaleRecord> {
+  const responseBody = await sendApiRequest(
+    '/api/v1/sales/add-sales-batch',
+    'POST',
+    {
+      customer_name: input.customerName,
+      items: input.items.map((item) => ({
+        inventory_id: item.inventoryId,
+        quantity: item.quantity,
+      })),
+    },
+    'The sale could not be saved.',
+  );
+
+  return parseSale(responseBody);
+}
+
+export async function updateSale(
+  saleId: number,
+  input: UpdateSaleInput,
+): Promise<SaleRecord> {
+  const responseBody = await sendApiRequest(
+    `/api/v1/sales/${saleId}`,
+    'PATCH',
+    { items: input.items },
+    'The sale could not be updated.',
+  );
+
+  return parseSale(responseBody);
+}
+
+export async function deleteSale(saleId: number): Promise<void> {
+  const apiBaseUrl = process.env.EXPO_PUBLIC_BACKEND_API_URL?.replace(/\/+$/, '');
+  if (!apiBaseUrl) {
+    throw new Error(
+      'The mobile API URL is not configured. Add EXPO_PUBLIC_BACKEND_API_URL to mobile/.env.',
+    );
+  }
+
+  const response = await fetch(`${apiBaseUrl}/api/v1/sales/${saleId}`, {
+    method: 'DELETE',
+    headers: { Accept: 'application/json' },
+  });
+  if (!response.ok) {
+    const responseBody: unknown = await response.json().catch(() => null);
+    throw new Error(
+      getApiErrorMessage(responseBody, 'The sale could not be removed.'),
+    );
+  }
 }
 
 export async function getReturns(signal?: AbortSignal): Promise<ReturnRecord[]> {
@@ -91,6 +203,37 @@ async function getApiResponse(
   const response = await fetch(`${apiBaseUrl}${path}`, {
     headers: { Accept: 'application/json' },
     signal,
+  });
+  const responseBody: unknown = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(getApiErrorMessage(responseBody, fallbackMessage));
+  }
+
+  return responseBody;
+}
+
+async function sendApiRequest(
+  path: string,
+  method: 'POST' | 'PATCH',
+  body: Record<string, unknown>,
+  fallbackMessage: string,
+): Promise<unknown> {
+  const apiBaseUrl = process.env.EXPO_PUBLIC_BACKEND_API_URL?.replace(/\/+$/, '');
+
+  if (!apiBaseUrl) {
+    throw new Error(
+      'The mobile API URL is not configured. Add EXPO_PUBLIC_BACKEND_API_URL to mobile/.env.',
+    );
+  }
+
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    method,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
   });
   const responseBody: unknown = await response.json().catch(() => null);
 

@@ -1,274 +1,421 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useState } from "react";
 import {
-  Image,
+  ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 
-import { eggsImage } from "../data/inventory";
-import type { InventoryItem, SuccessNotice } from "../types/inventory";
+import { createInventoryItem, updateInventoryItem } from "../lib/api";
+import type { InventoryRecord, SuccessNotice } from "../types/inventory";
 
 interface AddStockModalProps {
   onClose: () => void;
-  onComplete: () => void;
+  onCreated: (item: InventoryRecord) => void;
 }
+
 interface EditItemModalProps {
-  item: InventoryItem;
+  item: InventoryRecord;
   onClose: () => void;
-  onSave: () => void;
+  onUpdated: (item: InventoryRecord) => void;
 }
+
 interface SuccessModalProps {
   notice: SuccessNotice;
   onClose: () => void;
 }
 
+const pricePattern = /^\d+(?:\.\d{1,2})?$/;
+const maximumPrice = 9_999_999_999.99;
+
 function ModalHeader({
   title,
   subtitle,
-  showAddIcon = false,
+  isSubmitting,
   onClose,
 }: {
   title: string;
   subtitle: string;
-  showAddIcon?: boolean;
+  isSubmitting: boolean;
   onClose: () => void;
 }) {
   return (
     <View style={styles.modalHeader}>
       <View style={styles.modalTitleGroup}>
-        <View style={styles.modalIconBox}>
-          <Ionicons name="cube-outline" size={37} color="#258143" />
-          {showAddIcon && (
-            <View style={styles.modalIconPlus}>
-              <Ionicons name="add" size={16} color="#ffffff" />
-            </View>
-          )}
-        </View>
-        <View style={styles.modalTitleText}>
-          <Text style={styles.modalTitle}>{title}</Text>
-          <Text style={styles.modalSubtitle}>{subtitle}</Text>
-        </View>
+        <Text style={styles.eyebrow}>Inventory</Text>
+        <Text style={styles.modalTitle}>{title}</Text>
+        <Text style={styles.modalSubtitle}>{subtitle}</Text>
       </View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Close ${title.toLowerCase()} modal`}
-        hitSlop={10}
+        accessibilityLabel={`Close ${title.toLowerCase()} form`}
+        disabled={isSubmitting}
         onPress={onClose}
+        style={[styles.closeButton, isSubmitting && styles.disabledButton]}
       >
-        <Ionicons name="close" size={31} color="#657082" />
+        <Ionicons name="close" size={21} color="#566159" />
       </Pressable>
     </View>
   );
 }
 
-export function AddStockModal({ onClose, onComplete }: AddStockModalProps) {
+function FormField({
+  label,
+  value,
+  placeholder,
+  keyboardType = "default",
+  editable,
+  autoFocus = false,
+  onChangeText,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  keyboardType?: "default" | "number-pad" | "decimal-pad";
+  editable: boolean;
+  autoFocus?: boolean;
+  onChangeText: (value: string) => void;
+}) {
   return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose}>
+    <View style={styles.fieldGroup}>
+      <Text style={styles.label}>{label}</Text>
+      <TextInput
+        autoFocus={autoFocus}
+        editable={editable}
+        keyboardType={keyboardType}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor="#929a94"
+        style={[styles.field, !editable && styles.disabledField]}
+        value={value}
+      />
+    </View>
+  );
+}
+
+function ModalLayout({
+  children,
+  isSubmitting,
+  onClose,
+}: {
+  children: React.ReactNode;
+  isSubmitting: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <Modal
+      transparent
+      animationType="fade"
+      onRequestClose={() => {
+        if (!isSubmitting) onClose();
+      }}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.overlay}
+      >
         <Pressable
-          accessibilityViewIsModal
-          style={styles.card}
-          onPress={() => undefined}
-        >
+          accessibilityRole="button"
+          accessibilityLabel="Close modal"
+          disabled={isSubmitting}
+          onPress={onClose}
+          style={styles.backdrop}
+        />
+        <View accessibilityViewIsModal style={styles.formCard}>
           <ScrollView
+            contentContainerStyle={styles.formContent}
             keyboardShouldPersistTaps="handled"
-            nestedScrollEnabled
-            showsVerticalScrollIndicator
+            showsVerticalScrollIndicator={false}
           >
-            <ModalHeader
-              title="Add Stock"
-              subtitle="Add new stock to your inventory item"
-              showAddIcon
-              onClose={onClose}
-            />
-          <View style={styles.productRow}>
-            <Image
-              source={eggsImage}
-              style={styles.productImage}
-              resizeMode="cover"
-            />
-            <View>
-              <Text style={styles.productName}>Medium Eggs</Text>
-              <Text style={styles.mutedText}>Eggs</Text>
-              <Text style={styles.productPrice}>₱230.00</Text>
-            </View>
-          </View>
-          <Text style={styles.label}>Quantity to Add</Text>
-          <View style={styles.quantityRow}>
-            <View style={styles.quantityControl}>
-              <View style={styles.quantityButton}>
-                <Ionicons name="remove" size={25} color="#7e8995" />
-              </View>
-              <Text style={styles.quantityValue}>10</Text>
-              <View
-                style={[styles.quantityButton, styles.quantityButtonActive]}
-              >
-                <Ionicons name="add" size={28} color="#258143" />
-              </View>
-            </View>
-            <View style={styles.unitField}>
-              <Text style={styles.unitText}>trays</Text>
-            </View>
-          </View>
-          <Text style={styles.label}>
-            Unit Cost <Text style={styles.optional}>(Optional)</Text>
-          </Text>
-          <View style={styles.field}>
-            <Text style={styles.currency}>₱</Text>
-            <Text style={styles.placeholder}>0.00</Text>
-          </View>
-          <Text style={styles.label}>
-            Notes <Text style={styles.optional}>(Optional)</Text>
-          </Text>
-          <View style={styles.notesField}>
-            <Text style={styles.placeholder}>
-              e.g. Received new delivery, supplier, etc.
-            </Text>
-            <Text style={styles.count}>0/200</Text>
-          </View>
-          <View style={styles.actions}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={onClose}
-              style={[styles.actionButton, styles.cancelButton]}
-            >
-              <Text style={styles.cancelText}>Cancel</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={onComplete}
-              style={[styles.actionButton, styles.primaryButton]}
-            >
-              <Text style={styles.primaryText}>Add Stock</Text>
-            </Pressable>
-          </View>
+            {children}
           </ScrollView>
-        </Pressable>
-      </Pressable>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
-export function EditItemModal({ item, onClose, onSave }: EditItemModalProps) {
-  const [stockAmount, stockUnit = "units"] = item.stock.split(" ");
-  const reorderThreshold = item.isLowStock ? "10" : "20";
-  const note =
-    item.category === "Eggs"
-      ? "Fresh eggs from local supplier."
-      : "Regular inventory item.";
-  const fields = [
-    ["Item Name", item.name],
-    ["Category", item.category],
-    ["Price (₱)", item.price.replace("₱", "")],
-  ];
+function validatePrice(value: string) {
+  const numberValue = Number(value);
   return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+    pricePattern.test(value) &&
+    Number.isFinite(numberValue) &&
+    numberValue >= 0 &&
+    numberValue <= maximumPrice
+  );
+}
+
+export function AddStockModal({ onClose, onCreated }: AddStockModalProps) {
+  const [itemName, setItemName] = useState("");
+  const [quantity, setQuantity] = useState("0");
+  const [price, setPrice] = useState("");
+  const [wholesalePrice, setWholesalePrice] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  function updateField(setValue: (value: string) => void, value: string) {
+    setValue(value);
+    setError("");
+  }
+
+  async function submitItem() {
+    const normalizedName = itemName.trim();
+    const normalizedQuantity = Number(quantity);
+
+    if (!normalizedName) {
+      setError("Enter an item name.");
+      return;
+    }
+    if (
+      quantity.trim() === "" ||
+      !Number.isInteger(normalizedQuantity) ||
+      normalizedQuantity < 0
+    ) {
+      setError("Starting quantity must be a whole number of zero or more.");
+      return;
+    }
+    if (!validatePrice(price)) {
+      setError("Enter a valid price with no more than two decimal places.");
+      return;
+    }
+    if (wholesalePrice && !validatePrice(wholesalePrice)) {
+      setError(
+        "Enter a valid Wholesale/Batch Price with no more than two decimal places.",
+      );
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError("");
+    try {
+      const createdItem = await createInventoryItem({
+        item: normalizedName,
+        quantity: normalizedQuantity,
+        price: Number(price),
+        wholesalePrice: wholesalePrice ? Number(wholesalePrice) : null,
+      });
+      onCreated(createdItem);
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "The inventory item could not be added.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <ModalLayout isSubmitting={isSubmitting} onClose={onClose}>
+      <ModalHeader
+        title="Add item"
+        subtitle="Create a new item in the inventory database."
+        isSubmitting={isSubmitting}
+        onClose={onClose}
+      />
+      <View style={styles.form}>
+        <FormField
+          label="Item name"
+          value={itemName}
+          placeholder="Large eggs"
+          editable={!isSubmitting}
+          autoFocus
+          onChangeText={(value) => updateField(setItemName, value)}
+        />
+        <FormField
+          label="Starting quantity"
+          value={quantity}
+          keyboardType="number-pad"
+          editable={!isSubmitting}
+          onChangeText={(value) => updateField(setQuantity, value)}
+        />
+        <FormField
+          label="Price"
+          value={price}
+          placeholder="250.00"
+          keyboardType="decimal-pad"
+          editable={!isSubmitting}
+          onChangeText={(value) => updateField(setPrice, value)}
+        />
+        <FormField
+          label="Wholesale/Batch Price"
+          value={wholesalePrice}
+          placeholder="Optional"
+          keyboardType="decimal-pad"
+          editable={!isSubmitting}
+          onChangeText={(value) => updateField(setWholesalePrice, value)}
+        />
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Close edit item modal"
-          onPress={onClose}
-          style={styles.modalBackdrop}
+          disabled={isSubmitting}
+          onPress={() => void submitItem()}
+          style={[styles.primaryButton, isSubmitting && styles.disabledButton]}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator color="#ffffff" size="small" />
+          ) : (
+            <Ionicons name="add" size={19} color="#ffffff" />
+          )}
+          <Text style={styles.primaryButtonText}>
+            {isSubmitting ? "Adding item..." : "Add item"}
+          </Text>
+        </Pressable>
+      </View>
+    </ModalLayout>
+  );
+}
+
+export function EditItemModal({
+  item,
+  onClose,
+  onUpdated,
+}: EditItemModalProps) {
+  const [quantity, setQuantity] = useState(String(item.quantity));
+  const [price, setPrice] = useState(String(item.price));
+  const [wholesalePrice, setWholesalePrice] = useState(
+    item.wholesalePrice === null ? "" : String(item.wholesalePrice),
+  );
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  function updateField(setValue: (value: string) => void, value: string) {
+    setValue(value);
+    setError("");
+  }
+
+  async function saveItem() {
+    const normalizedQuantity = Number(quantity);
+
+    if (
+      quantity.trim() === "" ||
+      !Number.isInteger(normalizedQuantity) ||
+      normalizedQuantity < 0
+    ) {
+      setError("Quantity must be a whole number of zero or more.");
+      return;
+    }
+    if (!validatePrice(price)) {
+      setError("Enter a valid price with no more than two decimal places.");
+      return;
+    }
+    if (wholesalePrice && !validatePrice(wholesalePrice)) {
+      setError(
+        "Enter a valid Wholesale/Batch Price with no more than two decimal places.",
+      );
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError("");
+    try {
+      const updatedItem = await updateInventoryItem(item.id, {
+        quantity: normalizedQuantity,
+        price: Number(price),
+        wholesalePrice: wholesalePrice ? Number(wholesalePrice) : null,
+      });
+      onUpdated(updatedItem);
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : "The inventory item could not be updated.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <ModalLayout isSubmitting={isSubmitting} onClose={onClose}>
+      <ModalHeader
+        title="Edit item"
+        subtitle={`Update the current quantity and price for ${item.item}.`}
+        isSubmitting={isSubmitting}
+        onClose={onClose}
+      />
+      <View style={styles.form}>
+        <FormField
+          label="Quantity"
+          value={quantity}
+          keyboardType="number-pad"
+          editable={!isSubmitting}
+          autoFocus
+          onChangeText={(value) => updateField(setQuantity, value)}
         />
-        <View accessibilityViewIsModal style={styles.editCard}>
-          <ScrollView
-            contentContainerStyle={styles.editScrollContent}
-            keyboardShouldPersistTaps="handled"
-            nestedScrollEnabled
-            showsVerticalScrollIndicator
-            style={styles.editScroll}
+        <FormField
+          label="Price"
+          value={price}
+          keyboardType="decimal-pad"
+          editable={!isSubmitting}
+          onChangeText={(value) => updateField(setPrice, value)}
+        />
+        <FormField
+          label="Wholesale/Batch Price"
+          value={wholesalePrice}
+          placeholder="Optional"
+          keyboardType="decimal-pad"
+          editable={!isSubmitting}
+          onChangeText={(value) => updateField(setWholesalePrice, value)}
+        />
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        <View style={styles.buttonRow}>
+          <Pressable
+            accessibilityRole="button"
+            disabled={isSubmitting}
+            onPress={onClose}
+            style={[
+              styles.secondaryButton,
+              isSubmitting && styles.disabledButton,
+            ]}
           >
-            <ModalHeader
-              title="Edit Item"
-              subtitle="Update the item details"
-              onClose={onClose}
-            />
-            <View style={styles.editImageBox}>
-              <Image
-                source={item.image}
-                style={styles.editImage}
-                resizeMode="cover"
-              />
-              <View style={styles.cameraBadge}>
-                <Ionicons name="camera-outline" size={21} color="#344255" />
-              </View>
-            </View>
-            {fields.map(([label, value]) => (
-              <View key={label}>
-                <Text style={styles.label}>{label}</Text>
-                <View style={styles.field}>
-                  <Text style={styles.fieldValue}>{value}</Text>
-                  {label === "Category" && (
-                    <Ionicons name="chevron-down" size={21} color="#657082" />
-                  )}
-                </View>
-              </View>
-            ))}
-            <Text style={styles.label}>Current Stock</Text>
-            <View style={styles.splitRow}>
-              <View style={[styles.field, styles.flexField]}>
-                <Text style={styles.fieldValue}>{stockAmount}</Text>
-              </View>
-              <View style={[styles.field, styles.flexField]}>
-                <Text style={styles.fieldValue}>{stockUnit}</Text>
-                <Ionicons name="chevron-down" size={21} color="#657082" />
-              </View>
-            </View>
-            <Text style={styles.label}>Reorder Threshold</Text>
-            <View style={styles.splitRow}>
-              <View style={[styles.field, styles.flexField]}>
-                <Text style={styles.fieldValue}>{reorderThreshold}</Text>
-              </View>
-              <View style={[styles.field, styles.flexField]}>
-                <Text style={styles.fieldValue}>{stockUnit}</Text>
-                <Ionicons name="chevron-down" size={21} color="#657082" />
-              </View>
-            </View>
-            <Text style={styles.label}>Notes (Optional)</Text>
-            <View style={styles.editNotes}>
-              <Text style={styles.mutedText}>{note}</Text>
-              <Text style={styles.count}>{note.length}/200</Text>
-            </View>
-            <View style={styles.actions}>
-              <View style={[styles.actionButton, styles.cancelButton]}>
-                <Ionicons name="trash-outline" size={22} color="#e53935" />
-                <Text style={styles.deleteText}>Delete</Text>
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                onPress={onSave}
-                style={[styles.actionButton, styles.primaryButton]}
-              >
-                <Text style={styles.primaryText}>Save Changes</Text>
-              </Pressable>
-            </View>
-          </ScrollView>
+            <Text style={styles.secondaryButtonText}>Cancel</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            disabled={isSubmitting}
+            onPress={() => void saveItem()}
+            style={[
+              styles.primaryButton,
+              styles.rowButton,
+              isSubmitting && styles.disabledButton,
+            ]}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="#ffffff" size="small" />
+            ) : (
+              <Ionicons name="save-outline" size={18} color="#ffffff" />
+            )}
+            <Text style={styles.primaryButtonText}>
+              {isSubmitting ? "Saving..." : "Save"}
+            </Text>
+          </Pressable>
         </View>
       </View>
-    </Modal>
+    </ModalLayout>
   );
 }
 
 export function SuccessModal({ notice, onClose }: SuccessModalProps) {
   return (
     <Modal transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <View style={[styles.overlay, styles.centeredOverlay]}>
         <View accessibilityViewIsModal style={styles.successCard}>
           <View style={styles.successCircle}>
-            <Ionicons name="checkmark" size={68} color="#258143" />
+            <Ionicons name="checkmark" size={56} color="#258143" />
           </View>
           <Text style={styles.successTitle}>{notice.title}</Text>
           <Text style={styles.successMessage}>{notice.message}</Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onClose}
-            style={styles.doneButton}
-          >
-            <Text style={styles.primaryText}>Done</Text>
+          <Pressable onPress={onClose} style={styles.doneButton}>
+            <Text style={styles.primaryButtonText}>Done</Text>
           </Pressable>
         </View>
       </View>
@@ -279,242 +426,151 @@ export function SuccessModal({ notice, onClose }: SuccessModalProps) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(13, 36, 23, 0.55)",
+  },
+  centeredOverlay: {
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(16, 24, 32, 0.65)",
     padding: 18,
   },
-  card: {
-    width: "100%",
-    maxWidth: 430,
-    maxHeight: "90%",
-    borderRadius: 26,
-    backgroundColor: "#ffffff",
-    padding: 22,
-    elevation: 12,
-  },
-  modalBackdrop: {
+  backdrop: {
     position: "absolute",
     top: 0,
     right: 0,
     bottom: 0,
     left: 0,
   },
-  editCard: {
+  formCard: {
     width: "100%",
-    maxWidth: 430,
-    maxHeight: "90%",
-    borderRadius: 26,
+    maxWidth: 520,
+    maxHeight: "92%",
+    alignSelf: "center",
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
     backgroundColor: "#ffffff",
-    elevation: 12,
   },
-  editScroll: {
-    width: "100%",
-  },
-  editScrollContent: {
-    padding: 22,
-    paddingBottom: 28,
-  },
+  formContent: { padding: 22, paddingBottom: 30 },
   modalHeader: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
-    gap: 12,
-  },
-  modalTitleGroup: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-  },
-  modalIconBox: {
-    width: 74,
-    height: 74,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 18,
-    backgroundColor: "#e4f5e9",
-  },
-  modalIconPlus: {
-    position: "absolute",
-    right: 8,
-    bottom: 9,
-    width: 25,
-    height: 25,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 13,
-    backgroundColor: "#258143",
-  },
-  modalTitleText: { flex: 1 },
-  modalTitle: { color: "#111827", fontSize: 29, fontWeight: "700" },
-  modalSubtitle: {
-    color: "#718096",
-    fontSize: 15,
-    lineHeight: 21,
-    marginTop: 3,
-  },
-  productRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    marginTop: 22,
-  },
-  productImage: { width: 96, height: 96, borderRadius: 13 },
-  productName: { color: "#121820", fontSize: 20, fontWeight: "700" },
-  mutedText: { color: "#718096", fontSize: 16, marginTop: 4 },
-  productPrice: {
-    color: "#258143",
-    fontSize: 19,
-    fontWeight: "700",
-    marginTop: 6,
-  },
-  label: { color: "#2f3b49", fontSize: 16, fontWeight: "600", marginTop: 20 },
-  optional: { fontWeight: "400" },
-  quantityRow: { flexDirection: "row", gap: 12, marginTop: 9 },
-  quantityControl: {
-    flex: 1,
-    height: 58,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderWidth: 1,
-    borderColor: "#d7dee6",
-    borderRadius: 13,
-    paddingHorizontal: 8,
-  },
-  quantityButton: {
-    width: 42,
-    height: 42,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 12,
-    backgroundColor: "#f0f3f5",
-  },
-  quantityButtonActive: { backgroundColor: "#e4f5e9" },
-  quantityValue: { color: "#121820", fontSize: 21, fontWeight: "700" },
-  unitField: {
-    width: 116,
-    height: 58,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#d7dee6",
-    borderRadius: 13,
-    backgroundColor: "#f3f6f8",
-  },
-  unitText: { color: "#2f3b49", fontSize: 17 },
-  field: {
-    minHeight: 53,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
     gap: 16,
-    borderWidth: 1,
-    borderColor: "#d7dee6",
-    borderRadius: 13,
-    backgroundColor: "#ffffff",
-    marginTop: 9,
-    paddingHorizontal: 16,
   },
-  currency: { color: "#2f3b49", fontSize: 20, fontWeight: "600" },
-  placeholder: { color: "#99a3b0", fontSize: 16 },
-  fieldValue: { color: "#27313d", fontSize: 17 },
-  notesField: {
-    height: 126,
-    borderWidth: 1,
-    borderColor: "#d7dee6",
-    borderRadius: 13,
-    marginTop: 9,
-    padding: 16,
+  modalTitleGroup: { flex: 1 },
+  eyebrow: {
+    color: "#a85620",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.7,
+    textTransform: "uppercase",
   },
-  count: {
-    position: "absolute",
-    right: 14,
-    bottom: 11,
-    color: "#7c8a9c",
+  modalTitle: {
+    color: "#17281b",
+    fontSize: 24,
+    fontWeight: "800",
+    marginTop: 8,
+  },
+  modalSubtitle: {
+    color: "#6d776f",
     fontSize: 14,
+    lineHeight: 21,
+    marginTop: 4,
   },
-  splitRow: { flexDirection: "row", gap: 12 },
-  flexField: { flex: 1 },
-  editImageBox: { width: 138, height: 138, marginTop: 20 },
-  editImage: { width: 138, height: 138, borderRadius: 14 },
-  cameraBadge: {
-    position: "absolute",
-    right: -4,
-    bottom: -4,
-    width: 43,
-    height: 43,
+  closeButton: {
+    width: 40,
+    height: 40,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#dce3e9",
+    borderColor: "#dfe4dd",
+    borderRadius: 12,
+  },
+  form: { gap: 18, marginTop: 24 },
+  fieldGroup: { gap: 8 },
+  label: { color: "#283b2c", fontSize: 14, fontWeight: "800" },
+  field: {
+    height: 50,
+    borderWidth: 1,
+    borderColor: "#d7ded5",
     borderRadius: 12,
     backgroundColor: "#ffffff",
+    color: "#18251a",
+    fontSize: 15,
+    paddingHorizontal: 14,
   },
-  editNotes: {
-    height: 111,
-    borderWidth: 1,
-    borderColor: "#d7dee6",
+  disabledField: { backgroundColor: "#f3f5f1", color: "#7c867e" },
+  errorText: {
     borderRadius: 12,
-    marginTop: 9,
-    padding: 15,
+    backgroundColor: "#fff0e8",
+    color: "#9b431f",
+    fontSize: 14,
+    fontWeight: "700",
+    lineHeight: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  actions: { flexDirection: "row", gap: 14, marginTop: 24, paddingBottom: 2 },
-  actionButton: {
-    flex: 1,
-    height: 58,
+  primaryButton: {
+    height: 52,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 9,
-    borderRadius: 13,
+    gap: 8,
+    borderRadius: 12,
+    backgroundColor: "#173b24",
+    paddingHorizontal: 18,
   },
-  cancelButton: { backgroundColor: "#eef2f5" },
-  cancelText: { color: "#536171", fontSize: 18, fontWeight: "700" },
-  deleteText: { color: "#e53935", fontSize: 17, fontWeight: "700" },
-  primaryButton: { backgroundColor: "#258143" },
-  primaryText: { color: "#ffffff", fontSize: 18, fontWeight: "700" },
+  primaryButtonText: { color: "#ffffff", fontSize: 14, fontWeight: "800" },
+  buttonRow: { flexDirection: "row", gap: 12 },
+  rowButton: { flex: 1 },
+  secondaryButton: {
+    height: 52,
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#cfd8cd",
+    borderRadius: 12,
+    backgroundColor: "#ffffff",
+  },
+  secondaryButtonText: { color: "#173b24", fontSize: 14, fontWeight: "800" },
+  disabledButton: { opacity: 0.55 },
   successCard: {
     width: "100%",
-    maxWidth: 430,
+    maxWidth: 390,
     alignItems: "center",
-    borderRadius: 26,
+    borderRadius: 24,
     backgroundColor: "#ffffff",
-    paddingHorizontal: 26,
-    paddingTop: 42,
-    paddingBottom: 34,
-    elevation: 12,
+    padding: 28,
   },
   successCircle: {
-    width: 130,
-    height: 130,
+    width: 96,
+    height: 96,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 65,
-    backgroundColor: "#e2f5e9",
+    borderRadius: 48,
+    backgroundColor: "#eaf7eb",
   },
   successTitle: {
-    color: "#111827",
-    fontSize: 31,
-    fontWeight: "700",
-    textAlign: "center",
-    marginTop: 15,
+    color: "#17281b",
+    fontSize: 24,
+    fontWeight: "800",
+    marginTop: 20,
   },
   successMessage: {
-    color: "#687789",
-    fontSize: 18,
-    lineHeight: 27,
+    color: "#6d776f",
+    fontSize: 15,
+    lineHeight: 22,
+    marginTop: 8,
     textAlign: "center",
-    marginTop: 22,
   },
   doneButton: {
     width: "100%",
-    height: 60,
+    height: 50,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 14,
-    backgroundColor: "#258143",
-    marginTop: 42,
+    borderRadius: 12,
+    backgroundColor: "#173b24",
+    marginTop: 24,
   },
 });

@@ -18,10 +18,10 @@ import { AddStockModal, EditItemModal, SuccessModal } from './components/invento
 import { BottomNavigation } from './components/bottom-navigation';
 import { InventoryScreen } from './components/inventory-screen';
 import { OverviewScreen } from './components/overview-screen';
-import { OrdersScreen } from './components/orders-screen';
+import { TransactionScreen } from './components/transaction-screen';
 import { ReturnsScreen } from './components/returns-screen';
 import type { MobileTab } from './components/bottom-navigation';
-import type { InventoryItem, SuccessNotice } from './types/inventory';
+import type { InventoryRecord, SuccessNotice } from './types/inventory';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -31,7 +31,8 @@ export default function App() {
   const isHidingNativeSplash = useRef(false);
   const [activeTab, setActiveTab] = useState<MobileTab>('home');
   const [isAddStockModalVisible, setIsAddStockModalVisible] = useState(false);
-  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [editingItem, setEditingItem] = useState<InventoryRecord | null>(null);
+  const [inventoryRefreshKey, setInventoryRefreshKey] = useState(0);
   const [successNotice, setSuccessNotice] = useState<SuccessNotice | null>(null);
 
   useEffect(() => {
@@ -73,22 +74,20 @@ export default function App() {
     }
   }
 
-  function completeAddStock() {
+  function completeAddStock(createdItem: InventoryRecord) {
     setIsAddStockModalVisible(false);
+    setInventoryRefreshKey((currentKey) => currentKey + 1);
     setSuccessNotice({
-      title: 'Stock Added!',
-      message: '10 trays of Eggs - Medium\nhas been added to your inventory.',
+      title: 'Item added!',
+      message: `${createdItem.item} has been added to your inventory.`,
     });
   }
 
-  function saveItemChanges() {
-    if (editingItem === null) {
-      return;
-    }
-
+  function saveItemChanges(updatedItem: InventoryRecord) {
+    setInventoryRefreshKey((currentKey) => currentKey + 1);
     setSuccessNotice({
-      title: 'Changes Saved!',
-      message: `${editingItem.name} details have been updated.`,
+      title: 'Changes saved!',
+      message: `${updatedItem.item} details have been updated.`,
     });
     setEditingItem(null);
   }
@@ -100,11 +99,8 @@ export default function App() {
     });
   }
 
-  function showUnavailableNotice(featureName: string) {
-    setSuccessNotice({
-      title: `${featureName} coming soon`,
-      message: 'This feature is not available yet.',
-    });
+  function showTransactionSuccess(title: string, message: string) {
+    setSuccessNotice({ title, message });
   }
 
   if (!isAppReady) {
@@ -123,24 +119,30 @@ export default function App() {
           onAddItem={() => setIsAddStockModalVisible(true)}
           onEditItem={setEditingItem}
           onReturn={showReturnNotice}
+          refreshKey={inventoryRefreshKey}
         />
       ) : activeTab === 'orders' ? (
-        <OrdersScreen
+        <TransactionScreen
           onBack={() => setActiveTab('home')}
-          onShowUnavailableNotice={showUnavailableNotice}
+          onShowSuccess={showTransactionSuccess}
         />
       ) : (
-        <ReturnsScreen onShowUnavailableNotice={showUnavailableNotice} />
+        <ReturnsScreen
+          onShowUnavailableNotice={(featureName) =>
+            setSuccessNotice({
+              title: `${featureName} coming soon`,
+              message: 'This feature is not available yet.',
+            })
+          }
+        />
       )}
 
-      {activeTab !== 'orders' && (
-        <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-      )}
+      <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
       {isAddStockModalVisible && (
         <AddStockModal
           onClose={() => setIsAddStockModalVisible(false)}
-          onComplete={completeAddStock}
+          onCreated={completeAddStock}
         />
       )}
 
@@ -148,7 +150,7 @@ export default function App() {
         <EditItemModal
           item={editingItem}
           onClose={() => setEditingItem(null)}
-          onSave={saveItemChanges}
+          onUpdated={saveItemChanges}
         />
       )}
 
