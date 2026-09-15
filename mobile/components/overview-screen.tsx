@@ -1,646 +1,96 @@
 import { Ionicons } from '@expo/vector-icons';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
-import { inventoryItems } from '../data/inventory';
-import { productReturns } from '../data/returns';
-import { recentSales } from '../data/sales';
+import { getInventoryItems, getReturns, getSales, type ReturnRecord, type SaleRecord } from '../lib/api';
+import type { InventoryRecord } from '../types/inventory';
 import type { MobileTab } from './bottom-navigation';
 
-interface OverviewScreenProps {
-  onTabChange: (tab: MobileTab) => void;
+interface OverviewScreenProps { onTabChange: (tab: MobileTab) => void; }
+interface DashboardMetricProps { title: string; value: string; detail: string; icon: keyof typeof Ionicons.glyphMap; iconColor: string; iconBackground: string; isTablet: boolean; }
+interface ChartDay { dateKey: string; label: string; total: number; }
+interface RecentActivity { id: string; type: 'sale' | 'return'; itemName: string; customerName: string; quantity: number; detail: string; createdAt: string; }
+
+function getDateKey(date: Date) { return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-'); }
+function calculateSaleTotal(sale: SaleRecord) { return sale.items.reduce((total, item) => total + item.price * item.quantity, 0); }
+function formatCurrency(amount: number) { return `₱${amount.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`; }
+function formatChartValue(amount: number) { return amount === 0 ? '—' : amount >= 1000 ? `${(amount / 1000).toFixed(1)}K` : amount.toLocaleString('en-PH'); }
+function formatActivityDate(value: string) { return new Date(value).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+
+function DashboardMetric({ title, value, detail, icon, iconColor, iconBackground, isTablet }: DashboardMetricProps) {
+  return <View style={[styles.metricCard, isTablet && styles.tabletMetricCard]}><View style={[styles.metricIcon, { backgroundColor: iconBackground }]}><Ionicons name={icon} size={20} color={iconColor} /></View><Text style={styles.metricTitle}>{title}</Text><Text style={styles.metricValue}>{value}</Text><Text style={styles.metricDetail}>{detail}</Text></View>;
 }
 
-interface DashboardMetricProps {
-  title: string;
-  value: string;
-  detail: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  iconColor: string;
-  iconBackground: string;
-  isTablet: boolean;
-}
+function LoadingState() { return <View style={styles.loadingState} accessibilityRole="progressbar"><ActivityIndicator color="#2d7042" size="small" /><Text style={styles.loadingText}>Loading dashboard...</Text></View>; }
 
-interface ChartDay {
-  dateKey: string;
-  label: string;
-  total: number;
-}
-
-interface RecentActivity {
-  id: string;
-  type: 'sale' | 'return';
-  itemName: string;
-  customerName: string;
-  quantity: number;
-  detail: string;
-  createdAt: Date;
-}
-
-function getDateKey(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-
-  return `${year}-${month}-${day}`;
-}
-
-function getStockQuantity(stock: string) {
-  return Number.parseInt(stock, 10) || 0;
-}
-
-function getPrice(price: string) {
-  return Number(price.replace(/[^0-9.]/g, '')) || 0;
-}
-
-function formatCurrency(amount: number) {
-  return `₱${amount.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`;
-}
-
-function formatChartValue(amount: number) {
-  if (amount === 0) {
-    return '—';
-  }
-
-  if (amount >= 1000) {
-    return `${(amount / 1000).toFixed(1)}K`;
-  }
-
-  return amount.toLocaleString('en-PH');
-}
-
-function formatActivityDate(date: Date) {
-  return date.toLocaleString('en-PH', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
-
-function DashboardMetric({
-  title,
-  value,
-  detail,
-  icon,
-  iconColor,
-  iconBackground,
-  isTablet,
-}: DashboardMetricProps) {
-  return (
-    <View style={[styles.metricCard, isTablet && styles.tabletMetricCard]}>
-      <View style={[styles.metricIcon, { backgroundColor: iconBackground }]}>
-        <Ionicons name={icon} size={23} color={iconColor} />
-      </View>
-      <Text style={styles.metricTitle}>{title}</Text>
-      <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.metricDetail}>{detail}</Text>
-    </View>
-  );
+function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) {
+  return <View style={styles.errorState} accessibilityRole="alert"><Text style={styles.errorText}>{error}</Text><Pressable accessibilityRole="button" accessibilityLabel="Retry loading dashboard" onPress={onRetry} style={styles.retryButton}><Ionicons name="refresh-outline" size={17} color="#8f421f" /><Text style={styles.retryText}>Retry dashboard</Text></Pressable></View>;
 }
 
 export function OverviewScreen({ onTabChange }: OverviewScreenProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
   const isWideTablet = width >= 900;
-  const today = new Date();
-  const todayKey = getDateKey(today);
+  const [items, setItems] = useState<InventoryRecord[]>([]);
+  const [sales, setSales] = useState<SaleRecord[]>([]);
+  const [returns, setReturns] = useState<ReturnRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState('');
 
-  const todaysSales = recentSales.filter(
-    (sale) => getDateKey(new Date(sale.createdAt)) === todayKey,
-  );
-  const salesToday = todaysSales.reduce((total, sale) => total + sale.total, 0);
+  const loadDashboard = useCallback(async (signal?: AbortSignal, refresh = false) => {
+    if (refresh) setIsRefreshing(true); else setIsLoading(true);
+    setError('');
+    try {
+      const [nextItems, nextSales, nextReturns] = await Promise.all([getInventoryItems(signal), getSales(signal), getReturns(signal)]);
+      setItems(nextItems); setSales(nextSales); setReturns(nextReturns);
+    } catch (loadError) {
+      if (signal?.aborted) return;
+      setError(loadError instanceof Error ? loadError.message : 'Dashboard data could not be loaded. Check the API and try again.');
+    } finally {
+      if (!signal?.aborted) { setIsLoading(false); setIsRefreshing(false); }
+    }
+  }, []);
 
-  const todaysReturns = productReturns.filter(
-    (productReturn) => getDateKey(new Date(productReturn.createdAtIso)) === todayKey,
-  );
-  const returnsToday = todaysReturns.reduce(
-    (total, productReturn) => total + productReturn.quantity,
-    0,
-  );
+  useEffect(() => { const controller = new AbortController(); void loadDashboard(controller.signal); return () => controller.abort(); }, [loadDashboard]);
 
-  const unitsOnHand = inventoryItems.reduce(
-    (total, item) => total + getStockQuantity(item.stock),
-    0,
-  );
-  const inventoryValue = inventoryItems.reduce(
-    (total, item) => total + getStockQuantity(item.stock) * getPrice(item.price),
-    0,
-  );
-  const lowStockItems = inventoryItems.filter((item) => item.isLowStock);
+  const dashboard = useMemo(() => {
+    const now = new Date(); const today = getDateKey(now); const startDate = new Date(now); startDate.setDate(startDate.getDate() - 29); const startKey = getDateKey(startDate);
+    const todaysSales = sales.filter((sale) => getDateKey(new Date(sale.createdAt)) === today);
+    const last30DaysSales = sales.filter((sale) => { const key = getDateKey(new Date(sale.createdAt)); return key >= startKey && key <= today; });
+    const todaysReturns = returns.filter((itemReturn) => getDateKey(new Date(itemReturn.createdAt)) === today);
+    const chartDays: ChartDay[] = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(now); date.setDate(now.getDate() - (6 - index)); const dateKey = getDateKey(date);
+      return { dateKey, label: date.toLocaleDateString('en-PH', { weekday: 'short' }).toUpperCase(), total: sales.filter((sale) => getDateKey(new Date(sale.createdAt)) === dateKey).reduce((sum, sale) => sum + calculateSaleTotal(sale), 0) };
+    });
+    const activities: RecentActivity[] = [...sales.map((sale) => ({ id: `sale-${sale.id}`, type: 'sale' as const, itemName: sale.items.map((item) => item.item.name).join(', '), customerName: sale.customerName, quantity: sale.items.reduce((sum, item) => sum + item.quantity, 0), detail: formatCurrency(calculateSaleTotal(sale)), createdAt: sale.createdAt })), ...returns.map((itemReturn) => ({ id: `return-${itemReturn.id}`, type: 'return' as const, itemName: itemReturn.item.name, customerName: itemReturn.customerName, quantity: itemReturn.quantity, detail: itemReturn.reason, createdAt: itemReturn.createdAt }))].sort((first, second) => Date.parse(second.createdAt) - Date.parse(first.createdAt)).slice(0, 5);
+    return { salesToday: todaysSales.reduce((sum, sale) => sum + calculateSaleTotal(sale), 0), saleCount: todaysSales.length, unitsOnHand: items.reduce((sum, item) => sum + item.quantity, 0), returnsToday: todaysReturns.reduce((sum, itemReturn) => sum + itemReturn.quantity, 0), returnCount: todaysReturns.length, last30DaysSales: last30DaysSales.reduce((sum, sale) => sum + calculateSaleTotal(sale), 0), last30DaysSaleCount: last30DaysSales.length, stockAttention: items.filter((item) => item.status !== 'in_stock'), chartDays, activities };
+  }, [items, sales, returns]);
+  const highestChartValue = Math.max(...dashboard.chartDays.map((day) => day.total), 1);
 
-  const chartDays: ChartDay[] = Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() - (6 - index));
-    const dateKey = getDateKey(date);
-    const total = recentSales
-      .filter((sale) => getDateKey(new Date(sale.createdAt)) === dateKey)
-      .reduce((dayTotal, sale) => dayTotal + sale.total, 0);
-
-    return {
-      dateKey,
-      label: date.toLocaleDateString('en-PH', { weekday: 'short' }).toUpperCase(),
-      total,
-    };
-  });
-  const highestChartValue = Math.max(...chartDays.map((day) => day.total), 1);
-
-  const saleActivity: RecentActivity[] = recentSales.map((sale) => ({
-    id: `sale-${sale.id}`,
-    type: 'sale',
-    itemName: sale.itemName,
-    customerName: sale.customerName,
-    quantity: sale.quantityValue,
-    detail: formatCurrency(sale.total),
-    createdAt: new Date(sale.createdAt),
-  }));
-  const returnActivity: RecentActivity[] = productReturns.map((productReturn) => ({
-    id: `return-${productReturn.id}`,
-    type: 'return',
-    itemName: productReturn.itemName,
-    customerName: productReturn.customerName,
-    quantity: productReturn.quantity,
-    detail: productReturn.reason,
-    createdAt: new Date(productReturn.createdAtIso),
-  }));
-  const recentActivity = [...saleActivity, ...returnActivity]
-    .sort((first, second) => second.createdAt.getTime() - first.createdAt.getTime())
-    .slice(0, 5);
-
-  return (
-    <View style={[styles.screen, isTablet && styles.tabletScreen]}>
-      <ScrollView
-        contentContainerStyle={[styles.content, isTablet && styles.tabletContent]}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={styles.date}>
-          {today.toLocaleDateString('en-PH', {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-          })}
-        </Text>
-        <Text style={styles.title}>Operations overview</Text>
-
-        <View style={styles.metricsGrid}>
-          <DashboardMetric
-            title="Sales today"
-            value={formatCurrency(salesToday)}
-            detail={`${todaysSales.length} completed ${todaysSales.length === 1 ? 'sale' : 'sales'}`}
-            icon="cash-outline"
-            iconColor="#2f8c48"
-            iconBackground="#eaf7eb"
-            isTablet={isTablet}
-          />
-          <DashboardMetric
-            title="Units on hand"
-            value={unitsOnHand.toLocaleString('en-PH')}
-            detail={`${inventoryItems.length} inventory items`}
-            icon="bag-handle-outline"
-            iconColor="#4267c7"
-            iconBackground="#eef1ff"
-            isTablet={isTablet}
-          />
-          <DashboardMetric
-            title="Returns today"
-            value={returnsToday.toLocaleString('en-PH')}
-            detail={`${todaysReturns.length} return ${todaysReturns.length === 1 ? 'record' : 'records'}`}
-            icon="return-down-back-outline"
-            iconColor="#bd5b14"
-            iconBackground="#fff1e5"
-            isTablet={isTablet}
-          />
-          <DashboardMetric
-            title="Inventory value"
-            value={formatCurrency(inventoryValue)}
-            detail="Based on regular prices"
-            icon="trending-up-outline"
-            iconColor="#8c4eb0"
-            iconBackground="#f5ebf8"
-            isTablet={isTablet}
-          />
-        </View>
-
-        <View
-          style={[
-            styles.dashboardPanels,
-            isWideTablet && styles.wideDashboardPanels,
-          ]}
-        >
-          <View style={[styles.sectionCard, isWideTablet && styles.tabletPanel]}>
-            <View style={styles.sectionHeader}>
-              <View>
-                <Text style={styles.sectionTitle}>7-day sales</Text>
-                <Text style={styles.sectionSubtitle}>Gross sales revenue</Text>
-              </View>
-              <View style={styles.liveBadge}>
-                <Text style={styles.liveText}>Live</Text>
-              </View>
-            </View>
-
-            <View style={styles.chart}>
-              {chartDays.map((day) => {
-                const barHeight = day.total === 0
-                  ? 0
-                  : Math.max(10, Math.round((day.total / highestChartValue) * 100));
-
-                return (
-                  <View key={day.dateKey} style={styles.chartColumn}>
-                    <Text style={styles.chartValue}>{formatChartValue(day.total)}</Text>
-                    <View style={styles.chartTrack}>
-                      <View style={[styles.chartBar, { height: `${barHeight}%` }]} />
-                    </View>
-                    <Text style={styles.chartLabel}>{day.label}</Text>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={[styles.sectionCard, isWideTablet && styles.tabletPanel]}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.flexText}>
-                <Text style={styles.sectionTitle}>Stock attention</Text>
-                <Text style={styles.sectionSubtitle}>Low and out-of-stock items</Text>
-              </View>
-              <View style={[styles.sectionIcon, styles.warningIcon]}>
-                <Ionicons name="warning-outline" size={24} color="#bd5b14" />
-              </View>
-            </View>
-
-            <View style={styles.stockList}>
-              {lowStockItems.map((item) => (
-                <View key={item.id} style={styles.stockRow}>
-                  <View style={styles.stockQuantity}>
-                    <Text style={styles.stockQuantityText}>{getStockQuantity(item.stock)}</Text>
-                  </View>
-                  <View style={styles.flexText}>
-                    <Text style={styles.stockName}>{item.name}</Text>
-                    <Text style={styles.stockStatus}>{item.stockLabel}</Text>
-                  </View>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Manage ${item.name}`}
-                    onPress={() => onTabChange('inventory')}
-                    hitSlop={8}
-                  >
-                    <Text style={styles.manageText}>Manage</Text>
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-          </View>
-        </View>
-
-        <View style={[styles.sectionCard, styles.activityCard]}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.flexText}>
-              <Text style={styles.sectionTitle}>Recent database activity</Text>
-              <Text style={styles.sectionSubtitle}>Latest sales and returns</Text>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="View sales"
-              onPress={() => onTabChange('orders')}
-              hitSlop={8}
-            >
-              <Text style={styles.viewSalesText}>View sales</Text>
-            </Pressable>
-          </View>
-
-          {recentActivity.map((activity) => {
-            const isSale = activity.type === 'sale';
-
-            return (
-              <View key={activity.id} style={styles.activityRow}>
-                <View
-                  style={[
-                    styles.activityIcon,
-                    isSale ? styles.saleIcon : styles.returnIcon,
-                  ]}
-                >
-                  <Ionicons
-                    name={isSale ? 'arrow-up-outline' : 'arrow-down-outline'}
-                    size={24}
-                    color={isSale ? '#2f8c48' : '#bd5b14'}
-                  />
-                </View>
-                <View style={styles.activityName}>
-                  <Text style={styles.activityTitle} numberOfLines={1}>
-                    {isSale ? 'Sale' : 'Return'} · {activity.itemName}
-                  </Text>
-                  <Text style={styles.activityCustomer} numberOfLines={1}>
-                    {activity.customerName}
-                  </Text>
-                </View>
-                <View style={styles.activityValues}>
-                  <Text style={styles.activityQuantity}>
-                    {isSale ? '−' : '+'}{activity.quantity}
-                  </Text>
-                  <Text style={styles.activityDetail} numberOfLines={1}>
-                    {activity.detail}
-                  </Text>
-                  <Text style={styles.activityDate}>{formatActivityDate(activity.createdAt)}</Text>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      </ScrollView>
-    </View>
-  );
+  return <View style={[styles.screen, isTablet && styles.tabletScreen]}><ScrollView contentContainerStyle={[styles.content, isTablet && styles.tabletContent]} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => void loadDashboard(undefined, true)} tintColor="#2d7042" colors={['#2d7042']} />}>
+    {isLoading && !items.length ? <LoadingState /> : error ? <ErrorState error={error} onRetry={() => void loadDashboard()} /> : <>
+      <View style={styles.metricsGrid}>
+        <DashboardMetric title="Sales today" value={formatCurrency(dashboard.salesToday)} detail={`${dashboard.saleCount} completed ${dashboard.saleCount === 1 ? 'sale' : 'sales'}`} icon="cash-outline" iconColor="#2d7042" iconBackground="#e4f1e4" isTablet={isTablet} />
+        <DashboardMetric title="Units on hand" value={dashboard.unitsOnHand.toLocaleString('en-PH')} detail={`${items.length} inventory ${items.length === 1 ? 'item' : 'items'}`} icon="bag-handle-outline" iconColor="#4566a0" iconBackground="#e8edf9" isTablet={isTablet} />
+        <DashboardMetric title="Returns today" value={dashboard.returnsToday.toLocaleString('en-PH')} detail={`${dashboard.returnCount} return ${dashboard.returnCount === 1 ? 'record' : 'records'}`} icon="return-down-back-outline" iconColor="#b15b26" iconBackground="#fff0e5" isTablet={isTablet} />
+        <DashboardMetric title="Sales last 30 days" value={formatCurrency(dashboard.last30DaysSales)} detail={`${dashboard.last30DaysSaleCount} completed ${dashboard.last30DaysSaleCount === 1 ? 'sale' : 'sales'}`} icon="trending-up-outline" iconColor="#7b5391" iconBackground="#f1e9f5" isTablet={isTablet} />
+      </View>
+      <View style={[styles.dashboardPanels, isWideTablet && styles.wideDashboardPanels]}>
+        <View style={[styles.sectionCard, isWideTablet && styles.tabletPanel]}><View style={styles.sectionHeader}><View><Text style={styles.sectionTitle}>7-day sales</Text><Text style={styles.sectionSubtitle}>Gross sales revenue</Text></View><View style={styles.liveBadge}><Text style={styles.liveText}>Live</Text></View></View><View style={styles.chart}>{dashboard.chartDays.map((day) => { const height = day.total === 0 ? 0 : Math.max(12, Math.round((day.total / highestChartValue) * 100)); return <View key={day.dateKey} style={styles.chartColumn}><Text style={styles.chartValue}>{formatChartValue(day.total)}</Text><View style={styles.chartTrack}><View style={[styles.chartBar, { height: `${height}%` }]} /></View><Text style={styles.chartLabel}>{day.label}</Text></View>; })}</View></View>
+        <View style={[styles.sectionCard, isWideTablet && styles.tabletPanel]}><View style={styles.sectionHeader}><View style={styles.flexText}><Text style={styles.sectionTitle}>Stock attention</Text><Text style={styles.sectionSubtitle}>Low and out-of-stock items</Text></View><View style={[styles.sectionIcon, styles.warningIcon]}><Ionicons name="warning-outline" size={20} color="#b15b26" /></View></View><View style={styles.stockList}>{dashboard.stockAttention.length ? dashboard.stockAttention.map((item) => <View key={item.id} style={styles.stockRow}><View style={styles.stockQuantity}><Text style={styles.stockQuantityText}>{item.quantity}</Text></View><View style={styles.flexText}><Text style={styles.stockName} numberOfLines={1}>{item.item}</Text><Text style={styles.stockStatus}>{item.status.replace('_', ' ')}</Text></View><Pressable accessibilityRole="button" accessibilityLabel={`Manage ${item.item}`} onPress={() => onTabChange('inventory')} hitSlop={8}><Text style={styles.manageText}>Manage</Text></Pressable></View>) : <Text style={styles.emptyStock}>All items are currently in stock.</Text>}</View></View>
+      </View>
+      <View style={[styles.sectionCard, styles.activityCard]}><View style={styles.sectionHeader}><View style={styles.flexText}><Text style={styles.sectionTitle}>Recent database activity</Text><Text style={styles.sectionSubtitle}>Latest sales and returns</Text></View><Pressable accessibilityRole="button" accessibilityLabel="View sales" onPress={() => onTabChange('orders')} hitSlop={8}><Text style={styles.viewSalesText}>View sales</Text></Pressable></View>{dashboard.activities.length ? dashboard.activities.map((activity) => { const isSale = activity.type === 'sale'; return <View key={activity.id} style={styles.activityRow}><View style={[styles.activityIcon, isSale ? styles.saleIcon : styles.returnIcon]}><Ionicons name={isSale ? 'arrow-up-outline' : 'arrow-down-outline'} size={18} color={isSale ? '#2f7043' : '#b15b26'} /></View><View style={styles.activityName}><Text style={styles.activityTitle} numberOfLines={1}>{activity.type} · {activity.itemName}</Text><Text style={styles.activityCustomer} numberOfLines={1}>{activity.customerName}</Text></View><View style={styles.activityValues}><Text style={styles.activityQuantity}>{isSale ? '−' : '+'}{activity.quantity}</Text><Text style={styles.activityDetail} numberOfLines={1}>{activity.detail}</Text><Text style={styles.activityDate}>{formatActivityDate(activity.createdAt)}</Text></View></View>; }) : <Text style={styles.emptyActivity}>No sales or returns have been recorded yet.</Text>}</View>
+    </>}
+  </ScrollView></View>;
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    width: '100%',
-    maxWidth: 520,
-    alignSelf: 'center',
-    backgroundColor: '#f8faf8',
-  },
-  tabletScreen: {
-    maxWidth: 1120,
-  },
-  content: {
-    padding: 18,
-    paddingTop: 14,
-    paddingBottom: 28,
-  },
-  tabletContent: {
-    padding: 28,
-    paddingBottom: 36,
-  },
-  date: {
-    color: '#66736c',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  title: {
-    color: '#121a15',
-    fontSize: 28,
-    fontWeight: '800',
-    marginTop: 3,
-  },
-  metricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 20,
-  },
-  metricCard: {
-    position: 'relative',
-    flexBasis: '47%',
-    flexGrow: 1,
-    minHeight: 130,
-    borderWidth: 1,
-    borderColor: '#dde4de',
-    borderRadius: 16,
-    backgroundColor: '#ffffff',
-    padding: 15,
-  },
-  tabletMetricCard: {
-    flexBasis: '22%',
-  },
-  dashboardPanels: {
-    gap: 0,
-  },
-  wideDashboardPanels: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: 14,
-  },
-  tabletPanel: {
-    flex: 1,
-  },
-  metricIcon: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 42,
-    height: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 13,
-  },
-  metricTitle: {
-    maxWidth: '72%',
-    color: '#66736c',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  metricValue: {
-    color: '#101713',
-    fontSize: 25,
-    fontWeight: '800',
-    marginTop: 22,
-  },
-  metricDetail: {
-    color: '#748078',
-    fontSize: 13,
-    marginTop: 3,
-  },
-  sectionCard: {
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#dde4de',
-    borderRadius: 18,
-    backgroundColor: '#ffffff',
-    marginTop: 14,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    padding: 16,
-  },
-  sectionTitle: {
-    color: '#121a15',
-    fontSize: 19,
-    fontWeight: '800',
-  },
-  sectionSubtitle: {
-    color: '#748078',
-    fontSize: 14,
-    marginTop: 3,
-  },
-  liveBadge: {
-    borderRadius: 14,
-    backgroundColor: '#eaf7eb',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  liveText: {
-    color: '#287c40',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  chart: {
-    height: 170,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 7,
-    paddingHorizontal: 15,
-    paddingBottom: 16,
-  },
-  chartColumn: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  chartValue: {
-    color: '#657169',
-    fontSize: 11,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  chartTrack: {
-    width: '76%',
-    height: 94,
-    justifyContent: 'flex-end',
-    overflow: 'hidden',
-    borderRadius: 7,
-    backgroundColor: '#f0f3f0',
-  },
-  chartBar: {
-    width: '100%',
-    minHeight: 0,
-    borderRadius: 7,
-    backgroundColor: '#4a925d',
-  },
-  chartLabel: {
-    color: '#6f7b73',
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 7,
-  },
-  flexText: {
-    flex: 1,
-    minWidth: 0,
-  },
-  sectionIcon: {
-    width: 46,
-    height: 46,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 14,
-  },
-  warningIcon: {
-    backgroundColor: '#fff1e5',
-  },
-  stockList: {
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-  },
-  stockRow: {
-    minHeight: 72,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderWidth: 1,
-    borderColor: '#e8ece8',
-    borderRadius: 14,
-    padding: 11,
-  },
-  stockQuantity: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    backgroundColor: '#f2f5f1',
-  },
-  stockQuantityText: {
-    color: '#163c23',
-    fontSize: 17,
-    fontWeight: '800',
-  },
-  stockName: {
-    color: '#121a15',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  stockStatus: {
-    color: '#748078',
-    fontSize: 13,
-    marginTop: 3,
-  },
-  manageText: {
-    color: '#b64f0a',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  activityCard: {
-    marginBottom: 4,
-  },
-  viewSalesText: {
-    color: '#287c40',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  activityRow: {
-    minHeight: 84,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 11,
-    borderTopWidth: 1,
-    borderTopColor: '#e8ece8',
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-  },
-  activityIcon: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 13,
-  },
-  saleIcon: {
-    backgroundColor: '#eaf7eb',
-  },
-  returnIcon: {
-    backgroundColor: '#fff1e5',
-  },
-  activityName: {
-    flex: 1,
-    minWidth: 0,
-  },
-  activityTitle: {
-    color: '#121a15',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  activityCustomer: {
-    color: '#748078',
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 3,
-  },
-  activityValues: {
-    width: 115,
-    alignItems: 'flex-end',
-  },
-  activityQuantity: {
-    color: '#121a15',
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  activityDetail: {
-    maxWidth: '100%',
-    color: '#68756d',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  activityDate: {
-    color: '#7a857e',
-    fontSize: 11,
-    marginTop: 3,
-  },
+  screen: { flex: 1, width: '100%', maxWidth: 520, alignSelf: 'center', backgroundColor: '#f4f6f1' }, tabletScreen: { maxWidth: 1120 }, content: { padding: 18, paddingBottom: 28 }, tabletContent: { padding: 28, paddingBottom: 36 },
+  loadingState: { minHeight: 220, alignItems: 'center', justifyContent: 'center', gap: 12 }, loadingText: { color: '#7a857d', fontSize: 14, fontWeight: '600' }, errorState: { alignItems: 'center', borderRadius: 18, backgroundColor: '#fff0e8', padding: 24 }, errorText: { color: '#8f421f', fontSize: 14, fontWeight: '700', textAlign: 'center' }, retryButton: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 14, borderRadius: 12, backgroundColor: '#ffffff', paddingHorizontal: 15, paddingVertical: 11 }, retryText: { color: '#8f421f', fontSize: 14, fontWeight: '800' },
+  metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 }, metricCard: { position: 'relative', flexBasis: '47%', flexGrow: 1, minHeight: 132, borderWidth: 1, borderColor: '#e1e6df', borderRadius: 16, backgroundColor: '#ffffff', padding: 15 }, tabletMetricCard: { flexBasis: '22%' }, metricIcon: { position: 'absolute', top: 14, right: 14, width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 12 }, metricTitle: { maxWidth: '70%', color: '#758078', fontSize: 14, fontWeight: '700' }, metricValue: { color: '#18251a', fontSize: 24, fontWeight: '800', marginTop: 23 }, metricDetail: { color: '#849087', fontSize: 12, fontWeight: '600', marginTop: 4 },
+  dashboardPanels: { gap: 0 }, wideDashboardPanels: { flexDirection: 'row', alignItems: 'stretch', gap: 14 }, tabletPanel: { flex: 1 }, sectionCard: { overflow: 'hidden', borderWidth: 1, borderColor: '#e1e6df', borderRadius: 18, backgroundColor: '#ffffff', marginTop: 14 }, sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: 16 }, sectionTitle: { color: '#18251a', fontSize: 18, fontWeight: '800' }, sectionSubtitle: { color: '#7a857d', fontSize: 14, marginTop: 3 }, liveBadge: { borderRadius: 14, backgroundColor: '#e9f4e8', paddingHorizontal: 12, paddingVertical: 6 }, liveText: { color: '#2d7042', fontSize: 12, fontWeight: '800' },
+  chart: { height: 170, flexDirection: 'row', alignItems: 'flex-end', gap: 7, paddingHorizontal: 15, paddingBottom: 16 }, chartColumn: { flex: 1, alignItems: 'center' }, chartValue: { color: '#718078', fontSize: 10, fontWeight: '700', marginBottom: 6 }, chartTrack: { width: '76%', height: 94, justifyContent: 'flex-end', overflow: 'hidden', borderRadius: 7, backgroundColor: '#edf1eb' }, chartBar: { width: '100%', borderRadius: 7, backgroundColor: '#3f8152' }, chartLabel: { color: '#8a938c', fontSize: 10, fontWeight: '800', marginTop: 7 },
+  flexText: { flex: 1, minWidth: 0 }, sectionIcon: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 12 }, warningIcon: { backgroundColor: '#fff0e5' }, stockList: { gap: 10, paddingHorizontal: 12, paddingBottom: 12 }, stockRow: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: 11, borderWidth: 1, borderColor: '#edf0eb', borderRadius: 12, padding: 10 }, stockQuantity: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 10, backgroundColor: '#f4f6f1' }, stockQuantityText: { color: '#173b24', fontSize: 15, fontWeight: '800' }, stockName: { color: '#18251a', fontSize: 14, fontWeight: '800' }, stockStatus: { color: '#828c84', fontSize: 12, marginTop: 3, textTransform: 'capitalize' }, manageText: { color: '#a85620', fontSize: 12, fontWeight: '800' }, emptyStock: { borderRadius: 12, backgroundColor: '#eef6ed', color: '#39704a', fontSize: 14, fontWeight: '700', padding: 14 },
+  activityCard: { marginBottom: 4 }, viewSalesText: { color: '#2d7042', fontSize: 12, fontWeight: '800' }, activityRow: { minHeight: 82, flexDirection: 'row', alignItems: 'center', gap: 11, borderTopWidth: 1, borderTopColor: '#edf0eb', paddingHorizontal: 14, paddingVertical: 11 }, activityIcon: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 12 }, saleIcon: { backgroundColor: '#e7f2e6' }, returnIcon: { backgroundColor: '#fff0e5' }, activityName: { flex: 1, minWidth: 0 }, activityTitle: { color: '#18251a', fontSize: 14, fontWeight: '800', textTransform: 'capitalize' }, activityCustomer: { color: '#89928b', fontSize: 12, fontWeight: '600', marginTop: 3 }, activityValues: { width: 92, alignItems: 'flex-end' }, activityQuantity: { color: '#24362a', fontSize: 14, fontWeight: '800' }, activityDetail: { color: '#68736b', fontSize: 11, fontWeight: '600', marginTop: 2, textAlign: 'right' }, activityDate: { color: '#929a94', fontSize: 10, fontWeight: '600', marginTop: 2 }, emptyActivity: { color: '#7c867e', fontSize: 14, fontWeight: '600', padding: 32, textAlign: 'center' },
 });

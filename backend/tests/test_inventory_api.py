@@ -350,6 +350,23 @@ async def test_cors_allows_local_frontend(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_cors_allows_expo_web(client: AsyncClient) -> None:
+    response = await client.options(
+        "/api/v1/inventory/add-stock",
+        headers={
+            "Origin": "http://localhost:8081",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == (
+        "http://localhost:8081"
+    )
+
+
+@pytest.mark.asyncio
 async def test_cors_rejects_unknown_origin(client: AsyncClient) -> None:
     response = await client.options(
         "/api/v1/inventory/add-stock",
