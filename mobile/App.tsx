@@ -10,6 +10,7 @@ import {
   SafeAreaView,
   StatusBar as NativeStatusBar,
   StyleSheet,
+  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -139,6 +140,12 @@ export default function App() {
 
       <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>
+          © DevJomar · {new Date().getFullYear()} · v1.0.00
+        </Text>
+      </View>
+
       {isAddStockModalVisible && (
         <AddStockModal
           onClose={() => setIsAddStockModalVisible(false)}
@@ -207,5 +214,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#eef2f5',
     paddingTop: Platform.OS === 'android' ? NativeStatusBar.currentHeight : 0,
+  },
+  footer: {
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    paddingTop: 8,
+    paddingBottom: 2,
+  },
+  footerText: {
+    color: '#758078',
+    fontSize: 11,
+    fontWeight: '600',
   },
 });
