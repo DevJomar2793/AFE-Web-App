@@ -13,9 +13,8 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open `http://localhost:3000` for the storefront. Sign in at
-`http://localhost:3000/login` before opening the protected inventory workspace
-at `http://localhost:3000/dashboard`.
+Open `http://localhost:3000` for the storefront or
+`http://localhost:3000/dashboard` for the inventory workspace.
 
 Useful commands:
 
@@ -42,9 +41,6 @@ The backend's configured CORS origins must include the frontend origin.
 API responses use `cache: "no-store"`, so inventory rows and activity requests
 reflect the latest database response.
 
-After sign-in, the JWT access token is kept in `sessionStorage` and sent as a
-bearer token with dashboard API requests. It is removed on logout and when the
-browser session ends.
 
 ## Frontend organization
 

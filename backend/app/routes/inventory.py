@@ -6,18 +6,13 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth import get_current_user
 from app.database import get_database_session
 from app.models import Inventory, InventoryStatus
 from app.schemas import InventoryCreate, InventoryResponse, InventoryUpdate
 
 
 logger = logging.getLogger(__name__)
-router = APIRouter(
-    prefix="/inventory",
-    tags=["inventory"],
-    dependencies=[Depends(get_current_user)],
-)
+router = APIRouter(prefix="/inventory", tags=["inventory"])
 DatabaseSession = Annotated[AsyncSession, Depends(get_database_session)]
 
 
