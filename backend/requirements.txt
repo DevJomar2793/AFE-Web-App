@@ -4,5 +4,3 @@ SQLAlchemy[asyncio]==2.0.43
 asyncpg==0.30.0
 pydantic-settings==2.10.1
 alembic==1.16.5
-pwdlib[argon2]==0.3.0
-PyJWT==2.13.0

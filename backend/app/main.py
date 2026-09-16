@@ -5,10 +5,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.auth import seed_initial_admin
 from app.database import engine
 from app.routes.health import router as health_router
-from app.routes.auth import router as auth_router
 from app.routes.inventory import router as inventory_router
 from app.routes.returns import router as returns_router
 from app.routes.sales import router as sales_router
@@ -16,7 +14,6 @@ from app.routes.sales import router as sales_router
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    await seed_initial_admin()
     yield
     await engine.dispose()
 
@@ -32,11 +29,10 @@ app.add_middleware(
     allow_origins=settings.cors_origins,
     allow_credentials=False,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Accept", "Authorization", "Content-Type"],
+    allow_headers=["Accept", "Content-Type"],
 )
 for router in (
     health_router,
-    auth_router,
     inventory_router,
     sales_router,
     returns_router,

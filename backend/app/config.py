@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import SecretStr, model_validator
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
 
@@ -16,10 +16,6 @@ class Settings(BaseSettings):
     database_user: str
     database_password: SecretStr
     database_ssl: bool = False
-    jwt_secret_key: SecretStr
-    jwt_access_token_expire_minutes: int = 480
-    initial_admin_email: str | None = None
-    initial_admin_password: SecretStr | None = None
     cors_allowed_origins: str = (
         "http://localhost:3000,http://127.0.0.1:3000,"
         "http://localhost:8081,http://127.0.0.1:8081,"
@@ -32,16 +28,6 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
-
-    @model_validator(mode="after")
-    def validate_initial_admin(self) -> "Settings":
-        has_email = bool(self.initial_admin_email)
-        has_password = self.initial_admin_password is not None
-        if has_email != has_password:
-            raise ValueError(
-                "INITIAL_ADMIN_EMAIL and INITIAL_ADMIN_PASSWORD must be set together"
-            )
-        return self
 
     @property
     def database_url(self) -> URL:

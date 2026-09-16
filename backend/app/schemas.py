@@ -12,34 +12,6 @@ class HealthResponse(BaseModel):
     database_name: str
 
 
-class LoginRequest(BaseModel):
-    email: str = Field(min_length=3, max_length=255)
-    password: str = Field(min_length=1, max_length=255)
-
-    @field_validator("email", mode="before")
-    @classmethod
-    def normalize_email(cls, value: object) -> object:
-        return value.strip().lower() if isinstance(value, str) else value
-
-
-class RegisterRequest(LoginRequest):
-    password: str = Field(min_length=8, max_length=255)
-
-
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    expires_in: int
-
-
-class CurrentUserResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    email: str
-    is_admin: bool
-
-
 class InventoryCreate(BaseModel):
     item: str = Field(min_length=1, max_length=255)
     quantity: int = Field(ge=0, strict=True)

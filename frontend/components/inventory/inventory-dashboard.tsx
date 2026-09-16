@@ -2,7 +2,6 @@
 
 import { CheckCircle2, Trash2, TriangleAlert, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { AddInventoryItemModal } from "@/components/inventory/add-inventory-item-modal";
 import { EditInventoryItemModal } from "@/components/inventory/edit-inventory-item-modal";
 import { EditSaleModal } from "@/components/inventory/edit-sale-modal";
@@ -22,12 +21,8 @@ import { NewSaleModal } from "@/components/inventory/new-sale-modal";
 import { InventoryOverview } from "@/components/inventory/overview";
 import { ReturnsList } from "@/components/inventory/returns-list";
 import { SalesActivity } from "@/components/inventory/sales-activity";
-import { clearAccessToken } from "@/lib/auth";
 import {
-  ApiError,
   deleteSale,
-  getCurrentUser,
-  type CurrentUser,
   type InventoryItem,
   type Sale,
 } from "@/lib/api";
@@ -38,10 +33,7 @@ type Notice = {
 };
 
 export function InventoryDashboard() {
-  const router = useRouter();
   const currentYear = new Date().getFullYear();
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
-  const [isCheckingSession, setIsCheckingSession] = useState(true);
 
   const [currentView, setCurrentView] =
     useState<InventoryViewName>("overview");
@@ -60,23 +52,6 @@ export function InventoryDashboard() {
   const [transactionRange, setTransactionRange] =
     useState<TransactionRange>("weekly");
   const [notice, setNotice] = useState<Notice | null>(null);
-
-  useEffect(() => {
-    async function checkSession() {
-      try {
-        setCurrentUser(await getCurrentUser());
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 401) {
-          clearAccessToken();
-        }
-        router.replace("/login");
-      } finally {
-        setIsCheckingSession(false);
-      }
-    }
-
-    void checkSession();
-  }, [router]);
 
   // Inventory, sales, and returns below are loaded from the FastAPI database.
   const {
@@ -212,19 +187,6 @@ export function InventoryDashboard() {
     retryReturns();
   };
 
-  if (isCheckingSession || !currentUser) {
-    return (
-      <main className="grid min-h-dvh place-items-center bg-[#f4f6f1] px-6 text-center text-[#405142]">
-        Checking your session…
-      </main>
-    );
-  }
-
-  function handleLogout() {
-    clearAccessToken();
-    router.replace("/login");
-  }
-
   return (
     <div className="min-h-dvh bg-[#f4f6f1] text-[#18251a]">
       <InventorySidebar
@@ -237,9 +199,7 @@ export function InventoryDashboard() {
       <div className="lg:pl-64">
         <InventoryHeader
           currentView={currentView}
-          currentUserEmail={currentUser.email}
           onOpenMenu={() => setIsMenuOpen(true)}
-          onLogout={handleLogout}
           transactionRange={transactionRange}
           onTransactionRangeChange={setTransactionRange}
         />
