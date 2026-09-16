@@ -99,14 +99,15 @@ curl -X POST http://127.0.0.1:8000/api/v1/auth/register \
 Only an administrator can call this endpoint. It creates staff accounts only;
 it cannot create another administrator.
 
-This is a staged backend rollout. The existing inventory, sales, and returns
-routes remain public until the mobile or web login flow sends the bearer token.
+Inventory, sales, and returns routes require a valid bearer token. Send the
+`Authorization: Bearer YOUR_ACCESS_TOKEN` header with each request after login.
 
 Create an item without putting an ID in the URL or request body. PostgreSQL
 generates the ID:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/inventory/add-stock \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"item": "Large eggs", "quantity": 5, "price": "250.00"}'
 ```
@@ -118,6 +119,7 @@ Update an inventory item's current quantity and price:
 
 ```bash
 curl -X PATCH http://127.0.0.1:8000/api/v1/inventory/1 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"quantity": 12, "price": "275.00"}'
 ```
@@ -131,6 +133,7 @@ customer name:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/sales/add-sales \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"inventory_id": 1, "quantity": 2, "customer_name": "Maria Santos"}'
 ```
@@ -144,6 +147,7 @@ Create one sale containing multiple inventory items:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/sales/add-sales-batch \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"customer_name":"Maria Santos","items":[{"inventory_id":1,"quantity":2},{"inventory_id":2,"quantity":3}]}'
 ```
@@ -155,13 +159,15 @@ inventory deductions are saved. Each inventory item may appear only once.
 List sales, newest first, with:
 
 ```bash
-curl http://127.0.0.1:8000/api/v1/sales/get-sales
+curl http://127.0.0.1:8000/api/v1/sales/get-sales \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 Update every item in a sale using the item-line IDs returned by the API:
 
 ```bash
 curl -X PATCH http://127.0.0.1:8000/api/v1/sales/1 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"items":[{"id":11,"price":"275.00","quantity":3},{"id":12,"price":"180.00","quantity":2}]}'
 ```
@@ -176,6 +182,7 @@ customer name, and a reason:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/returns/add-returns \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"inventory_id": 1, "quantity": 1, "customer_name": "Maria Santos", "reason": "Damaged tray"}'
 ```
@@ -187,7 +194,8 @@ are locked so simultaneous returns cannot overwrite each other's return counts.
 List returns, newest first, with:
 
 ```bash
-curl http://127.0.0.1:8000/api/v1/returns/get-returns
+curl http://127.0.0.1:8000/api/v1/returns/get-returns \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 ## Code organization
@@ -229,6 +237,6 @@ Run integration tests while the configured PostgreSQL database is available:
 pytest
 ```
 
-The login API is available now, but business routes are not protected until the
-client login integration is completed. Keep the API on a trusted internal
-network until that enforcement step is finished.
+The web dashboard stores its access token only for the current browser session.
+Users must sign in again after closing the browser, logging out, or when the
+8-hour token expires.

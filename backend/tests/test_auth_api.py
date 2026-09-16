@@ -95,6 +95,7 @@ async def test_get_me_requires_and_accepts_a_valid_token(
     user = await add_test_user(email, "correct-password")
     created_user_emails.append(email)
 
+    client.headers.pop("Authorization")
     missing_token_response = await client.get("/api/v1/auth/me")
     invalid_token_response = await client.get(
         "/api/v1/auth/me",
@@ -149,12 +150,18 @@ async def test_initial_admin_seed_only_creates_one_account(
 
 
 @pytest.mark.asyncio
-async def test_inventory_routes_remain_public_during_staged_rollout(
+async def test_business_routes_require_an_access_token(
     client: AsyncClient,
 ) -> None:
-    response = await client.get("/api/v1/inventory/get-item")
+    client.headers.pop("Authorization")
 
-    assert response.status_code == 200
+    inventory_response = await client.get("/api/v1/inventory/get-item")
+    sales_response = await client.get("/api/v1/sales/get-sales")
+    returns_response = await client.get("/api/v1/returns/get-returns")
+
+    assert inventory_response.status_code == 401
+    assert sales_response.status_code == 401
+    assert returns_response.status_code == 401
 
 
 @pytest.mark.asyncio
@@ -188,7 +195,11 @@ async def test_registration_requires_an_admin_token(
     created_user_emails.append(staff_email)
     account = {"email": "new-staff@example.com", "password": "new-password"}
 
-    missing_token_response = await client.post("/api/v1/auth/register", json=account)
+    missing_token_response = await client.post(
+        "/api/v1/auth/register",
+        headers={"Authorization": "Bearer not-a-token"},
+        json=account,
+    )
     staff_token_response = await client.post(
         "/api/v1/auth/register",
         headers={"Authorization": f"Bearer {create_access_token(staff)}"},

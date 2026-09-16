@@ -1,3 +1,5 @@
+import { getAccessToken } from "@/lib/auth";
+
 export type InventoryStatus = "in_stock" | "low_stock" | "out_of_stock";
 
 export type InventoryItem = {
@@ -81,6 +83,28 @@ export type CreateReturnInput = {
   reason: string;
 };
 
+export type CurrentUser = {
+  id: number;
+  email: string;
+  isAdmin: boolean;
+};
+
+type LoginResponse = {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+};
+
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 const DEFAULT_API_BASE_URL =
   process.env.NODE_ENV === "production"
     ? "https://atbackend-web-app-afe.onrender.com"
@@ -89,6 +113,56 @@ const DEFAULT_API_BASE_URL =
 const API_BASE_URL = (
   process.env.NEXT_PUBLIC_BACKEND_API_URL ?? DEFAULT_API_BASE_URL
 ).replace(/\/+$/, "");
+
+export async function login(
+  email: string,
+  password: string,
+): Promise<LoginResponse> {
+  const response = await apiRequest(
+    "/api/v1/auth/login",
+    {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    },
+    "Unable to sign in. Please try again.",
+    false,
+  );
+
+  if (
+    !isRecord(response) ||
+    typeof response.access_token !== "string" ||
+    !response.access_token ||
+    response.token_type !== "bearer" ||
+    !isPositiveInteger(response.expires_in)
+  ) {
+    throw new Error("Invalid login response");
+  }
+
+  return response as LoginResponse;
+}
+
+export async function getCurrentUser(): Promise<CurrentUser> {
+  const response = await apiRequest(
+    "/api/v1/auth/me",
+    {},
+    "Your session has expired. Please sign in again.",
+  );
+
+  if (
+    !isRecord(response) ||
+    !isPositiveInteger(response.id) ||
+    typeof response.email !== "string" ||
+    typeof response.is_admin !== "boolean"
+  ) {
+    throw new Error("Invalid current user response");
+  }
+
+  return {
+    id: response.id,
+    email: response.email,
+    isAdmin: response.is_admin,
+  };
+}
 
 export async function getInventoryItems(
   signal?: AbortSignal,
@@ -241,13 +315,20 @@ async function apiRequest(
   path: string,
   options: RequestInit,
   fallbackMessage: string,
+  requiresAuth = true,
 ): Promise<unknown> {
+  const accessToken = requiresAuth ? getAccessToken() : null;
+  if (requiresAuth && !accessToken) {
+    throw new ApiError("Your session has expired. Please sign in again.", 401);
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     cache: "no-store",
     headers: {
       Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...options.headers,
     },
   });
@@ -255,7 +336,10 @@ async function apiRequest(
     response.status === 204 ? null : await response.json();
 
   if (!response.ok) {
-    throw new Error(getApiErrorMessage(responseBody, fallbackMessage));
+    throw new ApiError(
+      getApiErrorMessage(responseBody, fallbackMessage),
+      response.status,
+    );
   }
 
   return responseBody;

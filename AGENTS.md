@@ -1422,6 +1422,37 @@ user = get_user()
 
 ---
 
+## JWT Authentication Rules
+
+### Purpose
+
+JWT authentication must be implemented in a way that is secure, simple, and easy for a Junior Developer to understand and maintain.
+
+Do not create complicated authentication logic unless the project actually requires it.
+
+---
+
+### 1. Keep JWT Authentication Simple
+
+Follow a simple authentication flow:
+
+````text
+Login
+  ↓
+Check Username/Email + Password
+  ↓
+Create JWT Token
+  ↓
+Return Token to Client
+  ↓
+Client Sends Token with API Requests
+  ↓
+Backend Validates Token
+  ↓
+Allow or Reject Request
+
+---
+
 # Testing
 
 When adding an important feature, suggest simple tests or verification steps.
@@ -1444,7 +1475,7 @@ For example:
 
 7. Verify the UI result.
 
-```
+````
 
 Do not create an extremely complicated testing architecture unless requested.
 

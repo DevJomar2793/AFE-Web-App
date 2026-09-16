@@ -8,6 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.auth import get_current_user
 from app.database import get_database_session
 from app.models import Inventory, InventoryStatus, Sale, SaleItem
 from app.schemas import (
@@ -20,7 +21,11 @@ from app.schemas import (
 
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/sales", tags=["sales"])
+router = APIRouter(
+    prefix="/sales",
+    tags=["sales"],
+    dependencies=[Depends(get_current_user)],
+)
 DatabaseSession = Annotated[AsyncSession, Depends(get_database_session)]
 
 

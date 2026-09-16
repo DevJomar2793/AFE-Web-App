@@ -7,13 +7,18 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.auth import get_current_user
 from app.database import get_database_session
 from app.models import Inventory, Return
 from app.schemas import ReturnCreate, ReturnResponse
 
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/returns", tags=["returns"])
+router = APIRouter(
+    prefix="/returns",
+    tags=["returns"],
+    dependencies=[Depends(get_current_user)],
+)
 DatabaseSession = Annotated[AsyncSession, Depends(get_database_session)]
 
 

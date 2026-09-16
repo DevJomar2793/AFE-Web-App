@@ -7,6 +7,7 @@ import {
   ClipboardList,
   House,
   LayoutDashboard,
+  LogOut,
   Menu,
   ReceiptText,
   RotateCcw,
@@ -97,12 +98,16 @@ export function InventorySidebar({
 
 export function InventoryHeader({
   currentView,
+  currentUserEmail,
   onOpenMenu,
+  onLogout,
   transactionRange,
   onTransactionRangeChange,
 }: {
   currentView: InventoryViewName;
+  currentUserEmail: string;
   onOpenMenu: () => void;
+  onLogout: () => void;
   transactionRange: TransactionRange;
   onTransactionRangeChange: (range: TransactionRange) => void;
 }) {
@@ -177,6 +182,15 @@ export function InventoryHeader({
             </button>
           </div>
         )}
+        <button
+          type="button"
+          className="inline-flex h-11 items-center gap-2 rounded-xl border border-[#d5ddd3] bg-white px-3 text-sm font-black text-[#173b24] hover:bg-[#f5f8f4]"
+          onClick={onLogout}
+          title={`Signed in as ${currentUserEmail}`}
+        >
+          <LogOut size={17} aria-hidden="true" />
+          <span className="hidden sm:inline">Log out</span>
+        </button>
       </div>
     </header>
   );
