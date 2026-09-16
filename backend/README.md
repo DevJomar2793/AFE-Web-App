@@ -25,6 +25,14 @@ The file is ignored by Git. If credentials from an earlier example file were
 real, rotate them because removing them from the current file does not remove
 them from Git history.
 
+Set `JWT_SECRET_KEY` to a long, random value. The backend will not start without
+it. `INITIAL_ADMIN_EMAIL` and `INITIAL_ADMIN_PASSWORD` create the first staff
+account after the users migration has been applied. Set both values together;
+after the account exists, changing those variables does not change its password,
+but that email is promoted to administrator when the backend starts.
+There is no public registration endpoint. The configured initial admin can use
+the protected registration API to create staff accounts.
+
 Keep `DATABASE_SSL=false` for local PostgreSQL. Set it to `true` when using a
 hosted database such as Supabase so database traffic is encrypted.
 
@@ -57,7 +65,42 @@ POST /api/v1/sales/add-sales-batch
 PATCH /api/v1/sales/{sale_id}
 GET  /api/v1/returns/get-returns
 POST /api/v1/returns/add-returns
+POST /api/v1/auth/login
+GET  /api/v1/auth/me
+POST /api/v1/auth/register
 ```
+
+## Login API
+
+Log in with the initial admin email and password:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"your-password"}'
+```
+
+The response contains an 8-hour bearer token. Verify it with:
+
+```bash
+curl http://127.0.0.1:8000/api/v1/auth/me \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+An administrator can create a regular staff account with the same bearer token:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/auth/register \
+  -H "Authorization: Bearer ADMIN_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"staff@example.com","password":"at-least-8-characters"}'
+```
+
+Only an administrator can call this endpoint. It creates staff accounts only;
+it cannot create another administrator.
+
+This is a staged backend rollout. The existing inventory, sales, and returns
+routes remain public until the mobile or web login flow sends the bearer token.
 
 Create an item without putting an ID in the URL or request body. PostgreSQL
 generates the ID:
@@ -186,5 +229,6 @@ Run integration tests while the configured PostgreSQL database is available:
 pytest
 ```
 
-This MVP has no authentication or authorization. Keep it on a trusted internal
-network until access control is added.
+The login API is available now, but business routes are not protected until the
+client login integration is completed. Keep the API on a trusted internal
+network until that enforcement step is finished.

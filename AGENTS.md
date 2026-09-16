@@ -13,10 +13,15 @@ My goal is to build real-world applications while understanding the code that I 
 Please write code that is:
 
 - Simple
+
 - Readable
+
 - Maintainable
+
 - Beginner-friendly
+
 - Practical
+
 - Easy to debug
 
 ## Most Important Rule
@@ -32,18 +37,23 @@ Do not over-engineer the application.
 ## Web Frontend
 
 - Next.js
+
 - React
+
 - TypeScript
+
 - Tailwind CSS
 
 ## Mobile
 
 - React Native
+
 - TypeScript
 
 ## Backend
 
 - Python
+
 - FastAPI
 
 ## Database
@@ -61,13 +71,21 @@ Prefer straightforward code over clever code.
 Avoid unnecessary:
 
 - Abstractions
+
 - Design patterns
+
 - Custom frameworks
+
 - Utility functions
+
 - Generic types
+
 - Custom hooks
+
 - Classes
+
 - Layers
+
 - Dependencies
 
 If a simple function can solve the problem, use a simple function.
@@ -81,15 +99,25 @@ Do not build an architecture for problems that do not exist yet.
 For example, do not automatically create:
 
 ```text
+
 Controller
+
 Service
+
 Repository
+
 Factory
+
 Adapter
+
 Strategy
+
 Manager
+
 Helper
+
 Provider
+
 ```
 
 unless there is a real reason to use them.
@@ -105,13 +133,21 @@ We can refactor later when the project actually needs it.
 Prefer my existing stack:
 
 ```text
+
 Next.js
+
 React
+
 TypeScript
+
 Tailwind CSS
+
 React Native
+
 FastAPI
+
 PostgreSQL
+
 ```
 
 Do not introduce a new framework or library unless it provides a clear benefit.
@@ -119,7 +155,9 @@ Do not introduce a new framework or library unless it provides a clear benefit.
 Before adding a significant dependency, explain:
 
 1. Why it is needed
+
 2. What problem it solves
+
 3. Whether the existing stack can solve the problem
 
 ---
@@ -133,7 +171,9 @@ Prefer:
 ```ts
 interface User {
   id: number;
+
   name: string;
+
   email: string;
 }
 ```
@@ -163,21 +203,33 @@ Use functional components.
 Prefer simple components:
 
 ```tsx
+
 function UserCard({ user }: UserCardProps) {
-  return (
-    <div>
-      <h2>{user.name}</h2>
-      <p>{user.email}</p>
-    </div>
-  );
+
+return (
+
+\<div>
+
+  \<h2>{user.name}\</h2>
+
+  \<p>{user.email}\</p>
+
+\</div>
+
+);
+
 }
+
 ```
 
 Avoid unnecessary:
 
 - Custom hooks
+
 - Context providers
+
 - State management libraries
+
 - Component abstractions
 
 Do not create a custom hook for a small piece of logic that is only used once.
@@ -197,8 +249,11 @@ Use `"use client"` only when needed.
 For example, use `"use client"` when the component needs:
 
 - `useState`
+
 - `useEffect`
+
 - Browser APIs
+
 - Client-side event handling
 
 Do not automatically make every component a Client Component.
@@ -238,11 +293,17 @@ Prefer simple components and straightforward logic.
 Avoid unnecessary:
 
 - Custom hooks
+
 - State management libraries
+
 - Component abstractions
+
 - Complex navigation patterns
+
 - Unnecessary native modules
+
 - Advanced animations
+
 - Complex architecture
 
 Use the simplest solution that works.
@@ -256,13 +317,21 @@ Use functional components with React hooks.
 Prefer:
 
 ```tsx
+
 function ProductCard({ product }: ProductCardProps) {
-  return (
-    <View>
-      <Text>{product.name}</Text>
-    </View>
-  );
+
+return (
+
+\<View>
+
+  \<Text>{product.name}\</Text>
+
+\</View>
+
+);
+
 }
+
 ```
 
 Avoid class components unless the existing project requires them.
@@ -274,17 +343,29 @@ Avoid class components unless the existing project requires them.
 Prefer built-in React Native components when possible:
 
 ```text
+
 View
+
 Text
+
 TextInput
+
 Pressable
+
 TouchableOpacity
+
 ScrollView
+
 FlatList
+
 Image
+
 Modal
+
 ActivityIndicator
+
 SafeAreaView
+
 ```
 
 Do not install a third-party component library when built-in React Native components can reasonably solve the problem.
@@ -302,8 +383,10 @@ const styles = StyleSheet.create({
   container: {
     padding: 16,
   },
+
   title: {
     fontSize: 20,
+
     fontWeight: "bold",
   },
 });
@@ -324,14 +407,23 @@ Avoid hardcoding large numbers of dimensions unless necessary.
 Prefer flexible layouts using:
 
 ```text
+
 flex
+
 flexDirection
+
 justifyContent
+
 alignItems
+
 padding
+
 margin
+
 width
+
 maxWidth
+
 ```
 
 Test layouts on different screen sizes when possible.
@@ -375,13 +467,21 @@ Keep validation easy to understand.
 Clearly separate:
 
 ```text
+
 Input
-  ↓
+
+↓
+
 Validation
-  ↓
+
+↓
+
 API Request
-  ↓
+
+↓
+
 Success / Error
+
 ```
 
 Do not introduce a form library unless the project actually needs it.
@@ -399,13 +499,21 @@ Keep navigation logic easy to follow.
 Example:
 
 ```text
+
 Login
-  ↓
+
+↓
+
 Home
-  ↓
+
+↓
+
 Products
-  ↓
+
+↓
+
 Product Details
+
 ```
 
 Avoid deeply nested navigators unless required by the application.
@@ -419,22 +527,35 @@ Keep React Native API calls simple and predictable.
 Prefer:
 
 ```text
+
 React Native
-      ↓
+
+  ↓
+
 API Request
-      ↓
+
+  ↓
+
 FastAPI
-      ↓
+
+  ↓
+
 PostgreSQL
+
 ```
 
 Clearly define:
 
 - API endpoint
+
 - Request data
+
 - Response data
+
 - Loading state
+
 - Error state
+
 - Success state
 
 Do not hide API requests behind unnecessary abstractions.
@@ -486,13 +607,21 @@ Use the React Native `Modal` component when it is sufficient.
 Example flow:
 
 ```text
+
 User taps item
-      ↓
+
+  ↓
+
 Open Modal
-      ↓
+
+  ↓
+
 Show item information
-      ↓
+
+  ↓
+
 Edit / Save / Cancel
+
 ```
 
 Do not create a complicated modal management system unless the application actually requires it.
@@ -504,10 +633,15 @@ Do not create a complicated modal management system unless the application actua
 Start with React's built-in state:
 
 ```text
+
 useState
+
 useEffect
+
 useMemo
+
 useCallback
+
 ```
 
 Do not automatically introduce Redux, Zustand, or another state management library.
@@ -523,9 +657,13 @@ If a state management library is already being used in the project, follow the e
 Use TypeScript for:
 
 - Props
+
 - API responses
+
 - Form data
+
 - Navigation parameters
+
 - Component state when useful
 
 Example:
@@ -533,7 +671,9 @@ Example:
 ```tsx
 interface Product {
   id: number;
+
   name: string;
+
   price: number;
 }
 
@@ -569,9 +709,13 @@ Do not create separate iOS and Android implementations unless the behavior genui
 When using device features such as:
 
 - Camera
+
 - Location
+
 - Notifications
+
 - Storage
+
 - Bluetooth
 
 Keep permission handling explicit and easy to understand.
@@ -579,7 +723,9 @@ Keep permission handling explicit and easy to understand.
 Explain:
 
 1. Why the permission is needed.
+
 2. Where it is requested.
+
 3. What happens when permission is denied.
 
 Do not silently add permissions.
@@ -615,7 +761,9 @@ Keep performance in mind, but do not prematurely optimize.
 First make the code:
 
 1. Correct
+
 2. Simple
+
 3. Readable
 
 Only optimize when there is an actual performance problem.
@@ -623,8 +771,11 @@ Only optimize when there is an actual performance problem.
 For example, consider:
 
 - `FlatList` for large lists
+
 - `useMemo` for expensive calculations
+
 - `useCallback` when it provides a real benefit
+
 - Image optimization for large images
 
 Do not use optimization techniques everywhere without a reason.
@@ -646,10 +797,15 @@ If a feature behaves differently between Android and iOS, explain the difference
 When modifying an existing screen:
 
 - Read the existing component first.
+
 - Reuse existing components.
+
 - Reuse existing styles.
+
 - Keep the current navigation.
+
 - Keep the current API structure.
+
 - Do not redesign unrelated screens.
 
 Only change what is necessary for the requested feature.
@@ -661,10 +817,15 @@ Only change what is necessary for the requested feature.
 When debugging React Native:
 
 1. Identify the error.
+
 2. Explain what it means.
+
 3. Find the affected component or file.
+
 4. Identify the cause.
+
 5. Make the smallest fix.
+
 6. Explain why the fix works.
 
 Do not rewrite an entire screen to fix a small issue.
@@ -678,18 +839,25 @@ I am still learning React Native.
 When introducing something unfamiliar, briefly explain:
 
 ```text
+
 What it is:
+
 Why we need it:
+
 How it works:
+
 ```
 
 Example:
 
 ```text
+
 FlatList is used to efficiently display a list of items.
 
 It is better than rendering a large list using
+
 ScrollView because FlatList can render items more efficiently.
+
 ```
 
 Keep explanations beginner-friendly.
@@ -703,10 +871,15 @@ Do not write React Native code as if you are working with a Senior Mobile Develo
 Write code that I can:
 
 - Read
+
 - Understand
+
 - Debug
+
 - Modify
+
 - Maintain
+
 - Learn from
 
 **Use React Native's built-in features first.**
@@ -724,10 +897,15 @@ Keep FastAPI endpoints easy to understand.
 Prefer straightforward routes:
 
 ```python
+
 @router.get("/users")
+
 async def get_users():
-    users = await get_users_from_database()
-    return users
+
+users = await get\_users\_from\_database()
+
+return users
+
 ```
 
 Use Pydantic models for request and response validation.
@@ -735,9 +913,13 @@ Use Pydantic models for request and response validation.
 Example:
 
 ```python
+
 class UserCreate(BaseModel):
-    name: str
-    email: str
+
+name: str
+
+email: str
+
 ```
 
 Keep API responsibilities clear.
@@ -753,11 +935,17 @@ Use simple and readable Python.
 Prefer:
 
 ```python
+
 if user is None:
-    raise HTTPException(
-        status_code=404,
-        detail="User not found"
-    )
+
+raise HTTPException(
+
+    status\_code=404,
+
+    detail="User not found"
+
+)
+
 ```
 
 instead of clever one-line solutions that are harder for a beginner to understand.
@@ -767,17 +955,25 @@ Use clear variable names.
 Prefer:
 
 ```python
+
 user_id
+
 user_name
+
 created_user
+
 ```
 
 instead of:
 
 ```python
+
 uid
+
 un
+
 cu
+
 ```
 
 unless the shorter name is a common convention.
@@ -795,22 +991,35 @@ Use clear table and column names.
 Example:
 
 ```text
+
 users
+
 products
+
 orders
+
 order_items
+
 ```
 
 Prefer clear relationships:
 
 ```text
+
 users
-  ↓
+
+↓
+
 orders
-  ↓
+
+↓
+
 order_items
-  ↓
+
+↓
+
 products
+
 ```
 
 Do not create unnecessary tables or relationships.
@@ -818,10 +1027,15 @@ Do not create unnecessary tables or relationships.
 Always consider:
 
 - Primary keys
+
 - Foreign keys
+
 - Required fields
+
 - Nullable fields
+
 - Appropriate data types
+
 - Unique constraints
 
 ---
@@ -831,9 +1045,13 @@ Always consider:
 When modifying the database:
 
 1. Explain what is changing.
+
 2. Explain why it is needed.
+
 3. Update the model.
+
 4. Create/update the migration if the project uses migrations.
+
 5. Keep existing data in mind.
 
 Do not casually delete or recreate tables.
@@ -849,11 +1067,17 @@ Use simple REST-style endpoints.
 Example:
 
 ```text
+
 GET    /users
+
 GET    /users/{id}
+
 POST   /users
+
 PUT    /users/{id}
+
 DELETE /users/{id}
+
 ```
 
 Keep endpoint names predictable.
@@ -863,11 +1087,17 @@ Use appropriate HTTP status codes.
 Example:
 
 ```text
+
 200 OK
+
 201 Created
+
 400 Bad Request
+
 404 Not Found
+
 500 Internal Server Error
+
 ```
 
 ---
@@ -877,22 +1107,35 @@ Example:
 Keep the data flow easy to understand:
 
 ```text
+
 Next.js / React / React Native
-              ↓
-         API Request
-              ↓
-            FastAPI
-              ↓
-        Business Logic
-              ↓
-          PostgreSQL
+
+          ↓
+
+     API Request
+
+          ↓
+
+        FastAPI
+
+          ↓
+
+    Business Logic
+
+          ↓
+
+      PostgreSQL
+
 ```
 
 When creating an API integration, clearly define:
 
 - Request data
+
 - API endpoint
+
 - Response data
+
 - Error handling
 
 Do not hide important API behavior behind excessive abstractions.
@@ -910,10 +1153,15 @@ Backend should return meaningful HTTP errors.
 Example:
 
 ```python
+
 raise HTTPException(
-    status_code=404,
-    detail="Product not found"
+
+status\_code=404,
+
+detail="Product not found"
+
 )
+
 ```
 
 Avoid exposing sensitive information in API errors.
@@ -927,15 +1175,21 @@ Do not silently ignore errors.
 When implementing authentication:
 
 - Keep the implementation understandable.
+
 - Do not create unnecessary authentication layers.
+
 - Never hardcode passwords, tokens, or secrets.
+
 - Use environment variables for sensitive configuration.
 
 Example:
 
 ```text
+
 DATABASE_URL=...
+
 SECRET_KEY=...
+
 ```
 
 Never commit `.env` files containing real secrets.
@@ -949,9 +1203,13 @@ Use `.env` for local configuration.
 Example:
 
 ```text
+
 DATABASE_URL=postgresql://...
+
 API_URL=http://localhost:8000
+
 SECRET_KEY=...
+
 ```
 
 Provide `.env.example` when appropriate.
@@ -959,9 +1217,13 @@ Provide `.env.example` when appropriate.
 Example:
 
 ```text
+
 DATABASE_URL=
+
 API_URL=
+
 SECRET_KEY=
+
 ```
 
 Never expose real credentials in source code.
@@ -975,35 +1237,65 @@ Keep the folder structure simple.
 A reasonable full-stack structure is:
 
 ```text
+
 project/
+
 │
+
 ├── frontend/
+
 │   ├── app/
+
 │   ├── components/
+
 │   ├── lib/
+
 │   └── types/
+
 │
+
 ├── mobile/
+
 │   ├── components/
+
 │   ├── screens/
+
 │   ├── navigation/
+
 │   ├── services/
+
 │   ├── types/
+
 │   ├── hooks/
+
 │   └── assets/
+
 │
+
 ├── backend/
+
 │   ├── app/
+
 │   │   ├── api/
+
 │   │   ├── models/
+
 │   │   ├── schemas/
+
 │   │   └── main.py
+
 │   │
+
 │   └── migrations/
+
 │
+
 ├── AGENTS.md
+
 ├── .env.example
+
 └── README.md
+
 ```
 
 Do not create folders just for the sake of having a "clean architecture."
@@ -1029,9 +1321,13 @@ Identify the most likely cause.
 Tell me:
 
 ```text
+
 File:
+
 Component / Function:
+
 Line / Area:
+
 ```
 
 when possible.
@@ -1051,8 +1347,11 @@ Briefly explain why the fix works.
 Before changing code:
 
 1. Read the relevant files.
+
 2. Understand the existing implementation.
+
 3. Reuse existing patterns.
+
 4. Make the smallest reasonable change.
 
 Do not rewrite unrelated code.
@@ -1072,11 +1371,13 @@ When introducing an unfamiliar concept, briefly explain it.
 For example:
 
 ```text
+
 This uses async/await because the API call is asynchronous.
 
 async allows the function to perform asynchronous work.
 
 await waits for the result without blocking the application.
+
 ```
 
 Keep explanations simple.
@@ -1102,15 +1403,21 @@ Only add comments when they explain something that is not obvious.
 Bad:
 
 ```python
+
 # Get user
+
 user = get_user()
+
 ```
 
 Good:
 
 ```python
+
 # We need the current user before checking ownership.
+
 user = get_user()
+
 ```
 
 ---
@@ -1122,13 +1429,21 @@ When adding an important feature, suggest simple tests or verification steps.
 For example:
 
 ```text
+
 1. Start the backend.
+
 2. Start the frontend or mobile application.
+
 3. Open the relevant screen.
+
 4. Test the feature.
+
 5. Verify the API response.
+
 6. Verify the database record.
+
 7. Verify the UI result.
+
 ```
 
 Do not create an extremely complicated testing architecture unless requested.
@@ -1142,8 +1457,11 @@ Do not modify Git history unless explicitly requested.
 Do not run destructive commands such as:
 
 ```bash
+
 git reset --hard
+
 git clean -fd
+
 ```
 
 without explicit permission.
@@ -1155,9 +1473,13 @@ When appropriate, suggest a commit message.
 Example:
 
 ```text
+
 feat: add user login
+
 fix: resolve product API error
+
 refactor: simplify user service
+
 ```
 
 ---
@@ -1167,9 +1489,13 @@ refactor: simplify user service
 Never hardcode:
 
 - Passwords
+
 - API keys
+
 - Database credentials
+
 - Secret keys
+
 - Access tokens
 
 Do not expose secrets in frontend or mobile code.
@@ -1191,10 +1517,15 @@ First check whether the current stack can solve the problem.
 If a package is genuinely useful, explain:
 
 ```text
+
 Package:
+
 Why we need it:
+
 What problem it solves:
+
 Alternative:
+
 ```
 
 Then install it if appropriate.
@@ -1206,11 +1537,17 @@ Then install it if appropriate.
 If a change affects:
 
 - Database architecture
+
 - Authentication
+
 - API architecture
+
 - Folder structure
+
 - Major dependencies
+
 - Deployment
+
 - Existing features
 
 First explain the proposed change and its impact.
@@ -1224,8 +1561,11 @@ Avoid making large architectural changes without justification.
 When working with me, keep explanations:
 
 - Simple
+
 - Direct
+
 - Practical
+
 - Beginner-friendly
 
 Use examples when helpful.
@@ -1241,11 +1581,17 @@ If you use a technical term that I may not know, explain it briefly.
 When making technical decisions, prioritize:
 
 1. Correctness
+
 2. Simplicity
+
 3. Readability
+
 4. Maintainability
+
 5. Security
+
 6. Performance
+
 7. Scalability
 
 Do not sacrifice simplicity for hypothetical future scalability.
@@ -1261,10 +1607,15 @@ Do not write code as if you are working with a Senior Developer.
 Write code that I can:
 
 - Read
+
 - Understand
+
 - Debug
+
 - Modify
+
 - Maintain
+
 - Learn from
 
 > **Choose the simplest correct solution first.**
