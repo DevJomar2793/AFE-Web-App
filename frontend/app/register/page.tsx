@@ -20,11 +20,14 @@ export default function RegisterPage() {
     const password = String(formData.get("password") ?? "");
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/v1/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/v1/auth/register",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        },
+      );
 
       if (!response.ok) {
         const data: unknown = await response.json();
@@ -45,7 +48,7 @@ export default function RegisterPage() {
   return (
     <main className="flex min-h-dvh items-center justify-center bg-[#fdfdfc] px-4 py-8 sm:px-6">
       <section
-        className="w-full max-w-130 rounded-[2rem] border-[3px] border-[#579266] bg-white px-6 py-8 shadow-[0_18px_38px_rgba(16,40,25,0.10)] sm:px-13"
+        className="w-full max-w-130 rounded-4xl border-[3px] border-[#579266] bg-white px-6 py-8 shadow-[0_18px_38px_rgba(16,40,25,0.10)] sm:px-13"
         aria-labelledby="register-title"
       >
         <h1
@@ -73,7 +76,10 @@ export default function RegisterPage() {
         ) : (
           <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="mb-2 block text-lg font-bold text-[#082d20]">
+              <label
+                htmlFor="email"
+                className="mb-2 block text-lg font-bold text-[#082d20]"
+              >
                 Email Address
               </label>
               <div className="relative">
@@ -95,7 +101,10 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="mb-2 block text-lg font-bold text-[#082d20]">
+              <label
+                htmlFor="password"
+                className="mb-2 block text-lg font-bold text-[#082d20]"
+              >
                 Password
               </label>
               <div className="relative">
@@ -118,7 +127,10 @@ export default function RegisterPage() {
             </div>
 
             {errorMessage && (
-              <p className="rounded-xl bg-red-50 px-4 py-3 text-base text-red-700" role="alert">
+              <p
+                className="rounded-xl bg-red-50 px-4 py-3 text-base text-red-700"
+                role="alert"
+              >
                 {errorMessage}
               </p>
             )}
@@ -135,7 +147,10 @@ export default function RegisterPage() {
 
         <p className="mt-7 text-center text-base text-[#647078]">
           Already have an account?{" "}
-          <Link href="/login" className="font-bold text-[#075c2d] hover:underline">
+          <Link
+            href="/login"
+            className="font-bold text-[#075c2d] hover:underline"
+          >
             Sign in
           </Link>
         </p>
