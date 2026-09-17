@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { EyeOff, LockKeyhole, Mail } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -9,9 +10,9 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <main className="flex h-dvh items-center justify-center overflow-hidden bg-[#fdfdfc] px-4 py-8 sm:px-6 sm:py-12">
+    <main className="flex h-dvh items-center justify-center overflow-hidden bg-[#fdfdfc] px-4 sm:px-6">
       <section
-        className="login-card relative -top-12 my-auto w-full max-w-182 rounded-[2rem] border-[3px] border-[#579266] bg-white px-6 py-8 shadow-[0_18px_38px_rgba(16,40,25,0.10)] sm:px-13 sm:py-8"
+        className="login-card w-full max-w-182 rounded-[2rem] border-[3px] border-[#579266] bg-white px-6 py-8 shadow-[0_18px_38px_rgba(16,40,25,0.10)] sm:px-13 sm:py-8"
         aria-labelledby="login-title"
       >
         <div className="mx-auto max-w-156">
@@ -117,6 +118,13 @@ export default function LoginPage() {
             <span>or</span>
             <span className="h-px flex-1 bg-[#cfd5d7]" />
           </div>
+
+          <Link
+            href="/register"
+            className="mt-5 flex h-14 w-full items-center justify-center rounded-xl border-2 border-[#075c2d] text-xl font-black text-[#075c2d] transition hover:bg-[#eef7f0] focus:outline-none focus:ring-4 focus:ring-[#579266]/20"
+          >
+            Register
+          </Link>
 
           <p className="mt-7 text-center text-base text-[#647078] sm:text-lg">
             © 2026 Adamos Fresh Eggs. Built by{" "}
