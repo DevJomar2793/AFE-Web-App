@@ -3,7 +3,8 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import Link from "next/link";
-import { LockKeyhole, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
+import { PasswordInput } from "@/components/auth/password-input";
 
 export default function RegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -107,23 +108,14 @@ export default function RegisterPage() {
               >
                 Password
               </label>
-              <div className="relative">
-                <LockKeyhole
-                  aria-hidden="true"
-                  size={26}
-                  className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-[#4d5a61]"
-                />
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  minLength={5}
-                  placeholder="At least 5 characters"
-                  className="h-14 w-full rounded-xl border-2 border-[#d0d6d8] bg-white pl-16 pr-5 text-lg text-[#213238] outline-none transition focus:border-[#579266] focus:ring-4 focus:ring-[#579266]/15 placeholder:text-[#8a96a7]"
-                />
-              </div>
+              <PasswordInput
+                id="password"
+                name="password"
+                autoComplete="new-password"
+                minLength={5}
+                placeholder="At least 5 characters"
+                className="h-14 w-full rounded-xl border-2 border-[#d0d6d8] bg-white pl-16 pr-14 text-lg text-[#213238] outline-none transition focus:border-[#579266] focus:ring-4 focus:ring-[#579266]/15 placeholder:text-[#8a96a7]"
+              />
             </div>
 
             {errorMessage && (

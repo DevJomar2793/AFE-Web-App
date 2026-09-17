@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { EyeOff, LockKeyhole, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
+import { PasswordInput } from "@/components/auth/password-input";
 
 export const metadata: Metadata = {
   title: "Sign in | Adamos Fresh Eggs",
@@ -79,26 +80,13 @@ export default function LoginPage() {
               >
                 Password
               </label>
-              <div className="relative">
-                <LockKeyhole
-                  aria-hidden="true"
-                  size={30}
-                  className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-[#4d5a61]"
-                />
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  placeholder="Enter your password"
-                  className="h-16 w-full rounded-xl border-2 border-[#d0d6d8] bg-white px-18 text-lg text-[#213238] outline-none transition focus:border-[#579266] focus:ring-4 focus:ring-[#579266]/15 placeholder:text-[#8a96a7] sm:text-xl"
-                />
-                <EyeOff
-                  aria-hidden="true"
-                  size={30}
-                  className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-[#6b7780]"
-                />
-              </div>
+              <PasswordInput
+                id="password"
+                name="password"
+                autoComplete="current-password"
+                placeholder="Enter your password"
+                className="h-16 w-full rounded-xl border-2 border-[#d0d6d8] bg-white px-18 text-lg text-[#213238] outline-none transition focus:border-[#579266] focus:ring-4 focus:ring-[#579266]/15 placeholder:text-[#8a96a7] sm:text-xl"
+              />
             </div>
           </div>
 
