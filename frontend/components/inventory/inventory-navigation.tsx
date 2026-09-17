@@ -1,18 +1,29 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   BarChart3,
   Boxes,
+  ChevronDown,
   ClipboardList,
   House,
   LayoutDashboard,
+  LogOut,
   Menu,
   ReceiptText,
   RotateCcw,
+  UserRound,
   X,
 } from "lucide-react";
 import { BrandMark } from "@/components/storefront/brand-mark";
+import {
+  ApiRequestError,
+  clearAccessToken,
+  getCurrentUser,
+  type UserAccount,
+} from "@/lib/api";
 
 export type InventoryViewName =
   | "overview"
@@ -38,20 +49,72 @@ export function InventorySidebar({
   onCloseMenu,
   onSelectView,
 }: InventorySidebarProps) {
+  const router = useRouter();
+  const [account, setAccount] = useState<UserAccount | null>(null);
+  const [isLoadingAccount, setIsLoadingAccount] = useState(true);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadAccount() {
+      try {
+        const currentUser = await getCurrentUser(controller.signal);
+        if (!controller.signal.aborted) setAccount(currentUser);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+
+        if (error instanceof ApiRequestError && error.status === 401) {
+          clearAccessToken();
+          router.replace("/login");
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsLoadingAccount(false);
+      }
+    }
+
+    void loadAccount();
+    return () => controller.abort();
+  }, [router]);
+
   return (
     <>
-      <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 border-r border-[#dfe5dd] bg-white p-5 lg:flex lg:flex-col">
+      <aside className="fixed inset-y-0 left-0 z-50 hidden w-56 border-r border-[#e1e7e0] bg-white px-4 py-5 lg:flex lg:flex-col">
         <BrandLink />
         <InventoryNav
           currentView={currentView}
           onSelectView={onSelectView}
         />
-        <div className="mt-auto rounded-2xl bg-[#173b24] p-4 text-white">
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-[#b9d1bc]">
-            <span className="size-2 animate-pulse rounded-full bg-[#82d397]" />
+
+        <div className="mt-7 border-t border-[#e2e8e1] pt-6">
+          <div className="flex items-center gap-2 rounded-2xl bg-[#f0f6f0] p-2.5">
+            <span className="grid size-12 shrink-0 place-items-center rounded-full bg-[#dcebdc] text-[#173b24]">
+              <UserRound size={24} aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <strong className="block truncate text-sm font-black text-[#122719]">
+                {isLoadingAccount
+                  ? "Loading account..."
+                  : (account?.email ?? "Account unavailable")}
+              </strong>
+              <span className="block text-xs text-[#69736c]">
+                {account?.isActive ? "Active account" : "Account unavailable"}
+              </span>
+            </span>
+            <ChevronDown size={17} aria-hidden="true" className="text-[#173b24]" />
+          </div>
+
+          <div className="mt-5 flex items-center gap-3 px-2 text-sm font-bold text-[#69736c]">
+            <LogOut size={20} aria-hidden="true" />
+            Log out
+          </div>
+        </div>
+
+        <div className="mt-auto rounded-2xl bg-[#173b24] p-4 text-white shadow-[0_14px_30px_rgba(23,59,36,0.18)]">
+          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.1em] text-[#d3e7d3]">
+            <span className="size-3 shrink-0 animate-pulse rounded-full bg-[#82d397]" />
             Database connected
           </div>
-          <p className="mt-2 text-xs leading-5 text-[#d8e6d8]">
+          <p className="mt-4 text-sm leading-6 text-[#e3eee2]">
             Inventory, sales, and returns use live database records.
           </p>
         </div>
@@ -223,15 +286,17 @@ function BrandLink() {
   return (
     <Link
       href="/"
-      className="flex items-center gap-3"
+      className="flex items-center gap-2"
       aria-label="Adamos Fresh Eggs storefront"
     >
-      <span className="grid size-11 place-items-center overflow-hidden rounded-xl border border-[#dce2da]">
+      <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#dce2da] bg-white p-1">
         <BrandMark />
       </span>
       <span>
-        <strong className="block text-sm font-black">Adamos Fresh Eggs</strong>
-        <span className="text-xs font-semibold text-[#818b83]">
+        <strong className="block whitespace-nowrap text-xs font-black tracking-tight text-[#122719]">
+          Adamos Fresh Eggs
+        </strong>
+        <span className="mt-0.5 block text-xs font-medium text-[#6d776f]">
           Inventory workspace
         </span>
       </span>
@@ -246,33 +311,37 @@ function InventoryNav({
 }: NavigationProps & { isMobile?: boolean }) {
   return (
     <nav
-      className={isMobile ? "mt-8 space-y-1" : "mt-10 space-y-1"}
+      className={isMobile ? "mt-8 space-y-1" : "mt-7 space-y-1"}
       aria-label={
         isMobile ? "Mobile inventory navigation" : "Inventory navigation"
       }
     >
       <NavButton
         active={currentView === "overview"}
-        icon={<LayoutDashboard size={19} />}
+        icon={<LayoutDashboard size={isMobile ? 19 : 20} />}
         label="Overview"
+        isMobile={isMobile}
         onClick={() => onSelectView("overview")}
       />
       <NavButton
         active={currentView === "inventory"}
-        icon={<Boxes size={19} />}
+        icon={<Boxes size={isMobile ? 19 : 20} />}
         label="Inventory"
+        isMobile={isMobile}
         onClick={() => onSelectView("inventory")}
       />
       <NavButton
         active={currentView === "activity"}
-        icon={<ReceiptText size={19} />}
+        icon={<ReceiptText size={isMobile ? 19 : 20} />}
         label="Activity"
+        isMobile={isMobile}
         onClick={() => onSelectView("activity")}
       />
       <NavButton
         active={currentView === "returns"}
-        icon={<RotateCcw size={19} />}
+        icon={<RotateCcw size={isMobile ? 19 : 20} />}
         label="Returns"
+        isMobile={isMobile}
         onClick={() => onSelectView("returns")}
       />
     </nav>
@@ -282,11 +351,13 @@ function InventoryNav({
 function NavButton({
   active,
   icon,
+  isMobile = false,
   label,
   onClick,
 }: {
   active: boolean;
   icon: React.ReactNode;
+  isMobile?: boolean;
   label: string;
   onClick: () => void;
 }) {
@@ -294,11 +365,19 @@ function NavButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold transition ${
-        active
-          ? "bg-[#e5eee4] text-[#173b24]"
-          : "text-[#68736b] hover:bg-[#f1f3ee] hover:text-[#173b24]"
-      }`}
+      className={
+        isMobile
+          ? `flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-bold transition ${
+              active
+                ? "bg-[#e5eee4] text-[#173b24]"
+                : "text-[#68736b] hover:bg-[#f1f3ee] hover:text-[#173b24]"
+            }`
+          : `flex h-16 w-full items-center gap-3 rounded-2xl px-4 text-left text-base font-black transition ${
+              active
+                ? "bg-[#edf4ed] text-[#122719]"
+                : "text-[#68736b] hover:bg-[#f4f7f3] hover:text-[#173b24]"
+            }`
+      }
     >
       {icon}
       {label}

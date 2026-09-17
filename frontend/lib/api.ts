@@ -90,6 +90,21 @@ export type LoginResponse = {
   accessToken: string;
 };
 
+export type UserAccount = {
+  email: string;
+  isActive: boolean;
+};
+
+export class ApiRequestError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = status;
+  }
+}
+
 const ACCESS_TOKEN_STORAGE_KEY = "access_token";
 
 const DEFAULT_API_BASE_URL =
@@ -130,6 +145,34 @@ export function getAccessToken() {
   if (typeof window === "undefined") return null;
 
   return window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
+}
+
+export function clearAccessToken() {
+  window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+}
+
+export async function getCurrentUser(
+  signal?: AbortSignal,
+): Promise<UserAccount> {
+  const response = await apiRequest(
+    "/api/v1/auth/me",
+    { signal },
+    "Unable to load your account.",
+  );
+
+  if (
+    !isRecord(response) ||
+    typeof response.email !== "string" ||
+    !response.email ||
+    typeof response.is_active !== "boolean"
+  ) {
+    throw new Error("Invalid account response");
+  }
+
+  return {
+    email: response.email,
+    isActive: response.is_active,
+  };
 }
 
 export async function getInventoryItems(
@@ -299,7 +342,10 @@ async function apiRequest(
     response.status === 204 ? null : await response.json();
 
   if (!response.ok) {
-    throw new Error(getApiErrorMessage(responseBody, fallbackMessage));
+    throw new ApiRequestError(
+      getApiErrorMessage(responseBody, fallbackMessage),
+      response.status,
+    );
   }
 
   return responseBody;
