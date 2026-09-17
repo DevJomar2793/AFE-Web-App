@@ -10,15 +10,10 @@ from sqlalchemy.orm import selectinload
 from app.database import get_database_session
 from app.models import Inventory, Return
 from app.schemas import ReturnCreate, ReturnResponse
-from app.security import get_current_user
 
 
 logger = logging.getLogger(__name__)
-router = APIRouter(
-    prefix="/returns",
-    tags=["returns"],
-    dependencies=[Depends(get_current_user)],
-)
+router = APIRouter(prefix="/returns", tags=["returns"])
 DatabaseSession = Annotated[AsyncSession, Depends(get_database_session)]
 
 
