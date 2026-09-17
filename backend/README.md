@@ -25,6 +25,10 @@ The file is ignored by Git. If credentials from an earlier example file were
 real, rotate them because removing them from the current file does not remove
 them from Git history.
 
+Set `JWT_SECRET_KEY` to a long, random value that only the backend can read.
+It signs login tokens, so never put it in frontend or mobile environment files.
+`JWT_ACCESS_TOKEN_EXPIRE_HOURS` defaults to `8`.
+
 Keep `DATABASE_SSL=false` for local PostgreSQL. Set it to `true` when using a
 hosted database such as Supabase so database traffic is encrypted.
 
@@ -48,6 +52,9 @@ The canonical routes are:
 
 ```text
 GET  /api/v1/health
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+GET  /api/v1/auth/me
 GET  /api/v1/inventory/get-item
 POST /api/v1/inventory/add-stock
 PATCH /api/v1/inventory/{inventory_id}
@@ -58,6 +65,37 @@ PATCH /api/v1/sales/{sale_id}
 GET  /api/v1/returns/get-returns
 POST /api/v1/returns/add-returns
 ```
+
+## Authentication
+
+Register an account with an email address and a password of at least five
+characters:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"owner@example.com","password":"my-password"}'
+```
+
+Log in to receive an access token:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"owner@example.com","password":"my-password"}'
+```
+
+Send the returned `access_token` with every inventory, sales, and returns
+request. For example:
+
+```bash
+curl http://127.0.0.1:8000/api/v1/inventory/get-item \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+`GET /api/v1/auth/me` returns the signed-in user's profile. Registration and
+login are public; all inventory, sales, and returns routes require a valid
+Bearer token.
 
 Create an item without putting an ID in the URL or request body. PostgreSQL
 generates the ID:

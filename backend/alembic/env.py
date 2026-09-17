@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.config import settings
 from app.database import Base
-from app.models import Inventory, Return, Sale  # noqa: F401
+from app.models import Inventory, Return, Sale, User  # noqa: F401
 
 
 config = context.config

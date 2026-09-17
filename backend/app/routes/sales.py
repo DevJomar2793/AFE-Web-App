@@ -17,10 +17,15 @@ from app.schemas import (
     SaleResponse,
     SaleUpdate,
 )
+from app.security import get_current_user
 
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/sales", tags=["sales"])
+router = APIRouter(
+    prefix="/sales",
+    tags=["sales"],
+    dependencies=[Depends(get_current_user)],
+)
 DatabaseSession = Annotated[AsyncSession, Depends(get_database_session)]
 
 

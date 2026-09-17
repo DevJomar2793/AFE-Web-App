@@ -104,7 +104,7 @@ function MobileNavigation({
         </a>
         <a
           className="mt-3 flex h-12 w-full shrink-0 items-center justify-center gap-2 border border-[#bdb8aa] text-sm font-black text-[#173b24]"
-          href="/dashboard"
+          href="/login"
           onClick={onClose}
         >
           <LayoutDashboard aria-hidden="true" size={18} />
