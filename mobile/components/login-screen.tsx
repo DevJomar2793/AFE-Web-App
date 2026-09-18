@@ -11,6 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { login } from '../lib/auth';
 
 interface LoginScreenProps {
   onRegister: () => void;
@@ -21,6 +22,29 @@ export function LoginScreen({ onRegister, onSignIn }: LoginScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  async function handleSignIn() {
+    if (!email.trim() || !password) {
+      setErrorMessage('Enter your email address and password.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage('');
+
+    try {
+      await login(email.trim(), password);
+      onSignIn();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Unable to sign in. Please try again.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <KeyboardAvoidingView
@@ -99,8 +123,16 @@ export function LoginScreen({ onRegister, onSignIn }: LoginScreenProps) {
 
           <Text style={styles.forgotPassword}>Forgot password?</Text>
 
-          <Pressable style={styles.signInButton} onPress={onSignIn}>
-            <Text style={styles.signInButtonText}>Sign In</Text>
+          {errorMessage ? <Text style={styles.errorMessage}>{errorMessage}</Text> : null}
+
+          <Pressable
+            disabled={isSubmitting}
+            style={[styles.signInButton, isSubmitting && styles.disabledButton]}
+            onPress={() => void handleSignIn()}
+          >
+            <Text style={styles.signInButtonText}>
+              {isSubmitting ? 'Signing in...' : 'Sign In'}
+            </Text>
           </Pressable>
 
           <View style={styles.divider}>
@@ -236,6 +268,19 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 20,
     fontWeight: '900',
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  errorMessage: {
+    marginTop: 16,
+    borderRadius: 10,
+    backgroundColor: '#fdf0f0',
+    color: '#9b3f3f',
+    fontSize: 14,
+    fontWeight: '600',
+    padding: 12,
+    textAlign: 'center',
   },
   divider: {
     flexDirection: 'row',

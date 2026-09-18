@@ -20,6 +20,7 @@ import { BottomNavigation } from './components/bottom-navigation';
 import { InventoryScreen } from './components/inventory-screen';
 import { LoginScreen } from './components/login-screen';
 import { RegisterScreen } from './components/register-screen';
+import { hasValidSession } from './lib/auth';
 import { OverviewScreen } from './components/overview-screen';
 import { TransactionScreen } from './components/transaction-screen';
 import { ReturnsScreen } from './components/returns-screen';
@@ -31,6 +32,7 @@ void SplashScreen.preventAutoHideAsync();
 export default function App() {
   const [hasNativeSplashHidden, setHasNativeSplashHidden] = useState(false);
   const [isAppReady, setIsAppReady] = useState(false);
+  const [isSessionReady, setIsSessionReady] = useState(false);
   const isHidingNativeSplash = useRef(false);
   const [currentScreen, setCurrentScreen] = useState<'login' | 'register' | 'dashboard'>('login');
   const [activeTab, setActiveTab] = useState<MobileTab>('home');
@@ -62,6 +64,33 @@ export default function App() {
       isMounted = false;
     };
   }, [hasNativeSplashHidden]);
+
+  useEffect(() => {
+    if (!isAppReady) return;
+
+    let isMounted = true;
+
+    async function restoreSession() {
+      try {
+        const isSessionValid = await hasValidSession();
+        if (!isMounted) return;
+
+        if (isSessionValid) setCurrentScreen('dashboard');
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unknown session error';
+        console.warn(`Unable to restore the mobile session: ${message}`);
+      } finally {
+        if (isMounted) setIsSessionReady(true);
+      }
+    }
+
+    void restoreSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAppReady]);
 
   async function showCustomLoadingScreen() {
     if (isHidingNativeSplash.current) return;
@@ -107,7 +136,7 @@ export default function App() {
     setSuccessNotice({ title, message });
   }
 
-  if (!isAppReady) {
+  if (!isAppReady || !isSessionReady) {
     return (
       <AppLoadingScreen onLayout={() => void showCustomLoadingScreen()} />
     );

@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { register as registerUser } from '../lib/auth';
 
 interface RegisterScreenProps {
   onSignIn: () => void;
@@ -21,13 +22,39 @@ export function RegisterScreen({ onSignIn }: RegisterScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  function showRegistrationSuccess() {
-    Alert.alert(
-      'Account created',
-      'Your account has been created successfully.',
-      [{ text: 'Go to Sign In', onPress: onSignIn }],
-    );
+  async function handleRegister() {
+    if (!email.trim() || !password) {
+      setErrorMessage('Enter your email address and password.');
+      return;
+    }
+
+    if (password.length < 5) {
+      setErrorMessage('Password must be at least 5 characters.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage('');
+
+    try {
+      await registerUser(email.trim(), password);
+      Alert.alert(
+        'Account created',
+        'Your account has been created successfully.',
+        [{ text: 'Go to Sign In', onPress: onSignIn }],
+      );
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to create your account. Please try again.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -104,8 +131,16 @@ export function RegisterScreen({ onSignIn }: RegisterScreenProps) {
             </View>
           </View>
 
-          <Pressable style={styles.registerButton} onPress={showRegistrationSuccess}>
-            <Text style={styles.registerButtonText}>Register</Text>
+          {errorMessage ? <Text style={styles.errorMessage}>{errorMessage}</Text> : null}
+
+          <Pressable
+            disabled={isSubmitting}
+            style={[styles.registerButton, isSubmitting && styles.disabledButton]}
+            onPress={() => void handleRegister()}
+          >
+            <Text style={styles.registerButtonText}>
+              {isSubmitting ? 'Creating account...' : 'Register'}
+            </Text>
           </Pressable>
 
           <View style={styles.signInRow}>
@@ -222,6 +257,19 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 20,
     fontWeight: '900',
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  errorMessage: {
+    marginTop: 18,
+    borderRadius: 10,
+    backgroundColor: '#fdf0f0',
+    color: '#9b3f3f',
+    fontSize: 14,
+    fontWeight: '600',
+    padding: 12,
+    textAlign: 'center',
   },
   signInRow: {
     flexDirection: 'row',
