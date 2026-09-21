@@ -52,6 +52,8 @@ export function InventorySidebar({
   const router = useRouter();
   const [account, setAccount] = useState<UserAccount | null>(null);
   const [isLoadingAccount, setIsLoadingAccount] = useState(true);
+  const [isLogoutConfirmationOpen, setIsLogoutConfirmationOpen] =
+    useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -75,6 +77,15 @@ export function InventorySidebar({
     void loadAccount();
     return () => controller.abort();
   }, [router]);
+
+  function handleLogout() {
+    setIsLogoutConfirmationOpen(true);
+  }
+
+  function confirmLogout() {
+    clearAccessToken();
+    router.replace("/login");
+  }
 
   return (
     <>
@@ -103,10 +114,14 @@ export function InventorySidebar({
             <ChevronDown size={17} aria-hidden="true" className="text-[#173b24]" />
           </div>
 
-          <div className="mt-5 flex items-center gap-3 px-2 text-sm font-bold text-[#69736c]">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="mt-5 flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left text-sm font-bold text-[#69736c] transition hover:bg-[#f1f3ee] hover:text-[#173b24] focus:outline-none focus:ring-2 focus:ring-[#579266]"
+          >
             <LogOut size={20} aria-hidden="true" />
             Log out
-          </div>
+          </button>
         </div>
 
         <div className="mt-auto rounded-2xl bg-[#173b24] p-4 text-white shadow-[0_14px_30px_rgba(23,59,36,0.18)]">
@@ -154,7 +169,83 @@ export function InventorySidebar({
           </aside>
         </div>
       )}
+
+      {isLogoutConfirmationOpen && (
+        <LogoutConfirmationModal
+          onClose={() => setIsLogoutConfirmationOpen(false)}
+          onConfirm={confirmLogout}
+        />
+      )}
     </>
+  );
+}
+
+function LogoutConfirmationModal({
+  onClose,
+  onConfirm,
+}: {
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-90 flex items-end justify-center bg-[#0d2417]/55 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+      role="presentation"
+      onMouseDown={onClose}
+    >
+      <section
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="logout-title"
+        aria-describedby="logout-description"
+        className="w-full max-w-md rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl sm:p-7"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[#fff0e8] text-[#9b431f]">
+            <LogOut size={21} aria-hidden="true" />
+          </span>
+          <button
+            type="button"
+            aria-label="Close logout confirmation"
+            className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#dfe4dd] text-[#566159] hover:bg-[#f3f5f1]"
+            onClick={onClose}
+          >
+            <X size={19} aria-hidden="true" />
+          </button>
+        </div>
+
+        <h2
+          id="logout-title"
+          className="mt-5 text-2xl font-black text-[#17281b]"
+        >
+          Log out?
+        </h2>
+        <p
+          id="logout-description"
+          className="mt-2 text-sm leading-6 text-[#6d776f]"
+        >
+          You will need to sign in again to access the inventory dashboard.
+        </p>
+
+        <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            className="h-11 rounded-xl border border-[#d5ddd3] px-5 text-sm font-black text-[#526058] hover:bg-[#f3f5f1]"
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="h-11 rounded-xl bg-[#a33d22] px-5 text-sm font-black text-white hover:bg-[#852f19]"
+            onClick={onConfirm}
+          >
+            Log out
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
