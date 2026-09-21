@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -83,6 +84,7 @@ export function LoginScreen({ onRegister, onSignIn }: LoginScreenProps) {
                 <TextInput
                   autoCapitalize="none"
                   autoComplete="email"
+                  editable={!isSubmitting}
                   keyboardType="email-address"
                   onChangeText={setEmail}
                   placeholder="you@example.com"
@@ -99,6 +101,7 @@ export function LoginScreen({ onRegister, onSignIn }: LoginScreenProps) {
                 <Ionicons name="lock-closed-outline" size={22} color="#4d5a61" />
                 <TextInput
                   autoComplete="password"
+                  editable={!isSubmitting}
                   onChangeText={setPassword}
                   placeholder="Enter your password"
                   placeholderTextColor="#8a96a7"
@@ -108,6 +111,7 @@ export function LoginScreen({ onRegister, onSignIn }: LoginScreenProps) {
                 />
                 <Pressable
                   accessibilityLabel={isPasswordVisible ? 'Hide password' : 'Show password'}
+                  disabled={isSubmitting}
                   hitSlop={8}
                   onPress={() => setIsPasswordVisible(!isPasswordVisible)}
                 >
@@ -126,13 +130,13 @@ export function LoginScreen({ onRegister, onSignIn }: LoginScreenProps) {
           {errorMessage ? <Text style={styles.errorMessage}>{errorMessage}</Text> : null}
 
           <Pressable
+            accessibilityState={{ busy: isSubmitting }}
             disabled={isSubmitting}
             style={[styles.signInButton, isSubmitting && styles.disabledButton]}
             onPress={() => void handleSignIn()}
           >
-            <Text style={styles.signInButtonText}>
-              {isSubmitting ? 'Signing in...' : 'Sign In'}
-            </Text>
+            {isSubmitting && <ActivityIndicator color="#ffffff" size="small" />}
+            <Text style={styles.signInButtonText}>{isSubmitting ? 'Signing in...' : 'Sign In'}</Text>
           </Pressable>
 
           <View style={styles.divider}>
@@ -142,7 +146,8 @@ export function LoginScreen({ onRegister, onSignIn }: LoginScreenProps) {
           </View>
 
           <Pressable
-            style={styles.registerButton}
+            disabled={isSubmitting}
+            style={[styles.registerButton, isSubmitting && styles.disabledButton]}
             onPress={onRegister}
           >
             <Text style={styles.registerButtonText}>Register</Text>
@@ -258,8 +263,10 @@ const styles = StyleSheet.create({
   },
   signInButton: {
     height: 58,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
     marginTop: 20,
     borderRadius: 12,
     backgroundColor: '#075c2d',

@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -24,6 +24,7 @@ import type { InventoryRecord } from "../types/inventory";
 import type { MobileTab } from "./bottom-navigation";
 
 interface OverviewScreenProps {
+  isLoggingOut: boolean;
   onLogOut: () => void;
   onTabChange: (tab: MobileTab) => void;
 }
@@ -116,18 +117,16 @@ function LoadingState() {
 function AccountHeader({
   email,
   isLoading,
+  isLoggingOut,
   onLogOut,
 }: {
   email: string;
   isLoading: boolean;
+  isLoggingOut: boolean;
   onLogOut: () => void;
 }) {
-  function confirmLogOut() {
-    Alert.alert('Log out', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Log out', style: 'destructive', onPress: onLogOut },
-    ]);
-  }
+  const [isLogoutConfirmationOpen, setIsLogoutConfirmationOpen] =
+    useState(false);
 
   return (
     <View style={styles.accountCard}>
@@ -146,13 +145,84 @@ function AccountHeader({
       <Pressable
         accessibilityLabel="Open account settings"
         accessibilityRole="button"
+        disabled={isLoggingOut}
         hitSlop={8}
-        onPress={confirmLogOut}
-        style={styles.settingsButton}
+        onPress={() => setIsLogoutConfirmationOpen(true)}
+        style={[styles.settingsButton, isLoggingOut && styles.disabledButton]}
       >
         <Ionicons name="settings-outline" size={22} color="#285a36" />
       </Pressable>
+
+      <LogoutConfirmationModal
+        isLoggingOut={isLoggingOut}
+        onClose={() => setIsLogoutConfirmationOpen(false)}
+        onConfirm={onLogOut}
+        visible={isLogoutConfirmationOpen}
+      />
     </View>
+  );
+}
+
+function LogoutConfirmationModal({
+  isLoggingOut,
+  onClose,
+  onConfirm,
+  visible,
+}: {
+  isLoggingOut: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  visible: boolean;
+}) {
+  return (
+    <Modal
+      transparent
+      animationType="fade"
+      visible={visible}
+      onRequestClose={() => {
+        if (!isLoggingOut) onClose();
+      }}
+    >
+      <View style={styles.modalOverlay}>
+        <Pressable
+          accessibilityLabel="Close logout confirmation"
+          disabled={isLoggingOut}
+          onPress={onClose}
+          style={styles.modalBackdrop}
+        />
+        <View accessibilityViewIsModal style={styles.logoutModalCard}>
+          <View style={styles.logoutIcon}>
+            <Ionicons name="log-out-outline" size={24} color="#9b431f" />
+          </View>
+          <Text style={styles.logoutTitle}>Log out?</Text>
+          <Text style={styles.logoutDescription}>
+            You will need to sign in again to access the inventory dashboard.
+          </Text>
+          <View style={styles.logoutActions}>
+            <Pressable
+              accessibilityRole="button"
+              disabled={isLoggingOut}
+              onPress={onClose}
+              style={[styles.cancelLogoutButton, isLoggingOut && styles.disabledButton]}
+            >
+              <Text style={styles.cancelLogoutButtonText}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ busy: isLoggingOut }}
+              disabled={isLoggingOut}
+              onPress={onConfirm}
+              style={[styles.confirmLogoutButton, isLoggingOut && styles.disabledButton]}
+            >
+              {isLoggingOut && <ActivityIndicator color="#ffffff" size="small" />}
+              <Text style={styles.confirmLogoutButtonText}>
+                {isLoggingOut ? "Logging out..." : "Log out"}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -179,7 +249,11 @@ function ErrorState({
   );
 }
 
-export function OverviewScreen({ onLogOut, onTabChange }: OverviewScreenProps) {
+export function OverviewScreen({
+  isLoggingOut,
+  onLogOut,
+  onTabChange,
+}: OverviewScreenProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
   const isWideTablet = width >= 900;
@@ -354,6 +428,7 @@ export function OverviewScreen({ onLogOut, onTabChange }: OverviewScreenProps) {
         <AccountHeader
           email={accountEmail}
           isLoading={isLoadingAccount}
+          isLoggingOut={isLoggingOut}
           onLogOut={onLogOut}
         />
         {isLoading && !items.length ? (
@@ -619,6 +694,69 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     backgroundColor: "#dfecdf",
   },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    backgroundColor: "rgba(13, 36, 23, 0.55)",
+    padding: 20,
+  },
+  modalBackdrop: {
+    position: "absolute",
+    inset: 0,
+  },
+  logoutModalCard: {
+    borderRadius: 24,
+    backgroundColor: "#ffffff",
+    padding: 24,
+  },
+  logoutIcon: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 16,
+    backgroundColor: "#fff0e8",
+  },
+  logoutTitle: {
+    color: "#17281b",
+    fontSize: 24,
+    fontWeight: "900",
+    marginTop: 18,
+  },
+  logoutDescription: {
+    color: "#6d776f",
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 8,
+  },
+  logoutActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 10,
+    marginTop: 24,
+  },
+  cancelLogoutButton: {
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#d5ddd3",
+    borderRadius: 12,
+    paddingHorizontal: 18,
+  },
+  cancelLogoutButtonText: { color: "#526058", fontSize: 14, fontWeight: "800" },
+  confirmLogoutButton: {
+    height: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 12,
+    backgroundColor: "#a33d22",
+    paddingHorizontal: 18,
+  },
+  confirmLogoutButtonText: { color: "#ffffff", fontSize: 14, fontWeight: "800" },
+  disabledButton: { opacity: 0.6 },
   loadingState: {
     minHeight: 220,
     alignItems: "center",

@@ -10,6 +10,7 @@ import {
   ClipboardList,
   House,
   LayoutDashboard,
+  LoaderCircle,
   LogOut,
   Menu,
   ReceiptText,
@@ -54,6 +55,7 @@ export function InventorySidebar({
   const [isLoadingAccount, setIsLoadingAccount] = useState(true);
   const [isLogoutConfirmationOpen, setIsLogoutConfirmationOpen] =
     useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -83,18 +85,20 @@ export function InventorySidebar({
   }
 
   function confirmLogout() {
-    clearAccessToken();
-    router.replace("/login");
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+    window.setTimeout(() => {
+      clearAccessToken();
+      router.replace("/login");
+    }, 200);
   }
 
   return (
     <>
       <aside className="fixed inset-y-0 left-0 z-50 hidden w-56 border-r border-[#e1e7e0] bg-white px-4 py-5 lg:flex lg:flex-col">
         <BrandLink />
-        <InventoryNav
-          currentView={currentView}
-          onSelectView={onSelectView}
-        />
+        <InventoryNav currentView={currentView} onSelectView={onSelectView} />
 
         <div className="mt-7 border-t border-[#e2e8e1] pt-6">
           <div className="flex items-center gap-2 rounded-2xl bg-[#f0f6f0] p-2.5">
@@ -111,7 +115,11 @@ export function InventorySidebar({
                 {account?.isActive ? "Active account" : "Account unavailable"}
               </span>
             </span>
-            <ChevronDown size={17} aria-hidden="true" className="text-[#173b24]" />
+            <ChevronDown
+              size={17}
+              aria-hidden="true"
+              className="text-[#173b24]"
+            />
           </div>
 
           <button
@@ -125,7 +133,7 @@ export function InventorySidebar({
         </div>
 
         <div className="mt-auto rounded-2xl bg-[#173b24] p-4 text-white shadow-[0_14px_30px_rgba(23,59,36,0.18)]">
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.1em] text-[#d3e7d3]">
+          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-[#d3e7d3]">
             <span className="size-3 shrink-0 animate-pulse rounded-full bg-[#82d397]" />
             Database connected
           </div>
@@ -172,7 +180,10 @@ export function InventorySidebar({
 
       {isLogoutConfirmationOpen && (
         <LogoutConfirmationModal
-          onClose={() => setIsLogoutConfirmationOpen(false)}
+          isLoggingOut={isLoggingOut}
+          onClose={() => {
+            if (!isLoggingOut) setIsLogoutConfirmationOpen(false);
+          }}
           onConfirm={confirmLogout}
         />
       )}
@@ -181,9 +192,11 @@ export function InventorySidebar({
 }
 
 function LogoutConfirmationModal({
+  isLoggingOut,
   onClose,
   onConfirm,
 }: {
+  isLoggingOut: boolean;
   onClose: () => void;
   onConfirm: () => void;
 }) {
@@ -191,7 +204,9 @@ function LogoutConfirmationModal({
     <div
       className="fixed inset-0 z-90 flex items-end justify-center bg-[#0d2417]/55 p-0 backdrop-blur-sm sm:items-center sm:p-6"
       role="presentation"
-      onMouseDown={onClose}
+      onMouseDown={() => {
+        if (!isLoggingOut) onClose();
+      }}
     >
       <section
         role="alertdialog"
@@ -208,7 +223,8 @@ function LogoutConfirmationModal({
           <button
             type="button"
             aria-label="Close logout confirmation"
-            className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#dfe4dd] text-[#566159] hover:bg-[#f3f5f1]"
+            disabled={isLoggingOut}
+            className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#dfe4dd] text-[#566159] hover:bg-[#f3f5f1] disabled:cursor-not-allowed disabled:opacity-50"
             onClick={onClose}
           >
             <X size={19} aria-hidden="true" />
@@ -231,17 +247,23 @@ function LogoutConfirmationModal({
         <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button
             type="button"
-            className="h-11 rounded-xl border border-[#d5ddd3] px-5 text-sm font-black text-[#526058] hover:bg-[#f3f5f1]"
+            disabled={isLoggingOut}
+            className="h-11 rounded-xl border border-[#d5ddd3] px-5 text-sm font-black text-[#526058] hover:bg-[#f3f5f1] disabled:cursor-not-allowed disabled:opacity-50"
             onClick={onClose}
           >
             Cancel
           </button>
           <button
             type="button"
-            className="h-11 rounded-xl bg-[#a33d22] px-5 text-sm font-black text-white hover:bg-[#852f19]"
+            disabled={isLoggingOut}
+            aria-busy={isLoggingOut}
+            className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#a33d22] px-5 text-sm font-black text-white hover:bg-[#852f19] disabled:cursor-not-allowed disabled:opacity-70"
             onClick={onConfirm}
           >
-            Log out
+            {isLoggingOut && (
+              <LoaderCircle size={18} className="animate-spin" aria-hidden="true" />
+            )}
+            {isLoggingOut ? "Logging out..." : "Log out"}
           </button>
         </div>
       </section>

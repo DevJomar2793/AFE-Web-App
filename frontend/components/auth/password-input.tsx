@@ -10,6 +10,7 @@ interface PasswordInputProps {
   placeholder: string;
   className: string;
   minLength?: number;
+  disabled?: boolean;
 }
 
 export function PasswordInput({
@@ -19,6 +20,7 @@ export function PasswordInput({
   placeholder,
   className,
   minLength,
+  disabled = false,
 }: PasswordInputProps) {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
@@ -38,10 +40,12 @@ export function PasswordInput({
         minLength={minLength}
         placeholder={placeholder}
         className={className}
+        disabled={disabled}
       />
       <button
         type="button"
         onClick={() => setIsPasswordVisible(!isPasswordVisible)}
+        disabled={disabled}
         className="absolute right-4 top-1/2 -translate-y-1/2 rounded p-1 text-[#6b7780] hover:text-[#075c2d] focus:outline-none focus:ring-2 focus:ring-[#579266]"
         aria-label={isPasswordVisible ? "Hide password" : "Show password"}
       >

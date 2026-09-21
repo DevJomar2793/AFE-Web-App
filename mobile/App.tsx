@@ -40,6 +40,7 @@ export default function App() {
   const [editingItem, setEditingItem] = useState<InventoryRecord | null>(null);
   const [inventoryRefreshKey, setInventoryRefreshKey] = useState(0);
   const [successNotice, setSuccessNotice] = useState<SuccessNotice | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     if (!hasNativeSplashHidden) return;
@@ -137,9 +138,17 @@ export default function App() {
   }
 
   async function logOut() {
-    await clearAccessToken();
-    setActiveTab('home');
-    setCurrentScreen('login');
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+
+    try {
+      await clearAccessToken();
+      setActiveTab('home');
+      setCurrentScreen('login');
+    } finally {
+      setIsLoggingOut(false);
+    }
   }
 
   if (!isAppReady || !isSessionReady) {
@@ -162,6 +171,7 @@ export default function App() {
         <>
           {activeTab === 'home' ? (
             <OverviewScreen
+              isLoggingOut={isLoggingOut}
               onLogOut={() => void logOut()}
               onTabChange={setActiveTab}
             />
