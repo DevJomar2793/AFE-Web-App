@@ -196,7 +196,7 @@ export function InventoryDashboard() {
         onSelectView={selectView}
       />
 
-      <div className="lg:pl-64">
+      <div className="lg:pl-56">
         <InventoryHeader
           currentView={currentView}
           onOpenMenu={() => setIsMenuOpen(true)}

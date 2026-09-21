@@ -2,6 +2,7 @@ import type {
   InventoryRecord,
   InventoryStatus,
 } from '../types/inventory';
+import { getAccessToken } from './auth';
 
 const INVENTORY_PATH = '/api/v1/inventory/get-item';
 const ADD_INVENTORY_PATH = '/api/v1/inventory/add-stock';
@@ -164,7 +165,7 @@ export async function deleteSale(saleId: number): Promise<void> {
 
   const response = await fetch(`${apiBaseUrl}/api/v1/sales/${saleId}`, {
     method: 'DELETE',
-    headers: { Accept: 'application/json' },
+    headers: await getApiHeaders(),
   });
   if (!response.ok) {
     const responseBody: unknown = await response.json().catch(() => null);
@@ -201,7 +202,7 @@ async function getApiResponse(
   }
 
   const response = await fetch(`${apiBaseUrl}${path}`, {
-    headers: { Accept: 'application/json' },
+    headers: await getApiHeaders(),
     signal,
   });
   const responseBody: unknown = await response.json().catch(() => null);
@@ -230,7 +231,7 @@ async function sendApiRequest(
   const response = await fetch(`${apiBaseUrl}${path}`, {
     method,
     headers: {
-      Accept: 'application/json',
+      ...(await getApiHeaders()),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -242,6 +243,15 @@ async function sendApiRequest(
   }
 
   return responseBody;
+}
+
+async function getApiHeaders() {
+  const accessToken = await getAccessToken();
+
+  return {
+    Accept: 'application/json',
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+  };
 }
 
 function parseInventoryItem(value: unknown): InventoryRecord {

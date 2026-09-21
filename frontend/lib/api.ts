@@ -81,6 +81,32 @@ export type CreateReturnInput = {
   reason: string;
 };
 
+export type LoginInput = {
+  email: string;
+  password: string;
+};
+
+export type LoginResponse = {
+  accessToken: string;
+};
+
+export type UserAccount = {
+  email: string;
+  isActive: boolean;
+};
+
+export class ApiRequestError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = status;
+  }
+}
+
+const ACCESS_TOKEN_STORAGE_KEY = "access_token";
+
 const DEFAULT_API_BASE_URL =
   process.env.NODE_ENV === "production"
     ? "https://atbackend-web-app-afe.onrender.com"
@@ -89,6 +115,65 @@ const DEFAULT_API_BASE_URL =
 const API_BASE_URL = (
   process.env.NEXT_PUBLIC_BACKEND_API_URL ?? DEFAULT_API_BASE_URL
 ).replace(/\/+$/, "");
+
+export async function loginUser(input: LoginInput): Promise<LoginResponse> {
+  const response = await apiRequest(
+    "/api/v1/auth/login",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+    "Unable to sign in. Please try again.",
+  );
+
+  if (
+    !isRecord(response) ||
+    typeof response.access_token !== "string" ||
+    !response.access_token
+  ) {
+    throw new Error("Invalid login response");
+  }
+
+  return { accessToken: response.access_token };
+}
+
+export function saveAccessToken(token: string) {
+  window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);
+}
+
+export function getAccessToken() {
+  if (typeof window === "undefined") return null;
+
+  return window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
+}
+
+export function clearAccessToken() {
+  window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+}
+
+export async function getCurrentUser(
+  signal?: AbortSignal,
+): Promise<UserAccount> {
+  const response = await apiRequest(
+    "/api/v1/auth/me",
+    { signal },
+    "Unable to load your account.",
+  );
+
+  if (
+    !isRecord(response) ||
+    typeof response.email !== "string" ||
+    !response.email ||
+    typeof response.is_active !== "boolean"
+  ) {
+    throw new Error("Invalid account response");
+  }
+
+  return {
+    email: response.email,
+    isActive: response.is_active,
+  };
+}
 
 export async function getInventoryItems(
   signal?: AbortSignal,
@@ -242,12 +327,14 @@ async function apiRequest(
   options: RequestInit,
   fallbackMessage: string,
 ): Promise<unknown> {
+  const accessToken = getAccessToken();
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     cache: "no-store",
     headers: {
       Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...options.headers,
     },
   });
@@ -255,7 +342,10 @@ async function apiRequest(
     response.status === 204 ? null : await response.json();
 
   if (!response.ok) {
-    throw new Error(getApiErrorMessage(responseBody, fallbackMessage));
+    throw new ApiRequestError(
+      getApiErrorMessage(responseBody, fallbackMessage),
+      response.status,
+    );
   }
 
   return responseBody;

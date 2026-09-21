@@ -12,7 +12,7 @@
     "android": {
       "package": "dev.jomarcerrado.afemobile",
       "adaptiveIcon": {
-          "backgroundColor": "#FBFAF3",
+        "backgroundColor": "#FBFAF3",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -37,7 +37,8 @@
           "imageWidth": 180,
           "resizeMode": "contain"
         }
-      ]
+      ],
+      "expo-secure-store"
     ]
   }
 }

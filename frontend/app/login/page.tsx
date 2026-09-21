@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { EyeOff, LockKeyhole, Mail } from "lucide-react";
+import Link from "next/link";
+import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata: Metadata = {
   title: "Sign in | Adamos Fresh Eggs",
@@ -9,9 +10,9 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <main className="flex h-dvh items-center justify-center overflow-hidden bg-[#fdfdfc] px-4 py-8 sm:px-6 sm:py-12">
+    <main className="flex h-dvh items-center justify-center overflow-hidden bg-[#fdfdfc] px-4 sm:px-6">
       <section
-        className="login-card relative -top-12 my-auto w-full max-w-182 rounded-[2rem] border-[3px] border-[#579266] bg-white px-6 py-8 shadow-[0_18px_38px_rgba(16,40,25,0.10)] sm:px-13 sm:py-8"
+        className="login-card w-full max-w-182 rounded-4xl border-[3px] border-[#579266] bg-white px-6 py-8 shadow-[0_18px_38px_rgba(16,40,25,0.10)] sm:px-13 sm:py-8"
         aria-labelledby="login-title"
       >
         <div className="mx-auto max-w-156">
@@ -46,77 +47,23 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <div className="mt-7 space-y-5">
-            <div>
-              <label
-                htmlFor="email"
-                className="mb-2 block text-lg font-bold text-[#082d20]"
-              >
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail
-                  aria-hidden="true"
-                  size={30}
-                  className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-[#4d5a61]"
-                />
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  className="h-16 w-full rounded-xl border-2 border-[#d0d6d8] bg-white pl-18 pr-5 text-lg text-[#213238] outline-none transition focus:border-[#579266] focus:ring-4 focus:ring-[#579266]/15 placeholder:text-[#8a96a7] sm:text-xl"
-                />
-              </div>
-            </div>
+          <LoginForm />
 
-            <div>
-              <label
-                htmlFor="password"
-                className="mb-2 block text-lg font-bold text-[#082d20]"
-              >
-                Password
-              </label>
-              <div className="relative">
-                <LockKeyhole
-                  aria-hidden="true"
-                  size={30}
-                  className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-[#4d5a61]"
-                />
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  placeholder="Enter your password"
-                  className="h-16 w-full rounded-xl border-2 border-[#d0d6d8] bg-white px-18 text-lg text-[#213238] outline-none transition focus:border-[#579266] focus:ring-4 focus:ring-[#579266]/15 placeholder:text-[#8a96a7] sm:text-xl"
-                />
-                <EyeOff
-                  aria-hidden="true"
-                  size={30}
-                  className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-[#6b7780]"
-                />
-              </div>
-            </div>
-          </div>
-
-          <p className="mt-4 text-right text-lg font-medium text-[#075d2b]">
-            Forgot password?
-          </p>
-
-          <button
-            type="button"
-            className="mt-5 h-17 w-full rounded-xl bg-[#075c2d] text-2xl font-black text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
+          <div
+            className="mt-7 flex items-center gap-4 text-lg text-[#68727a]"
+            aria-hidden="true"
           >
-            Sign In
-          </button>
-
-          <div className="mt-7 flex items-center gap-4 text-lg text-[#68727a]" aria-hidden="true">
             <span className="h-px flex-1 bg-[#cfd5d7]" />
             <span>or</span>
             <span className="h-px flex-1 bg-[#cfd5d7]" />
           </div>
+
+          <Link
+            href="/register"
+            className="mt-5 flex h-14 w-full items-center justify-center rounded-xl border-2 border-[#075c2d] text-xl font-black text-[#075c2d] transition hover:bg-[#eef7f0] focus:outline-none focus:ring-4 focus:ring-[#579266]/20"
+          >
+            Register
+          </Link>
 
           <p className="mt-7 text-center text-base text-[#647078] sm:text-lg">
             © 2026 Adamos Fresh Eggs. Built by{" "}

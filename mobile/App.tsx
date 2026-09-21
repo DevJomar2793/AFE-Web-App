@@ -18,6 +18,9 @@ import {
 import { AddStockModal, EditItemModal, SuccessModal } from './components/inventory-modals';
 import { BottomNavigation } from './components/bottom-navigation';
 import { InventoryScreen } from './components/inventory-screen';
+import { LoginScreen } from './components/login-screen';
+import { RegisterScreen } from './components/register-screen';
+import { clearAccessToken, hasValidSession } from './lib/auth';
 import { OverviewScreen } from './components/overview-screen';
 import { TransactionScreen } from './components/transaction-screen';
 import { ReturnsScreen } from './components/returns-screen';
@@ -29,7 +32,9 @@ void SplashScreen.preventAutoHideAsync();
 export default function App() {
   const [hasNativeSplashHidden, setHasNativeSplashHidden] = useState(false);
   const [isAppReady, setIsAppReady] = useState(false);
+  const [isSessionReady, setIsSessionReady] = useState(false);
   const isHidingNativeSplash = useRef(false);
+  const [currentScreen, setCurrentScreen] = useState<'login' | 'register' | 'dashboard'>('login');
   const [activeTab, setActiveTab] = useState<MobileTab>('home');
   const [isAddStockModalVisible, setIsAddStockModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryRecord | null>(null);
@@ -59,6 +64,33 @@ export default function App() {
       isMounted = false;
     };
   }, [hasNativeSplashHidden]);
+
+  useEffect(() => {
+    if (!isAppReady) return;
+
+    let isMounted = true;
+
+    async function restoreSession() {
+      try {
+        const isSessionValid = await hasValidSession();
+        if (!isMounted) return;
+
+        if (isSessionValid) setCurrentScreen('dashboard');
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unknown session error';
+        console.warn(`Unable to restore the mobile session: ${message}`);
+      } finally {
+        if (isMounted) setIsSessionReady(true);
+      }
+    }
+
+    void restoreSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAppReady]);
 
   async function showCustomLoadingScreen() {
     if (isHidingNativeSplash.current) return;
@@ -104,7 +136,13 @@ export default function App() {
     setSuccessNotice({ title, message });
   }
 
-  if (!isAppReady) {
+  async function logOut() {
+    await clearAccessToken();
+    setActiveTab('home');
+    setCurrentScreen('login');
+  }
+
+  if (!isAppReady || !isSessionReady) {
     return (
       <AppLoadingScreen onLayout={() => void showCustomLoadingScreen()} />
     );
@@ -113,59 +151,73 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
-      {activeTab === 'home' ? (
-        <OverviewScreen onTabChange={setActiveTab} />
-      ) : activeTab === 'inventory' ? (
-        <InventoryScreen
-          onAddItem={() => setIsAddStockModalVisible(true)}
-          onEditItem={setEditingItem}
-          onReturn={showReturnNotice}
-          refreshKey={inventoryRefreshKey}
+      {currentScreen === 'login' ? (
+        <LoginScreen
+          onRegister={() => setCurrentScreen('register')}
+          onSignIn={() => setCurrentScreen('dashboard')}
         />
-      ) : activeTab === 'orders' ? (
-        <TransactionScreen
-          onBack={() => setActiveTab('home')}
-          onShowSuccess={showTransactionSuccess}
-        />
+      ) : currentScreen === 'register' ? (
+        <RegisterScreen onSignIn={() => setCurrentScreen('login')} />
       ) : (
-        <ReturnsScreen
-          onShowUnavailableNotice={(featureName) =>
-            setSuccessNotice({
-              title: `${featureName} coming soon`,
-              message: 'This feature is not available yet.',
-            })
-          }
-        />
-      )}
+        <>
+          {activeTab === 'home' ? (
+            <OverviewScreen
+              onLogOut={() => void logOut()}
+              onTabChange={setActiveTab}
+            />
+          ) : activeTab === 'inventory' ? (
+            <InventoryScreen
+              onAddItem={() => setIsAddStockModalVisible(true)}
+              onEditItem={setEditingItem}
+              onReturn={showReturnNotice}
+              refreshKey={inventoryRefreshKey}
+            />
+          ) : activeTab === 'orders' ? (
+            <TransactionScreen
+              onBack={() => setActiveTab('home')}
+              onShowSuccess={showTransactionSuccess}
+            />
+          ) : (
+            <ReturnsScreen
+              onShowUnavailableNotice={(featureName) =>
+                setSuccessNotice({
+                  title: `${featureName} coming soon`,
+                  message: 'This feature is not available yet.',
+                })
+              }
+            />
+          )}
 
-      <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+          <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          © DevJomar · {new Date().getFullYear()} · v1.0.00
-        </Text>
-      </View>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>
+              © DevJomar · {new Date().getFullYear()} · v1.0.00
+            </Text>
+          </View>
 
-      {isAddStockModalVisible && (
-        <AddStockModal
-          onClose={() => setIsAddStockModalVisible(false)}
-          onCreated={completeAddStock}
-        />
-      )}
+          {isAddStockModalVisible && (
+            <AddStockModal
+              onClose={() => setIsAddStockModalVisible(false)}
+              onCreated={completeAddStock}
+            />
+          )}
 
-      {editingItem && (
-        <EditItemModal
-          item={editingItem}
-          onClose={() => setEditingItem(null)}
-          onUpdated={saveItemChanges}
-        />
-      )}
+          {editingItem && (
+            <EditItemModal
+              item={editingItem}
+              onClose={() => setEditingItem(null)}
+              onUpdated={saveItemChanges}
+            />
+          )}
 
-      {successNotice && (
-        <SuccessModal
-          notice={successNotice}
-          onClose={() => setSuccessNotice(null)}
-        />
+          {successNotice && (
+            <SuccessModal
+              notice={successNotice}
+              onClose={() => setSuccessNotice(null)}
+            />
+          )}
+        </>
       )}
     </SafeAreaView>
   );

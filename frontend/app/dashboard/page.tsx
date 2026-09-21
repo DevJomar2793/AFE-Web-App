@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { DashboardAuthGuard } from "@/components/auth/dashboard-auth-guard";
 import { InventoryDashboard } from "@/components/inventory/inventory-dashboard";
 
 export const metadata: Metadata = {
@@ -7,5 +8,9 @@ export const metadata: Metadata = {
 };
 
 export default function DashboardPage() {
-  return <InventoryDashboard />;
+  return (
+    <DashboardAuthGuard>
+      <InventoryDashboard />
+    </DashboardAuthGuard>
+  );
 }
