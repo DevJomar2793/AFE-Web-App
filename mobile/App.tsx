@@ -20,7 +20,7 @@ import { BottomNavigation } from './components/bottom-navigation';
 import { InventoryScreen } from './components/inventory-screen';
 import { LoginScreen } from './components/login-screen';
 import { RegisterScreen } from './components/register-screen';
-import { hasValidSession } from './lib/auth';
+import { clearAccessToken, hasValidSession } from './lib/auth';
 import { OverviewScreen } from './components/overview-screen';
 import { TransactionScreen } from './components/transaction-screen';
 import { ReturnsScreen } from './components/returns-screen';
@@ -136,6 +136,12 @@ export default function App() {
     setSuccessNotice({ title, message });
   }
 
+  async function logOut() {
+    await clearAccessToken();
+    setActiveTab('home');
+    setCurrentScreen('login');
+  }
+
   if (!isAppReady || !isSessionReady) {
     return (
       <AppLoadingScreen onLayout={() => void showCustomLoadingScreen()} />
@@ -155,7 +161,10 @@ export default function App() {
       ) : (
         <>
           {activeTab === 'home' ? (
-            <OverviewScreen onTabChange={setActiveTab} />
+            <OverviewScreen
+              onLogOut={() => void logOut()}
+              onTabChange={setActiveTab}
+            />
           ) : activeTab === 'inventory' ? (
             <InventoryScreen
               onAddItem={() => setIsAddStockModalVisible(true)}

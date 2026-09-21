@@ -2,6 +2,11 @@ import * as SecureStore from 'expo-secure-store';
 
 const ACCESS_TOKEN_KEY = 'access_token';
 
+export interface UserAccount {
+  email: string;
+  isActive: boolean;
+}
+
 function getApiBaseUrl() {
   const apiBaseUrl = process.env.EXPO_PUBLIC_BACKEND_API_URL?.replace(/\/+$/, '');
 
@@ -74,8 +79,12 @@ export async function clearAccessToken() {
 }
 
 export async function hasValidSession() {
+  return Boolean(await getCurrentUser());
+}
+
+export async function getCurrentUser(): Promise<UserAccount | null> {
   const accessToken = await getAccessToken();
-  if (!accessToken) return false;
+  if (!accessToken) return null;
 
   try {
     const response = await fetch(`${getApiBaseUrl()}/api/v1/auth/me`, {
@@ -85,13 +94,25 @@ export async function hasValidSession() {
       },
     });
 
-    if (response.ok) return true;
+    const responseBody: unknown = await response.json().catch(() => null);
+
+    if (
+      response.ok &&
+      isRecord(responseBody) &&
+      typeof responseBody.email === 'string' &&
+      typeof responseBody.is_active === 'boolean'
+    ) {
+      return {
+        email: responseBody.email,
+        isActive: responseBody.is_active,
+      };
+    }
   } catch {
     // A saved token cannot be used when the account profile cannot be verified.
   }
 
   await clearAccessToken();
-  return false;
+  return null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

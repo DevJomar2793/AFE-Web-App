@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -18,10 +19,12 @@ import {
   type ReturnRecord,
   type SaleRecord,
 } from "../lib/api";
+import { getCurrentUser } from "../lib/auth";
 import type { InventoryRecord } from "../types/inventory";
 import type { MobileTab } from "./bottom-navigation";
 
 interface OverviewScreenProps {
+  onLogOut: () => void;
   onTabChange: (tab: MobileTab) => void;
 }
 interface DashboardMetricProps {
@@ -110,6 +113,49 @@ function LoadingState() {
   );
 }
 
+function AccountHeader({
+  email,
+  isLoading,
+  onLogOut,
+}: {
+  email: string;
+  isLoading: boolean;
+  onLogOut: () => void;
+}) {
+  function confirmLogOut() {
+    Alert.alert('Log out', 'Are you sure you want to log out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Log out', style: 'destructive', onPress: onLogOut },
+    ]);
+  }
+
+  return (
+    <View style={styles.accountCard}>
+      <View style={styles.accountAvatar}>
+        <Ionicons name="person" size={30} color="#ffffff" />
+      </View>
+      <View style={styles.accountText}>
+        <Text style={styles.accountTitle}>Account</Text>
+        <Text style={styles.accountEmail} numberOfLines={1}>
+          {isLoading ? 'Loading account...' : email}
+        </Text>
+        <View style={styles.accountBadge}>
+          <Text style={styles.accountBadgeText}>Active account</Text>
+        </View>
+      </View>
+      <Pressable
+        accessibilityLabel="Open account settings"
+        accessibilityRole="button"
+        hitSlop={8}
+        onPress={confirmLogOut}
+        style={styles.settingsButton}
+      >
+        <Ionicons name="settings-outline" size={22} color="#285a36" />
+      </Pressable>
+    </View>
+  );
+}
+
 function ErrorState({
   error,
   onRetry,
@@ -133,7 +179,7 @@ function ErrorState({
   );
 }
 
-export function OverviewScreen({ onTabChange }: OverviewScreenProps) {
+export function OverviewScreen({ onLogOut, onTabChange }: OverviewScreenProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
   const isWideTablet = width >= 900;
@@ -143,6 +189,8 @@ export function OverviewScreen({ onTabChange }: OverviewScreenProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [accountEmail, setAccountEmail] = useState("");
+  const [isLoadingAccount, setIsLoadingAccount] = useState(true);
 
   const loadDashboard = useCallback(
     async (signal?: AbortSignal, refresh = false) => {
@@ -180,6 +228,29 @@ export function OverviewScreen({ onTabChange }: OverviewScreenProps) {
     void loadDashboard(controller.signal);
     return () => controller.abort();
   }, [loadDashboard]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadAccount() {
+      const account = await getCurrentUser();
+      if (!isMounted) return;
+
+      if (!account) {
+        onLogOut();
+        return;
+      }
+
+      setAccountEmail(account.email);
+      setIsLoadingAccount(false);
+    }
+
+    void loadAccount();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [onLogOut]);
 
   const dashboard = useMemo(() => {
     const now = new Date();
@@ -280,6 +351,11 @@ export function OverviewScreen({ onTabChange }: OverviewScreenProps) {
           />
         }
       >
+        <AccountHeader
+          email={accountEmail}
+          isLoading={isLoadingAccount}
+          onLogOut={onLogOut}
+        />
         {isLoading && !items.length ? (
           <LoadingState />
         ) : error ? (
@@ -389,31 +465,25 @@ export function OverviewScreen({ onTabChange }: OverviewScreenProps) {
                 </View>
                 <View style={styles.stockList}>
                   {dashboard.stockAttention.length ? (
-                    dashboard.stockAttention.map((item) => (
-                      <View key={item.id} style={styles.stockRow}>
-                        <View style={styles.stockQuantity}>
-                          <Text style={styles.stockQuantityText}>
-                            {item.quantity}
-                          </Text>
-                        </View>
-                        <View style={styles.flexText}>
-                          <Text style={styles.stockName} numberOfLines={1}>
-                            {item.item}
-                          </Text>
-                          <Text style={styles.stockStatus}>
-                            {item.status.replace("_", " ")}
-                          </Text>
-                        </View>
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel={`Manage ${item.item}`}
-                          onPress={() => onTabChange("inventory")}
-                          hitSlop={8}
-                        >
-                          <Text style={styles.manageText}>Manage</Text>
-                        </Pressable>
+                    <Pressable
+                      accessibilityLabel="View inventory items that need attention"
+                      accessibilityRole="button"
+                      onPress={() => onTabChange("inventory")}
+                      style={styles.stockSummary}
+                    >
+                      <View style={styles.stockSummaryIcon}>
+                        <Ionicons name="cube-outline" size={27} color="#2f7043" />
                       </View>
-                    ))
+                      <View style={styles.flexText}>
+                        <Text style={styles.stockSummaryTitle}>
+                          {dashboard.stockAttention.length} item{dashboard.stockAttention.length === 1 ? "" : "s"} need attention
+                        </Text>
+                        <Text style={styles.stockSummaryText}>
+                          Check low and out-of-stock items
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={22} color="#2f7043" />
+                    </Pressable>
                   ) : (
                     <Text style={styles.emptyStock}>
                       All items are currently in stock.
@@ -507,6 +577,48 @@ const styles = StyleSheet.create({
   tabletScreen: { maxWidth: 1120 },
   content: { padding: 18, paddingBottom: 28 },
   tabletContent: { padding: 28, paddingBottom: 36 },
+  accountCard: {
+    minHeight: 96,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 18,
+    backgroundColor: "#edf5ed",
+    marginBottom: 16,
+    padding: 14,
+  },
+  accountAvatar: {
+    width: 62,
+    height: 62,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 31,
+    backgroundColor: "#3f8152",
+  },
+  accountText: { flex: 1, minWidth: 0 },
+  accountTitle: { color: "#18251a", fontSize: 17, fontWeight: "800" },
+  accountEmail: {
+    color: "#758078",
+    fontSize: 13,
+    marginTop: 2,
+  },
+  accountBadge: {
+    alignSelf: "flex-start",
+    borderRadius: 10,
+    backgroundColor: "#e2f2e1",
+    marginTop: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
+  accountBadgeText: { color: "#2f7043", fontSize: 12, fontWeight: "800" },
+  settingsButton: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 24,
+    backgroundColor: "#dfecdf",
+  },
   loadingState: {
     minHeight: 220,
     alignItems: "center",
@@ -645,6 +757,24 @@ const styles = StyleSheet.create({
   },
   warningIcon: { backgroundColor: "#fff0e5" },
   stockList: { gap: 10, paddingHorizontal: 12, paddingBottom: 12 },
+  stockSummary: {
+    minHeight: 68,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 12,
+    backgroundColor: "#f0f7f0",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  stockSummaryIcon: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stockSummaryTitle: { color: "#2f7043", fontSize: 14, fontWeight: "800" },
+  stockSummaryText: { color: "#718078", fontSize: 12, marginTop: 3 },
   stockRow: {
     minHeight: 68,
     flexDirection: "row",
