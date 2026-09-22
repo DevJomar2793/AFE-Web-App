@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { register as registerUser } from '../lib/auth';
+import { AppFooter } from './app-footer';
 
 interface RegisterScreenProps {
   onSignIn: () => void;
@@ -150,7 +151,7 @@ export function RegisterScreen({ onSignIn }: RegisterScreenProps) {
             </Pressable>
           </View>
 
-          <Text style={styles.footer}>© 2026 Adamos Fresh Eggs. Built by DevJomar</Text>
+          <AppFooter style={styles.footer} />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

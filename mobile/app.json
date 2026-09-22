@@ -2,7 +2,7 @@
   "expo": {
     "name": "AFE Mobile",
     "slug": "afe-mobile",
-    "version": "1.0.00",
+    "version": "2.0.00",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",

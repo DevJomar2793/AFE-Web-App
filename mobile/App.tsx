@@ -1,8 +1,8 @@
-import { Ionicons } from '@expo/vector-icons';
-import * as Font from 'expo-font';
-import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import * as Font from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -10,22 +10,26 @@ import {
   SafeAreaView,
   StatusBar as NativeStatusBar,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
-} from 'react-native';
+} from "react-native";
 
-import { AddStockModal, EditItemModal, SuccessModal } from './components/inventory-modals';
-import { BottomNavigation } from './components/bottom-navigation';
-import { InventoryScreen } from './components/inventory-screen';
-import { LoginScreen } from './components/login-screen';
-import { RegisterScreen } from './components/register-screen';
-import { clearAccessToken, hasValidSession } from './lib/auth';
-import { OverviewScreen } from './components/overview-screen';
-import { TransactionScreen } from './components/transaction-screen';
-import { ReturnsScreen } from './components/returns-screen';
-import type { MobileTab } from './components/bottom-navigation';
-import type { InventoryRecord, SuccessNotice } from './types/inventory';
+import {
+  AddStockModal,
+  EditItemModal,
+  SuccessModal,
+} from "./components/inventory-modals";
+import { AppFooter } from "./components/app-footer";
+import { BottomNavigation } from "./components/bottom-navigation";
+import { InventoryScreen } from "./components/inventory-screen";
+import { LoginScreen } from "./components/login-screen";
+import { RegisterScreen } from "./components/register-screen";
+import { clearAccessToken, hasValidSession } from "./lib/auth";
+import { OverviewScreen } from "./components/overview-screen";
+import { TransactionScreen } from "./components/transaction-screen";
+import { ReturnsScreen } from "./components/returns-screen";
+import type { MobileTab } from "./components/bottom-navigation";
+import type { InventoryRecord, SuccessNotice } from "./types/inventory";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -34,12 +38,16 @@ export default function App() {
   const [isAppReady, setIsAppReady] = useState(false);
   const [isSessionReady, setIsSessionReady] = useState(false);
   const isHidingNativeSplash = useRef(false);
-  const [currentScreen, setCurrentScreen] = useState<'login' | 'register' | 'dashboard'>('login');
-  const [activeTab, setActiveTab] = useState<MobileTab>('home');
+  const [currentScreen, setCurrentScreen] = useState<
+    "login" | "register" | "dashboard"
+  >("login");
+  const [activeTab, setActiveTab] = useState<MobileTab>("home");
   const [isAddStockModalVisible, setIsAddStockModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryRecord | null>(null);
   const [inventoryRefreshKey, setInventoryRefreshKey] = useState(0);
-  const [successNotice, setSuccessNotice] = useState<SuccessNotice | null>(null);
+  const [successNotice, setSuccessNotice] = useState<SuccessNotice | null>(
+    null,
+  );
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
@@ -52,7 +60,7 @@ export default function App() {
         await Font.loadAsync(Ionicons.font);
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : 'Unknown font loading error';
+          error instanceof Error ? error.message : "Unknown font loading error";
         console.warn(`App fonts could not be loaded: ${message}`);
       } finally {
         if (isMounted) setIsAppReady(true);
@@ -76,10 +84,10 @@ export default function App() {
         const isSessionValid = await hasValidSession();
         if (!isMounted) return;
 
-        if (isSessionValid) setCurrentScreen('dashboard');
+        if (isSessionValid) setCurrentScreen("dashboard");
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : 'Unknown session error';
+          error instanceof Error ? error.message : "Unknown session error";
         console.warn(`Unable to restore the mobile session: ${message}`);
       } finally {
         if (isMounted) setIsSessionReady(true);
@@ -101,7 +109,7 @@ export default function App() {
       await SplashScreen.hideAsync();
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Unknown splash screen error';
+        error instanceof Error ? error.message : "Unknown splash screen error";
       console.warn(`Native splash screen could not be hidden: ${message}`);
     } finally {
       setHasNativeSplashHidden(true);
@@ -112,7 +120,7 @@ export default function App() {
     setIsAddStockModalVisible(false);
     setInventoryRefreshKey((currentKey) => currentKey + 1);
     setSuccessNotice({
-      title: 'Item added!',
+      title: "Item added!",
       message: `${createdItem.item} has been added to your inventory.`,
     });
   }
@@ -120,7 +128,7 @@ export default function App() {
   function saveItemChanges(updatedItem: InventoryRecord) {
     setInventoryRefreshKey((currentKey) => currentKey + 1);
     setSuccessNotice({
-      title: 'Changes saved!',
+      title: "Changes saved!",
       message: `${updatedItem.item} details have been updated.`,
     });
     setEditingItem(null);
@@ -128,8 +136,8 @@ export default function App() {
 
   function showReturnNotice() {
     setSuccessNotice({
-      title: 'Returns',
-      message: 'The return feature is not available yet.',
+      title: "Returns",
+      message: "The return feature is not available yet.",
     });
   }
 
@@ -144,47 +152,45 @@ export default function App() {
 
     try {
       await clearAccessToken();
-      setActiveTab('home');
-      setCurrentScreen('login');
+      setActiveTab("home");
+      setCurrentScreen("login");
     } finally {
       setIsLoggingOut(false);
     }
   }
 
   if (!isAppReady || !isSessionReady) {
-    return (
-      <AppLoadingScreen onLayout={() => void showCustomLoadingScreen()} />
-    );
+    return <AppLoadingScreen onLayout={() => void showCustomLoadingScreen()} />;
   }
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
-      {currentScreen === 'login' ? (
+      {currentScreen === "login" ? (
         <LoginScreen
-          onRegister={() => setCurrentScreen('register')}
-          onSignIn={() => setCurrentScreen('dashboard')}
+          onRegister={() => setCurrentScreen("register")}
+          onSignIn={() => setCurrentScreen("dashboard")}
         />
-      ) : currentScreen === 'register' ? (
-        <RegisterScreen onSignIn={() => setCurrentScreen('login')} />
+      ) : currentScreen === "register" ? (
+        <RegisterScreen onSignIn={() => setCurrentScreen("login")} />
       ) : (
         <>
-          {activeTab === 'home' ? (
+          {activeTab === "home" ? (
             <OverviewScreen
               isLoggingOut={isLoggingOut}
               onLogOut={() => void logOut()}
               onTabChange={setActiveTab}
             />
-          ) : activeTab === 'inventory' ? (
+          ) : activeTab === "inventory" ? (
             <InventoryScreen
               onAddItem={() => setIsAddStockModalVisible(true)}
               onEditItem={setEditingItem}
               onReturn={showReturnNotice}
               refreshKey={inventoryRefreshKey}
             />
-          ) : activeTab === 'orders' ? (
+          ) : activeTab === "orders" ? (
             <TransactionScreen
-              onBack={() => setActiveTab('home')}
+              onBack={() => setActiveTab("home")}
               onShowSuccess={showTransactionSuccess}
             />
           ) : (
@@ -192,7 +198,7 @@ export default function App() {
               onShowUnavailableNotice={(featureName) =>
                 setSuccessNotice({
                   title: `${featureName} coming soon`,
-                  message: 'This feature is not available yet.',
+                  message: "This feature is not available yet.",
                 })
               }
             />
@@ -201,9 +207,7 @@ export default function App() {
           <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              © DevJomar · {new Date().getFullYear()} · v1.0.00
-            </Text>
+            <AppFooter />
           </View>
 
           {isAddStockModalVisible && (
@@ -248,7 +252,7 @@ function AppLoadingScreen({ onLayout }: { onLayout: () => void }) {
       <Image
         accessibilityLabel="Adamos Fresh Eggs logo"
         resizeMode="contain"
-        source={require('./assets/splash-icon.png')}
+        source={require("./assets/splash-icon.png")}
         style={{ width: logoSize, height: logoSize }}
       />
       <ActivityIndicator
@@ -264,9 +268,9 @@ function AppLoadingScreen({ onLayout }: { onLayout: () => void }) {
 const styles = StyleSheet.create({
   loadingScreen: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FBFAF3',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FBFAF3",
     padding: 24,
   },
   loadingIndicator: {
@@ -274,18 +278,13 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    backgroundColor: '#eef2f5',
-    paddingTop: Platform.OS === 'android' ? NativeStatusBar.currentHeight : 0,
+    backgroundColor: "#eef2f5",
+    paddingTop: Platform.OS === "android" ? NativeStatusBar.currentHeight : 0,
   },
   footer: {
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
+    alignItems: "center",
+    backgroundColor: "#ffffff",
     paddingTop: 8,
     paddingBottom: 2,
-  },
-  footerText: {
-    color: '#758078',
-    fontSize: 11,
-    fontWeight: '600',
   },
 });
