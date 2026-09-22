@@ -1,6 +1,6 @@
-import type { ImageSourcePropType } from 'react-native';
+import type { ImageSourcePropType } from "react-native";
 
-export type InventoryStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
+export type InventoryStatus = "in_stock" | "low_stock" | "out_of_stock";
 
 export interface InventoryRecord {
   id: number;
