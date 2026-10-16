@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -9,7 +10,26 @@ from sqlalchemy import URL
 BACKEND_DIRECTORY = Path(__file__).resolve().parent.parent
 
 
+def get_environment_file(app_env: str | None = None) -> Path:
+    environment = app_env if app_env is not None else os.getenv("APP_ENV", "local")
+    environment = environment.strip().lower()
+
+    environment_files = {
+        "local": BACKEND_DIRECTORY / ".env.local",
+        "prod": BACKEND_DIRECTORY / ".env.prod",
+    }
+
+    if environment not in environment_files:
+        raise ValueError(
+            "APP_ENV must be either 'local' or 'prod'. "
+            f"Received: {environment or '(empty)'}."
+        )
+
+    return environment_files[environment]
+
+
 class Settings(BaseSettings):
+    app_env: str = "local"
     database_host: str
     database_port: int = 5432
     database_name: str
@@ -26,7 +46,7 @@ class Settings(BaseSettings):
     )
 
     model_config = SettingsConfigDict(
-        env_file=BACKEND_DIRECTORY / ".env",
+        env_file=get_environment_file(),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
