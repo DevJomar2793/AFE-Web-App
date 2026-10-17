@@ -86,6 +86,11 @@ export type LoginInput = {
   password: string;
 };
 
+export type RegisterInput = {
+  email: string;
+  password: string;
+};
+
 export type LoginResponse = {
   accessToken: string;
 };
@@ -115,6 +120,17 @@ const DEFAULT_API_BASE_URL =
 const API_BASE_URL = (
   process.env.NEXT_PUBLIC_BACKEND_API_URL ?? DEFAULT_API_BASE_URL
 ).replace(/\/+$/, "");
+
+export async function registerUser(input: RegisterInput): Promise<void> {
+  await apiRequest(
+    "/api/v1/auth/register",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+    "Unable to create your account. Please try again.",
+  );
+}
 
 export async function loginUser(input: LoginInput): Promise<LoginResponse> {
   const response = await apiRequest(
