@@ -5,6 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Mail } from "lucide-react";
 import { PasswordInput } from "@/components/auth/password-input";
+import { registerUser } from "@/lib/api";
 
 export default function RegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,26 +22,15 @@ export default function RegisterPage() {
     const password = String(formData.get("password") ?? "");
 
     try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/v1/auth/register",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        },
-      );
-
-      if (!response.ok) {
-        const data: unknown = await response.json();
-        const message = getErrorMessage(data);
-        setErrorMessage(message);
-        return;
-      }
-
+      await registerUser({ email, password });
       setIsRegistered(true);
       event.currentTarget.reset();
-    } catch {
-      setErrorMessage("Unable to create your account. Please try again.");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to create your account. Please try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -149,17 +139,4 @@ export default function RegisterPage() {
       </section>
     </main>
   );
-}
-
-function getErrorMessage(data: unknown) {
-  if (
-    typeof data === "object" &&
-    data !== null &&
-    "detail" in data &&
-    typeof data.detail === "string"
-  ) {
-    return data.detail;
-  }
-
-  return "Unable to create your account. Please check your details and try again.";
 }
