@@ -8,7 +8,6 @@ from sqlalchemy import URL
 
 BACKEND_DIRECTORY = Path(__file__).resolve().parent.parent
 
-
 class Settings(BaseSettings):
     database_host: str
     database_port: int = 5432
@@ -22,7 +21,7 @@ class Settings(BaseSettings):
     cors_allowed_origins: str = (
         "http://localhost:3000,http://127.0.0.1:3000,"
         "http://localhost:8081,http://127.0.0.1:8081,"
-        "https://adamosfresheggs.vercel.app"
+        "https://adamosfresheggs.vercel.app,https://atbackend-web-app-afe.onrender.com"
     )
 
     model_config = SettingsConfigDict(

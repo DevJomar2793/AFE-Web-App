@@ -20,10 +20,10 @@ python -m pip install -r requirements-dev.txt
 cp .env.example .env
 ```
 
-Replace the placeholder values in `.env` with local PostgreSQL credentials.
-The file is ignored by Git. If credentials from an earlier example file were
-real, rotate them because removing them from the current file does not remove
-them from Git history.
+Replace the placeholder values in `.env` with PostgreSQL credentials. The file
+is ignored by Git. If credentials from an earlier example file were real,
+rotate them because removing them from the current file does not remove them
+from Git history.
 
 Set `JWT_SECRET_KEY` to a long, random value that only the backend can read.
 It signs login tokens, so never put it in frontend or mobile environment files.
