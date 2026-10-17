@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Plus, RotateCcw, X } from "lucide-react";
+import { LoaderCircle, Plus, RotateCcw, X } from "lucide-react";
 import { createReturn, type InventoryItem } from "@/lib/api";
 
 type NewReturnModalProps = {
@@ -225,9 +225,18 @@ export function NewReturnModal({
             <button
               type="submit"
               disabled={isSubmitting}
+              aria-busy={isSubmitting}
               className="flex h-13 w-full items-center justify-center gap-2 rounded-xl bg-[#173b24] px-5 text-sm font-black text-white transition hover:bg-[#245334] disabled:cursor-wait disabled:opacity-70"
             >
-              <Plus size={18} aria-hidden="true" />
+              {isSubmitting ? (
+                <LoaderCircle
+                  size={18}
+                  className="animate-spin"
+                  aria-hidden="true"
+                />
+              ) : (
+                <Plus size={18} aria-hidden="true" />
+              )}
               {isSubmitting ? "Saving return..." : "Save return"}
             </button>
           </form>
