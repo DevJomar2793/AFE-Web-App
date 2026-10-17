@@ -58,7 +58,7 @@ cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements-dev.txt
-cp .env.example .env.local
+cp .env.example .env
 alembic upgrade head
 uvicorn app.main:app --reload
 ```
@@ -147,11 +147,10 @@ record first, then confirm the change appears in the live backend.
 
 ## Environment variable security
 
-Real `.env.local` and `.env.prod` files are local configuration and must never
-be committed. Only the `.env.example` templates belong in Git. The backend
-loads `.env.local` by default; use `APP_ENV=prod` to load `.env.prod`. Keep
-production values in the environment-variable settings provided by your
-hosting platform instead of in repository files.
+Real `.env` files are local configuration and must never be committed. Only
+the `.env.example` templates belong in Git. Keep production values in the
+environment-variable settings provided by your hosting platform instead of in
+repository files.
 
 - `DATABASE_PASSWORD` is private and belongs only in FastAPI's server
   environment.

@@ -17,13 +17,13 @@ Create an isolated Python environment and install the pinned dependencies:
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements-dev.txt
-cp .env.example .env.local
+cp .env.example .env
 ```
 
-Replace the placeholder values in `.env.local` with local PostgreSQL
-credentials. The file is ignored by Git. FastAPI loads `.env.local` by default.
-If credentials from an earlier example file were real, rotate them because
-removing them from the current file does not remove them from Git history.
+Replace the placeholder values in `.env` with PostgreSQL credentials. The file
+is ignored by Git. If credentials from an earlier example file were real,
+rotate them because removing them from the current file does not remove them
+from Git history.
 
 Set `JWT_SECRET_KEY` to a long, random value that only the backend can read.
 It signs login tokens, so never put it in frontend or mobile environment files.
@@ -43,17 +43,6 @@ Apply migrations and start the service:
 alembic upgrade head
 uvicorn app.main:app --reload
 ```
-
-For a production-style run, keep production values in `.env.prod` and select it
-explicitly for both migrations and the API server:
-
-```bash
-APP_ENV=prod alembic upgrade head
-APP_ENV=prod uvicorn app.main:app
-```
-
-Hosting-platform environment variables override values from `.env.prod`. Store
-production secrets in the hosting platform instead of committing the file.
 
 Open `http://127.0.0.1:8000/docs` for interactive API documentation.
 
