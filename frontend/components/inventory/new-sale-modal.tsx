@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, useRef, useState } from "react";
-import { Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { LoaderCircle, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { createSaleBatch, type InventoryItem } from "@/lib/api";
 
 type NewSaleModalProps = {
@@ -403,9 +403,18 @@ export function NewSaleModal({
             <button
               type="submit"
               disabled={isSubmitting}
+              aria-busy={isSubmitting}
               className="flex h-13 w-full items-center justify-center gap-2 rounded-xl bg-[#173b24] px-5 text-sm font-black text-white transition hover:bg-[#245334] disabled:cursor-wait disabled:opacity-70"
             >
-              <Plus size={18} aria-hidden="true" />
+              {isSubmitting ? (
+                <LoaderCircle
+                  size={18}
+                  className="animate-spin"
+                  aria-hidden="true"
+                />
+              ) : (
+                <Plus size={18} aria-hidden="true" />
+              )}
               {isSubmitting ? "Saving sale..." : "Save sale"}
             </button>
           </form>

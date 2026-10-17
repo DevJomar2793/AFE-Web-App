@@ -3,7 +3,7 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
 import Link from "next/link";
-import { Mail } from "lucide-react";
+import { LoaderCircle, Mail } from "lucide-react";
 import { PasswordInput } from "@/components/auth/password-input";
 import { registerUser } from "@/lib/api";
 
@@ -120,8 +120,16 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="h-14 w-full rounded-xl bg-[#075c2d] text-xl font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
+              aria-busy={isSubmitting}
+              className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#075c2d] text-xl font-black text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
+              {isSubmitting && (
+                <LoaderCircle
+                  size={22}
+                  className="animate-spin"
+                  aria-hidden="true"
+                />
+              )}
               {isSubmitting ? "Creating account..." : "Register"}
             </button>
           </form>

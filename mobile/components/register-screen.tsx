@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   KeyboardAvoidingView,
@@ -135,10 +136,12 @@ export function RegisterScreen({ onSignIn }: RegisterScreenProps) {
           {errorMessage ? <Text style={styles.errorMessage}>{errorMessage}</Text> : null}
 
           <Pressable
+            accessibilityState={{ busy: isSubmitting, disabled: isSubmitting }}
             disabled={isSubmitting}
             style={[styles.registerButton, isSubmitting && styles.disabledButton]}
             onPress={() => void handleRegister()}
           >
+            {isSubmitting && <ActivityIndicator color="#ffffff" size="small" />}
             <Text style={styles.registerButtonText}>
               {isSubmitting ? 'Creating account...' : 'Register'}
             </Text>
@@ -248,8 +251,10 @@ const styles = StyleSheet.create({
   },
   registerButton: {
     height: 58,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
     marginTop: 24,
     borderRadius: 12,
     backgroundColor: '#075c2d',
