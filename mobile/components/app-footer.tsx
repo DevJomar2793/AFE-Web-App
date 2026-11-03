@@ -5,7 +5,7 @@ interface AppFooterProps {
   style?: StyleProp<TextStyle>;
 }
 
-const fallbackVersion = "2.0.00";
+const fallbackVersion = "3.0.00";
 
 export function AppFooter({ style }: AppFooterProps) {
   const version = Constants.expoConfig?.version ?? fallbackVersion;
