@@ -1,5 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -11,9 +11,9 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
-import { login } from '../lib/auth';
-import { AppFooter } from './app-footer';
+} from "react-native";
+import { login } from "../lib/auth";
+import { AppFooter } from "./app-footer";
 
 interface LoginScreenProps {
   onRegister: () => void;
@@ -21,27 +21,29 @@ interface LoginScreenProps {
 }
 
 export function LoginScreen({ onRegister, onSignIn }: LoginScreenProps) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState("");
 
   async function handleSignIn() {
     if (!email.trim() || !password) {
-      setErrorMessage('Enter your email address and password.');
+      setErrorMessage("Enter your email address and password.");
       return;
     }
 
     setIsSubmitting(true);
-    setErrorMessage('');
+    setErrorMessage("");
 
     try {
       await login(email.trim(), password);
       onSignIn();
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : 'Unable to sign in. Please try again.',
+        error instanceof Error
+          ? error.message
+          : "Unable to sign in. Please try again.",
       );
     } finally {
       setIsSubmitting(false);
@@ -50,7 +52,7 @@ export function LoginScreen({ onRegister, onSignIn }: LoginScreenProps) {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={styles.container}
     >
       <ScrollView
@@ -62,7 +64,7 @@ export function LoginScreen({ onRegister, onSignIn }: LoginScreenProps) {
           <View style={styles.brandSection}>
             <View style={styles.logoFrame}>
               <Image
-                source={require('../assets/splash-icon.png')}
+                source={require("../assets/splash-icon.png")}
                 style={styles.logo}
               />
             </View>
@@ -99,7 +101,11 @@ export function LoginScreen({ onRegister, onSignIn }: LoginScreenProps) {
             <View>
               <Text style={styles.label}>Password</Text>
               <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={22} color="#4d5a61" />
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={22}
+                  color="#4d5a61"
+                />
                 <TextInput
                   autoComplete="password"
                   editable={!isSubmitting}
@@ -111,13 +117,15 @@ export function LoginScreen({ onRegister, onSignIn }: LoginScreenProps) {
                   value={password}
                 />
                 <Pressable
-                  accessibilityLabel={isPasswordVisible ? 'Hide password' : 'Show password'}
+                  accessibilityLabel={
+                    isPasswordVisible ? "Hide password" : "Show password"
+                  }
                   disabled={isSubmitting}
                   hitSlop={8}
                   onPress={() => setIsPasswordVisible(!isPasswordVisible)}
                 >
                   <Ionicons
-                    name={isPasswordVisible ? 'eye-outline' : 'eye-off-outline'}
+                    name={isPasswordVisible ? "eye-outline" : "eye-off-outline"}
                     size={22}
                     color="#6b7780"
                   />
@@ -128,7 +136,9 @@ export function LoginScreen({ onRegister, onSignIn }: LoginScreenProps) {
 
           <Text style={styles.forgotPassword}>Forgot password?</Text>
 
-          {errorMessage ? <Text style={styles.errorMessage}>{errorMessage}</Text> : null}
+          {errorMessage ? (
+            <Text style={styles.errorMessage}>{errorMessage}</Text>
+          ) : null}
 
           <Pressable
             accessibilityState={{ busy: isSubmitting }}
@@ -137,7 +147,9 @@ export function LoginScreen({ onRegister, onSignIn }: LoginScreenProps) {
             onPress={() => void handleSignIn()}
           >
             {isSubmitting && <ActivityIndicator color="#ffffff" size="small" />}
-            <Text style={styles.signInButtonText}>{isSubmitting ? 'Signing in...' : 'Sign In'}</Text>
+            <Text style={styles.signInButtonText}>
+              {isSubmitting ? "Signing in..." : "Sign In"}
+            </Text>
           </Pressable>
 
           <View style={styles.divider}>
@@ -148,7 +160,10 @@ export function LoginScreen({ onRegister, onSignIn }: LoginScreenProps) {
 
           <Pressable
             disabled={isSubmitting}
-            style={[styles.registerButton, isSubmitting && styles.disabledButton]}
+            style={[
+              styles.registerButton,
+              isSubmitting && styles.disabledButton,
+            ]}
             onPress={onRegister}
           >
             <Text style={styles.registerButtonText}>Register</Text>
@@ -164,71 +179,71 @@ export function LoginScreen({ onRegister, onSignIn }: LoginScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fdfdfc',
+    backgroundColor: "#fdfdfc",
   },
   content: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     padding: 18,
   },
   card: {
     borderWidth: 2,
-    borderColor: '#579266',
+    borderColor: "#579266",
     borderRadius: 28,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     padding: 24,
-    shadowColor: '#102819',
+    shadowColor: "#102819",
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.1,
     shadowRadius: 22,
     elevation: 4,
   },
   brandSection: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   logoFrame: {
     width: 100,
     height: 100,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: '#8eb18d',
+    borderColor: "#8eb18d",
     borderRadius: 24,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     padding: 4,
   },
   logo: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
     borderRadius: 19,
   },
   brandTitle: {
     marginTop: 12,
-    color: '#062f1c',
+    color: "#062f1c",
     fontSize: 26,
-    fontWeight: '900',
-    textAlign: 'center',
+    fontWeight: "900",
+    textAlign: "center",
   },
   brandSubtitle: {
     marginTop: 3,
-    color: '#68727a',
+    color: "#68727a",
     fontSize: 17,
-    textAlign: 'center',
+    textAlign: "center",
   },
   titleSection: {
     marginTop: 28,
   },
   title: {
-    color: '#062f1c',
+    color: "#062f1c",
     fontSize: 25,
-    fontWeight: '900',
-    textAlign: 'center',
+    fontWeight: "900",
+    textAlign: "center",
   },
   subtitle: {
     marginTop: 5,
-    color: '#68727a',
+    color: "#68727a",
     fontSize: 16,
     lineHeight: 22,
-    textAlign: 'center',
+    textAlign: "center",
   },
   form: {
     marginTop: 28,
@@ -236,46 +251,46 @@ const styles = StyleSheet.create({
   },
   label: {
     marginBottom: 8,
-    color: '#082d20',
+    color: "#082d20",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   inputWrapper: {
     height: 58,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
     borderWidth: 2,
-    borderColor: '#d0d6d8',
+    borderColor: "#d0d6d8",
     borderRadius: 12,
     paddingHorizontal: 16,
   },
   input: {
     flex: 1,
-    color: '#213238',
+    color: "#213238",
     fontSize: 16,
   },
   forgotPassword: {
     marginTop: 15,
-    color: '#075d2b',
+    color: "#075d2b",
     fontSize: 15,
-    fontWeight: '600',
-    textAlign: 'right',
+    fontWeight: "600",
+    textAlign: "right",
   },
   signInButton: {
     height: 58,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 10,
     marginTop: 20,
     borderRadius: 12,
-    backgroundColor: '#075c2d',
+    backgroundColor: "#075c2d",
   },
   signInButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: "900",
   },
   disabledButton: {
     opacity: 0.6,
@@ -283,46 +298,46 @@ const styles = StyleSheet.create({
   errorMessage: {
     marginTop: 16,
     borderRadius: 10,
-    backgroundColor: '#fdf0f0',
-    color: '#9b3f3f',
+    backgroundColor: "#fdf0f0",
+    color: "#9b3f3f",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     padding: 12,
-    textAlign: 'center',
+    textAlign: "center",
   },
   divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 14,
     marginTop: 24,
   },
   dividerLine: {
     height: 1,
     flex: 1,
-    backgroundColor: '#cfd5d7',
+    backgroundColor: "#cfd5d7",
   },
   dividerText: {
-    color: '#68727a',
+    color: "#68727a",
     fontSize: 15,
   },
   registerButton: {
     height: 54,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 18,
     borderWidth: 2,
-    borderColor: '#075c2d',
+    borderColor: "#075c2d",
     borderRadius: 12,
   },
   registerButtonText: {
-    color: '#075c2d',
+    color: "#075c2d",
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: "900",
   },
   footer: {
     marginTop: 26,
-    color: '#647078',
+    color: "#647078",
     fontSize: 12,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });

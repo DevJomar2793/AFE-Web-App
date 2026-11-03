@@ -1,5 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,47 +12,47 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
-import { register as registerUser } from '../lib/auth';
-import { AppFooter } from './app-footer';
+} from "react-native";
+import { register as registerUser } from "../lib/auth";
+import { AppFooter } from "./app-footer";
 
 interface RegisterScreenProps {
   onSignIn: () => void;
 }
 
 export function RegisterScreen({ onSignIn }: RegisterScreenProps) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState("");
 
   async function handleRegister() {
     if (!email.trim() || !password) {
-      setErrorMessage('Enter your email address and password.');
+      setErrorMessage("Enter your email address and password.");
       return;
     }
 
     if (password.length < 5) {
-      setErrorMessage('Password must be at least 5 characters.');
+      setErrorMessage("Password must be at least 5 characters.");
       return;
     }
 
     setIsSubmitting(true);
-    setErrorMessage('');
+    setErrorMessage("");
 
     try {
       await registerUser(email.trim(), password);
       Alert.alert(
-        'Account created',
-        'Your account has been created successfully.',
-        [{ text: 'Go to Sign In', onPress: onSignIn }],
+        "Account created",
+        "Your account has been created successfully.",
+        [{ text: "Go to Sign In", onPress: onSignIn }],
       );
     } catch (error) {
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : 'Unable to create your account. Please try again.',
+          : "Unable to create your account. Please try again.",
       );
     } finally {
       setIsSubmitting(false);
@@ -61,7 +61,7 @@ export function RegisterScreen({ onSignIn }: RegisterScreenProps) {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={styles.container}
     >
       <ScrollView
@@ -73,7 +73,7 @@ export function RegisterScreen({ onSignIn }: RegisterScreenProps) {
           <View style={styles.brandSection}>
             <View style={styles.logoFrame}>
               <Image
-                source={require('../assets/splash-icon.png')}
+                source={require("../assets/splash-icon.png")}
                 style={styles.logo}
               />
             </View>
@@ -108,7 +108,11 @@ export function RegisterScreen({ onSignIn }: RegisterScreenProps) {
             <View>
               <Text style={styles.label}>Password</Text>
               <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={22} color="#4d5a61" />
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={22}
+                  color="#4d5a61"
+                />
                 <TextInput
                   autoComplete="new-password"
                   onChangeText={setPassword}
@@ -119,12 +123,14 @@ export function RegisterScreen({ onSignIn }: RegisterScreenProps) {
                   value={password}
                 />
                 <Pressable
-                  accessibilityLabel={isPasswordVisible ? 'Hide password' : 'Show password'}
+                  accessibilityLabel={
+                    isPasswordVisible ? "Hide password" : "Show password"
+                  }
                   hitSlop={8}
                   onPress={() => setIsPasswordVisible(!isPasswordVisible)}
                 >
                   <Ionicons
-                    name={isPasswordVisible ? 'eye-outline' : 'eye-off-outline'}
+                    name={isPasswordVisible ? "eye-outline" : "eye-off-outline"}
                     size={22}
                     color="#6b7780"
                   />
@@ -133,17 +139,22 @@ export function RegisterScreen({ onSignIn }: RegisterScreenProps) {
             </View>
           </View>
 
-          {errorMessage ? <Text style={styles.errorMessage}>{errorMessage}</Text> : null}
+          {errorMessage ? (
+            <Text style={styles.errorMessage}>{errorMessage}</Text>
+          ) : null}
 
           <Pressable
             accessibilityState={{ busy: isSubmitting, disabled: isSubmitting }}
             disabled={isSubmitting}
-            style={[styles.registerButton, isSubmitting && styles.disabledButton]}
+            style={[
+              styles.registerButton,
+              isSubmitting && styles.disabledButton,
+            ]}
             onPress={() => void handleRegister()}
           >
             {isSubmitting && <ActivityIndicator color="#ffffff" size="small" />}
             <Text style={styles.registerButtonText}>
-              {isSubmitting ? 'Creating account...' : 'Register'}
+              {isSubmitting ? "Creating account..." : "Register"}
             </Text>
           </Pressable>
 
@@ -164,65 +175,65 @@ export function RegisterScreen({ onSignIn }: RegisterScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fdfdfc',
+    backgroundColor: "#fdfdfc",
   },
   content: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     padding: 18,
   },
   card: {
     borderWidth: 2,
-    borderColor: '#579266',
+    borderColor: "#579266",
     borderRadius: 28,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     padding: 24,
-    shadowColor: '#102819',
+    shadowColor: "#102819",
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.1,
     shadowRadius: 22,
     elevation: 4,
   },
   brandSection: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   logoFrame: {
     width: 84,
     height: 84,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: '#8eb18d',
+    borderColor: "#8eb18d",
     borderRadius: 21,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     padding: 4,
   },
   logo: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
     borderRadius: 16,
   },
   brandTitle: {
     marginTop: 10,
-    color: '#062f1c',
+    color: "#062f1c",
     fontSize: 23,
-    fontWeight: '900',
-    textAlign: 'center',
+    fontWeight: "900",
+    textAlign: "center",
   },
   titleSection: {
     marginTop: 26,
   },
   title: {
-    color: '#062f1c',
+    color: "#062f1c",
     fontSize: 25,
-    fontWeight: '900',
-    textAlign: 'center',
+    fontWeight: "900",
+    textAlign: "center",
   },
   subtitle: {
     marginTop: 5,
-    color: '#68727a',
+    color: "#68727a",
     fontSize: 16,
     lineHeight: 22,
-    textAlign: 'center',
+    textAlign: "center",
   },
   form: {
     marginTop: 28,
@@ -230,39 +241,39 @@ const styles = StyleSheet.create({
   },
   label: {
     marginBottom: 8,
-    color: '#082d20',
+    color: "#082d20",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   inputWrapper: {
     height: 58,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
     borderWidth: 2,
-    borderColor: '#d0d6d8',
+    borderColor: "#d0d6d8",
     borderRadius: 12,
     paddingHorizontal: 16,
   },
   input: {
     flex: 1,
-    color: '#213238',
+    color: "#213238",
     fontSize: 16,
   },
   registerButton: {
     height: 58,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
     marginTop: 24,
     borderRadius: 12,
-    backgroundColor: '#075c2d',
+    backgroundColor: "#075c2d",
   },
   registerButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: "900",
   },
   disabledButton: {
     opacity: 0.6,
@@ -270,31 +281,31 @@ const styles = StyleSheet.create({
   errorMessage: {
     marginTop: 18,
     borderRadius: 10,
-    backgroundColor: '#fdf0f0',
-    color: '#9b3f3f',
+    backgroundColor: "#fdf0f0",
+    color: "#9b3f3f",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     padding: 12,
-    textAlign: 'center',
+    textAlign: "center",
   },
   signInRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: 24,
   },
   signInPrompt: {
-    color: '#647078',
+    color: "#647078",
     fontSize: 14,
   },
   signInLink: {
-    color: '#075c2d',
+    color: "#075c2d",
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   footer: {
     marginTop: 26,
-    color: '#647078',
+    color: "#647078",
     fontSize: 12,
-    textAlign: 'center',
+    textAlign: "center",
   },
 });

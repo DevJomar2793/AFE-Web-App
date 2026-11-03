@@ -136,7 +136,7 @@ function AccountHeader({
       <View style={styles.accountText}>
         <Text style={styles.accountTitle}>Account</Text>
         <Text style={styles.accountEmail} numberOfLines={1}>
-          {isLoading ? 'Loading account...' : email}
+          {isLoading ? "Loading account..." : email}
         </Text>
         <View style={styles.accountBadge}>
           <Text style={styles.accountBadgeText}>Active account</Text>
@@ -203,7 +203,10 @@ function LogoutConfirmationModal({
               accessibilityRole="button"
               disabled={isLoggingOut}
               onPress={onClose}
-              style={[styles.cancelLogoutButton, isLoggingOut && styles.disabledButton]}
+              style={[
+                styles.cancelLogoutButton,
+                isLoggingOut && styles.disabledButton,
+              ]}
             >
               <Text style={styles.cancelLogoutButtonText}>Cancel</Text>
             </Pressable>
@@ -212,9 +215,14 @@ function LogoutConfirmationModal({
               accessibilityState={{ busy: isLoggingOut }}
               disabled={isLoggingOut}
               onPress={onConfirm}
-              style={[styles.confirmLogoutButton, isLoggingOut && styles.disabledButton]}
+              style={[
+                styles.confirmLogoutButton,
+                isLoggingOut && styles.disabledButton,
+              ]}
             >
-              {isLoggingOut && <ActivityIndicator color="#ffffff" size="small" />}
+              {isLoggingOut && (
+                <ActivityIndicator color="#ffffff" size="small" />
+              )}
               <Text style={styles.confirmLogoutButtonText}>
                 {isLoggingOut ? "Logging out..." : "Log out"}
               </Text>
@@ -547,17 +555,29 @@ export function OverviewScreen({
                       style={styles.stockSummary}
                     >
                       <View style={styles.stockSummaryIcon}>
-                        <Ionicons name="cube-outline" size={27} color="#2f7043" />
+                        <Ionicons
+                          name="cube-outline"
+                          size={27}
+                          color="#2f7043"
+                        />
                       </View>
                       <View style={styles.flexText}>
                         <Text style={styles.stockSummaryTitle}>
-                          {dashboard.stockAttention.length} item{dashboard.stockAttention.length === 1 ? "" : "s"} need attention
+                          {dashboard.stockAttention.length} item
+                          {dashboard.stockAttention.length === 1
+                            ? ""
+                            : "s"}{" "}
+                          need attention
                         </Text>
                         <Text style={styles.stockSummaryText}>
                           Check low and out-of-stock items
                         </Text>
                       </View>
-                      <Ionicons name="chevron-forward" size={22} color="#2f7043" />
+                      <Ionicons
+                        name="chevron-forward"
+                        size={22}
+                        color="#2f7043"
+                      />
                     </Pressable>
                   ) : (
                     <Text style={styles.emptyStock}>
@@ -755,7 +775,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#a33d22",
     paddingHorizontal: 18,
   },
-  confirmLogoutButtonText: { color: "#ffffff", fontSize: 14, fontWeight: "800" },
+  confirmLogoutButtonText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "800",
+  },
   disabledButton: { opacity: 0.6 },
   loadingState: {
     minHeight: 220,
