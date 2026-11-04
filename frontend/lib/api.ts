@@ -117,9 +117,10 @@ const DEFAULT_API_BASE_URL =
     ? "https://atbackend-web-app-afe.onrender.com"
     : "http://127.0.0.1:8000";
 
-const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_BACKEND_API_URL ?? DEFAULT_API_BASE_URL
-).replace(/\/+$/, "");
+const API_BASE_URL = (process.env.NEXT_API_URL ?? DEFAULT_API_BASE_URL).replace(
+  /\/+$/,
+  "",
+);
 
 export async function registerUser(input: RegisterInput): Promise<void> {
   await apiRequest(

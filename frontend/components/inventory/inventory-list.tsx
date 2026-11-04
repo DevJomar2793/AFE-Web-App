@@ -1,6 +1,7 @@
 "use client";
 
 import { PackagePlus, Pencil, RotateCcw, Search } from "lucide-react";
+import { useEffect, useState } from "react";
 import { ProductPriceCards } from "@/components/inventory/product-price-cards";
 import type { InventoryItem, InventoryStatus } from "@/lib/api";
 
@@ -55,10 +56,16 @@ export function InventoryList({
   onQueryChange,
   onRetry,
 }: InventoryListProps) {
+  const [page, setPage] = useState(0);
   const search = query.trim().toLowerCase();
   const filteredItems = items.filter(
     (item) => !search || item.item.toLowerCase().includes(search),
   );
+  const pageSize = 5;
+  const pageCount = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const visibleItems = filteredItems.slice(page * pageSize, (page + 1) * pageSize);
+
+  useEffect(() => setPage(0), [query]);
 
   return (
     <section>
@@ -122,13 +129,22 @@ export function InventoryList({
           <InventoryErrorState error={error} onRetry={onRetry} />
         ) : (
           <InventoryRows
-            items={filteredItems}
+            items={visibleItems}
             query={query}
             total={items.length}
             onEditItem={onEditItem}
           />
         )}
       </div>
+      {!isLoading && !error && pageCount > 1 && (
+        <div className="mt-2 flex items-center justify-between text-sm">
+          <span>Page {page + 1} of {pageCount}</span>
+          <div className="flex gap-2">
+            <button className="rounded-lg border px-3 py-1" disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</button>
+            <button className="rounded-lg border px-3 py-1" disabled={page + 1 === pageCount} onClick={() => setPage(page + 1)}>Next</button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

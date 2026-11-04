@@ -21,11 +21,7 @@ import { NewSaleModal } from "@/components/inventory/new-sale-modal";
 import { InventoryOverview } from "@/components/inventory/overview";
 import { ReturnsList } from "@/components/inventory/returns-list";
 import { SalesActivity } from "@/components/inventory/sales-activity";
-import {
-  deleteSale,
-  type InventoryItem,
-  type Sale,
-} from "@/lib/api";
+import { deleteSale, type InventoryItem, type Sale } from "@/lib/api";
 
 type Notice = {
   message: string;
@@ -33,10 +29,9 @@ type Notice = {
 };
 
 export function InventoryDashboard() {
-  const currentYear = new Date().getFullYear();
+  const [currentYear, setCurrentYear] = useState<number | null>(null);
 
-  const [currentView, setCurrentView] =
-    useState<InventoryViewName>("overview");
+  const [currentView, setCurrentView] = useState<InventoryViewName>("overview");
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
   const [isNewSaleOpen, setIsNewSaleOpen] = useState(false);
   const [isNewReturnOpen, setIsNewReturnOpen] = useState(false);
@@ -188,7 +183,7 @@ export function InventoryDashboard() {
   };
 
   return (
-    <div className="min-h-dvh bg-[#f4f6f1] text-[#18251a]">
+    <div className="flex h-dvh flex-col overflow-hidden bg-[#f4f6f1] text-[#18251a]">
       <InventorySidebar
         currentView={currentView}
         isMenuOpen={isMenuOpen}
@@ -196,7 +191,7 @@ export function InventoryDashboard() {
         onSelectView={selectView}
       />
 
-      <div className="lg:pl-56">
+      <div className="flex min-h-0 flex-1 flex-col lg:pl-56">
         <InventoryHeader
           currentView={currentView}
           onOpenMenu={() => setIsMenuOpen(true)}
@@ -204,7 +199,7 @@ export function InventoryDashboard() {
           onTransactionRangeChange={setTransactionRange}
         />
 
-        <main className="mx-auto max-w-375 px-4 pb-28 pt-6 sm:px-7 lg:px-10 lg:pb-10 lg:pt-8">
+        <main className="mx-auto min-h-0 w-full max-w-375 flex-1 overflow-hidden px-4 pb-20 pt-3 sm:px-7 lg:px-10 lg:pb-3 lg:pt-4">
           {currentView === "overview" && (
             <InventoryOverview
               error={overviewError}
@@ -262,8 +257,8 @@ export function InventoryDashboard() {
             />
           )}
 
-          <footer className="mt-12 border-t border-[#d9dfd7] py-6 text-center text-sm text-[#667364]">
-            © {currentYear} Adamos Fresh Eggs. Built by{" "}
+          <footer className="hidden border-t border-[#d9dfd7] py-2 text-center text-xs text-[#667364] lg:block">
+            © {currentYear ?? ""} Adamos Fresh Eggs. Built by{" "}
             <span className="font-semibold text-[#173b24]">DevJomar</span>
           </footer>
         </main>

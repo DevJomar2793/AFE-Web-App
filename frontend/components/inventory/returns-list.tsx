@@ -1,6 +1,7 @@
 "use client";
 
 import { RotateCcw } from "lucide-react";
+import { useState } from "react";
 import type { InventoryReturn } from "@/lib/api";
 
 type ReturnsListProps = {
@@ -24,6 +25,10 @@ export function ReturnsList({
   onRetry,
   onOpenReturn,
 }: ReturnsListProps) {
+  const [page, setPage] = useState(0);
+  const pageSize = 3;
+  const pageCount = Math.max(1, Math.ceil(returns.length / pageSize));
+  const visibleReturns = returns.slice(page * pageSize, (page + 1) * pageSize);
   return (
     <section>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -49,7 +54,7 @@ export function ReturnsList({
           ) : error ? (
             <ReturnsCardErrorState error={error} onRetry={onRetry} />
           ) : returns.length ? (
-            returns.map((inventoryReturn) => (
+            visibleReturns.map((inventoryReturn) => (
               <ReturnCard
                 inventoryReturn={inventoryReturn}
                 key={inventoryReturn.id}
@@ -80,7 +85,7 @@ export function ReturnsList({
               ) : error ? (
                 <ReturnsErrorRow error={error} onRetry={onRetry} />
               ) : returns.length ? (
-                returns.map((inventoryReturn) => (
+                visibleReturns.map((inventoryReturn) => (
                   <ReturnRow
                     inventoryReturn={inventoryReturn}
                     key={inventoryReturn.id}
@@ -100,6 +105,15 @@ export function ReturnsList({
           </table>
         </div>
       </div>
+      {!isLoading && !error && pageCount > 1 && (
+        <div className="mt-2 flex items-center justify-between text-sm">
+          <span>Page {page + 1} of {pageCount}</span>
+          <div className="flex gap-2">
+            <button className="rounded-lg border px-3 py-1" disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</button>
+            <button className="rounded-lg border px-3 py-1" disabled={page + 1 === pageCount} onClick={() => setPage(page + 1)}>Next</button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
