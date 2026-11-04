@@ -91,7 +91,7 @@ async def create_return(
             ActivityLog(
                 action="added",
                 affected_record=(
-                    f"Return #{inventory_return.id} — {inventory_item.item} "
+                    f"Return — {inventory_item.item} "
                     f"for {inventory_return.customer_name}"
                 ),
                 admin_email=current_user.email,

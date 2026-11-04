@@ -120,7 +120,7 @@ function ActivityLogRow({ activityLog }: { activityLog: ActivityLog }) {
           Affected record
         </p>
         <p className="break-words text-sm font-extrabold text-[#24362a]">
-          {activityLog.affectedRecord}
+          {activityLog.affectedRecord.replace(/ #?\d+ — /, " — ")}
         </p>
       </div>
 

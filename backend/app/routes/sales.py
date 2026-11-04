@@ -180,7 +180,7 @@ async def create_sale_transaction(
         session.add(
             ActivityLog(
                 action="added",
-                affected_record=f"Sale #{sale.id} — {sale.customer_name}",
+                affected_record=f"Sale — {sale.customer_name}",
                 admin_email=admin_email,
             ),
         )
@@ -294,7 +294,7 @@ async def update_sale(
         session.add(
             ActivityLog(
                 action="edited",
-                affected_record=f"Sale #{sale.id} — {sale.customer_name}",
+                affected_record=f"Sale — {sale.customer_name}",
                 admin_email=current_user.email,
             ),
         )
@@ -367,7 +367,7 @@ async def delete_sale(
         session.add(
             ActivityLog(
                 action="deleted",
-                affected_record=f"Sale #{sale.id} — {sale.customer_name}",
+                affected_record=f"Sale — {sale.customer_name}",
                 admin_email=current_user.email,
             ),
         )

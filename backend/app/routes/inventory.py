@@ -71,7 +71,7 @@ async def create_inventory_item(
         session.add(
             ActivityLog(
                 action="added",
-                affected_record=f"Inventory #{inventory.id} — {inventory.item}",
+                affected_record=f"Inventory — {inventory.item}",
                 admin_email=current_user.email,
             ),
         )
@@ -132,7 +132,7 @@ async def update_inventory_item(
         session.add(
             ActivityLog(
                 action="edited",
-                affected_record=f"Inventory #{inventory.id} — {inventory.item}",
+                affected_record=f"Inventory — {inventory.item}",
                 admin_email=current_user.email,
             ),
         )
