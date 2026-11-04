@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import (
     BaseModel,
@@ -58,6 +59,16 @@ class UserResponse(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class ActivityLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    action: Literal["added", "edited", "deleted"]
+    affected_record: str
+    admin_email: EmailStr
+    created_at: datetime
 
 
 class InventoryCreate(BaseModel):

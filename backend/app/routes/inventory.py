@@ -7,13 +7,19 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_database_session
-from app.models import Inventory, InventoryStatus
+from app.models import ActivityLog, Inventory, InventoryStatus, User
 from app.schemas import InventoryCreate, InventoryResponse, InventoryUpdate
+from app.security import get_current_user
 
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/inventory", tags=["inventory"])
+router = APIRouter(
+    prefix="/inventory",
+    tags=["inventory"],
+    dependencies=[Depends(get_current_user)],
+)
 DatabaseSession = Annotated[AsyncSession, Depends(get_database_session)]
+CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 @router.get(
@@ -48,6 +54,7 @@ async def get_inventory_items(session: DatabaseSession) -> list[Inventory]:
 async def create_inventory_item(
     item_data: InventoryCreate,
     session: DatabaseSession,
+    current_user: CurrentUser,
 ) -> Inventory:
     inventory = Inventory(
         item=item_data.item,
@@ -60,6 +67,14 @@ async def create_inventory_item(
     session.add(inventory)
 
     try:
+        await session.flush()
+        session.add(
+            ActivityLog(
+                action="added",
+                affected_record=f"Inventory #{inventory.id} — {inventory.item}",
+                admin_email=current_user.email,
+            ),
+        )
         await session.commit()
         await session.refresh(inventory)
         return inventory
@@ -90,6 +105,7 @@ async def update_inventory_item(
     inventory_id: int,
     item_data: InventoryUpdate,
     session: DatabaseSession,
+    current_user: CurrentUser,
 ) -> Inventory:
     try:
         inventory = await session.scalar(
@@ -113,6 +129,13 @@ async def update_inventory_item(
         elif inventory.status == InventoryStatus.OUT_OF_STOCK:
             inventory.status = InventoryStatus.IN_STOCK
 
+        session.add(
+            ActivityLog(
+                action="edited",
+                affected_record=f"Inventory #{inventory.id} — {inventory.item}",
+                admin_email=current_user.email,
+            ),
+        )
         await session.commit()
         await session.refresh(inventory)
         return inventory

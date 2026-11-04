@@ -7,7 +7,7 @@ from sqlalchemy import delete
 
 from app.database import async_session_factory, engine
 from app.main import app
-from app.models import User
+from app.models import ActivityLog, User
 from app.security import create_access_token, hash_password
 
 
@@ -33,6 +33,9 @@ async def authentication_headers() -> AsyncIterator[dict[str, str]]:
         yield {"Authorization": f"Bearer {create_access_token(user)}"}
     finally:
         async with async_session_factory() as session:
+            await session.execute(
+                delete(ActivityLog).where(ActivityLog.admin_email == user.email),
+            )
             await session.execute(delete(User).where(User.id == user.id))
             await session.commit()
 

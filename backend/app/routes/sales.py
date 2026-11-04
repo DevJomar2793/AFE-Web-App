@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_database_session
-from app.models import Inventory, InventoryStatus, Sale, SaleItem
+from app.models import ActivityLog, Inventory, InventoryStatus, Sale, SaleItem, User
 from app.schemas import (
     SaleBatchCreate,
     SaleBatchItemCreate,
@@ -17,11 +17,17 @@ from app.schemas import (
     SaleResponse,
     SaleUpdate,
 )
+from app.security import get_current_user
 
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/sales", tags=["sales"])
+router = APIRouter(
+    prefix="/sales",
+    tags=["sales"],
+    dependencies=[Depends(get_current_user)],
+)
 DatabaseSession = Annotated[AsyncSession, Depends(get_database_session)]
+CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 @router.get(
@@ -67,6 +73,7 @@ async def get_sales(session: DatabaseSession) -> list[Sale]:
 async def create_sale(
     sale_data: SaleCreate,
     session: DatabaseSession,
+    current_user: CurrentUser,
 ) -> Sale:
     requested_items = [
         SaleBatchItemCreate(
@@ -78,6 +85,7 @@ async def create_sale(
         sale_data.customer_name,
         requested_items,
         session,
+        current_user.email,
     )
 
 
@@ -101,11 +109,13 @@ async def create_sale(
 async def create_sale_batch(
     sale_data: SaleBatchCreate,
     session: DatabaseSession,
+    current_user: CurrentUser,
 ) -> Sale:
     return await create_sale_transaction(
         sale_data.customer_name,
         sale_data.items,
         session,
+        current_user.email,
     )
 
 
@@ -113,6 +123,7 @@ async def create_sale_transaction(
     customer_name: str,
     requested_items: list[SaleBatchItemCreate],
     session: AsyncSession,
+    admin_email: str,
 ) -> Sale:
     try:
         requested_inventory_ids = [item.inventory_id for item in requested_items]
@@ -165,6 +176,14 @@ async def create_sale_transaction(
             )
 
         session.add(sale)
+        await session.flush()
+        session.add(
+            ActivityLog(
+                action="added",
+                affected_record=f"Sale #{sale.id} — {sale.customer_name}",
+                admin_email=admin_email,
+            ),
+        )
         await session.commit()
         return await load_sale(sale.id, session)
     except HTTPException:
@@ -200,6 +219,7 @@ async def update_sale(
     sale_id: int,
     sale_data: SaleUpdate,
     session: DatabaseSession,
+    current_user: CurrentUser,
 ) -> Sale:
     try:
         sale = await session.scalar(
@@ -271,6 +291,13 @@ async def update_sale(
             sale_item.price = requested_item.price
 
         sale.updated_at = datetime.now(timezone.utc)
+        session.add(
+            ActivityLog(
+                action="edited",
+                affected_record=f"Sale #{sale.id} — {sale.customer_name}",
+                admin_email=current_user.email,
+            ),
+        )
         await session.commit()
         return await load_sale(sale.id, session)
     except HTTPException:
@@ -298,6 +325,7 @@ async def update_sale(
 async def delete_sale(
     sale_id: int,
     session: DatabaseSession,
+    current_user: CurrentUser,
 ) -> Response:
     try:
         sale = await session.scalar(
@@ -336,6 +364,13 @@ async def delete_sale(
             inventory_item.quantity += sale_item.quantity
             update_inventory_status(inventory_item)
 
+        session.add(
+            ActivityLog(
+                action="deleted",
+                affected_record=f"Sale #{sale.id} — {sale.customer_name}",
+                admin_email=current_user.email,
+            ),
+        )
         await session.delete(sale)
         await session.commit()
         return Response(status_code=status.HTTP_204_NO_CONTENT)

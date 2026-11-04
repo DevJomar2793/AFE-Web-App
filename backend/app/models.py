@@ -51,6 +51,27 @@ class User(Base):
     )
 
 
+class ActivityLog(Base):
+    __tablename__ = "activity_logs"
+    __table_args__ = (
+        CheckConstraint(
+            "action IN ('added', 'edited', 'deleted')",
+            name="ck_activity_logs_action",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    action: Mapped[str] = mapped_column(String(20), nullable=False)
+    affected_record: Mapped[str] = mapped_column(String(500), nullable=False)
+    admin_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        index=True,
+    )
+
+
 class Inventory(Base):
     __tablename__ = "inventory"
     __table_args__ = (

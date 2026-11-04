@@ -2,9 +2,11 @@
 
 import { CheckCircle2, Trash2, TriangleAlert, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { ActivityLogs } from "@/components/inventory/activity-logs";
 import { AddInventoryItemModal } from "@/components/inventory/add-inventory-item-modal";
 import { EditInventoryItemModal } from "@/components/inventory/edit-inventory-item-modal";
 import { EditSaleModal } from "@/components/inventory/edit-sale-modal";
+import { useActivityLogs } from "@/components/inventory/use-activity-logs";
 import { useInventoryItems } from "@/components/inventory/use-inventory-items";
 import { useReturns } from "@/components/inventory/use-returns";
 import { useSales } from "@/components/inventory/use-sales";
@@ -73,6 +75,12 @@ export function InventoryDashboard() {
     error: returnsError,
     retry: retryReturns,
   } = useReturns(currentView === "overview" || currentView === "returns");
+  const {
+    activityLogs,
+    isLoading: areActivityLogsLoading,
+    error: activityLogsError,
+    retry: retryActivityLogs,
+  } = useActivityLogs(currentView === "logs");
 
   useEffect(() => {
     if (!notice) return;
@@ -254,6 +262,15 @@ export function InventoryDashboard() {
               returns={databaseReturns}
               onRetry={retryReturns}
               onOpenReturn={() => setIsNewReturnOpen(true)}
+            />
+          )}
+
+          {currentView === "logs" && (
+            <ActivityLogs
+              activityLogs={activityLogs}
+              error={activityLogsError}
+              isLoading={areActivityLogsLoading}
+              onRetry={retryActivityLogs}
             />
           )}
 

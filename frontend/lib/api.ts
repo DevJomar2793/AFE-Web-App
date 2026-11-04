@@ -1,5 +1,15 @@
 export type InventoryStatus = "in_stock" | "low_stock" | "out_of_stock";
 
+export type ActivityLogAction = "added" | "edited" | "deleted";
+
+export type ActivityLog = {
+  id: number;
+  action: ActivityLogAction;
+  affectedRecord: string;
+  adminEmail: string;
+  createdAt: string;
+};
+
 export type InventoryItem = {
   id: number;
   item: string;
@@ -190,6 +200,20 @@ export async function getCurrentUser(
     email: response.email,
     isActive: response.is_active,
   };
+}
+
+export async function getActivityLogs(
+  signal?: AbortSignal,
+): Promise<ActivityLog[]> {
+  const response = await apiRequest(
+    "/api/v1/activity-logs",
+    { signal },
+    "Unable to load activity logs.",
+  );
+  if (!Array.isArray(response)) {
+    throw new Error("Invalid activity logs response");
+  }
+  return response.map(parseActivityLog);
 }
 
 export async function getInventoryItems(
@@ -403,6 +427,29 @@ function parseInventoryItem(value: unknown): InventoryItem {
   };
 }
 
+function parseActivityLog(value: unknown): ActivityLog {
+  if (
+    !isRecord(value) ||
+    !isPositiveInteger(value.id) ||
+    !isActivityLogAction(value.action) ||
+    typeof value.affected_record !== "string" ||
+    !value.affected_record.trim() ||
+    typeof value.admin_email !== "string" ||
+    !value.admin_email.trim() ||
+    !isValidDate(value.created_at)
+  ) {
+    throw new Error("Invalid activity log");
+  }
+
+  return {
+    id: value.id,
+    action: value.action,
+    affectedRecord: value.affected_record,
+    adminEmail: value.admin_email,
+    createdAt: value.created_at,
+  };
+}
+
 function parseSale(value: unknown): Sale {
   if (!isRecord(value) || !Array.isArray(value.items)) {
     throw new Error("Invalid sale");
@@ -521,6 +568,10 @@ function isInventoryStatus(value: unknown): value is InventoryStatus {
   return (
     value === "in_stock" || value === "low_stock" || value === "out_of_stock"
   );
+}
+
+function isActivityLogAction(value: unknown): value is ActivityLogAction {
+  return value === "added" || value === "edited" || value === "deleted";
 }
 
 function isValidDate(value: unknown): value is string {

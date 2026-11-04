@@ -7,7 +7,7 @@ import {
   BarChart3,
   Boxes,
   ChevronDown,
-  ClipboardList,
+  FileClock,
   House,
   LayoutDashboard,
   LoaderCircle,
@@ -30,7 +30,8 @@ export type InventoryViewName =
   | "overview"
   | "inventory"
   | "activity"
-  | "returns";
+  | "returns"
+  | "logs";
 
 export type TransactionRange = "daily" | "weekly";
 
@@ -287,6 +288,7 @@ export function InventoryHeader({
     inventory: "Inventory",
     activity: "Transaction activity",
     returns: "Returns",
+    logs: "Activity logs",
   };
 
   const isTransactionView = currentView === "activity";
@@ -364,7 +366,7 @@ export function InventoryBottomNavigation({
 }: NavigationProps) {
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-[#dce3da] bg-white/95 px-3 pb-[max(.65rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-[#dce3da] bg-white/95 px-2 pb-[max(.65rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl lg:hidden"
       aria-label="Bottom navigation"
     >
       <BottomNavButton
@@ -381,8 +383,8 @@ export function InventoryBottomNavigation({
       />
       <BottomNavButton
         active={currentView === "activity"}
-        icon={<ClipboardList size={20} />}
-        label="Activity"
+        icon={<ReceiptText size={20} />}
+        label="Transactions"
         onClick={() => onSelectView("activity")}
       />
       <BottomNavButton
@@ -390,6 +392,12 @@ export function InventoryBottomNavigation({
         icon={<RotateCcw size={20} />}
         label="Returns"
         onClick={() => onSelectView("returns")}
+      />
+      <BottomNavButton
+        active={currentView === "logs"}
+        icon={<FileClock size={20} />}
+        label="Activity Logs"
+        onClick={() => onSelectView("logs")}
       />
     </nav>
   );
@@ -446,7 +454,7 @@ function InventoryNav({
       <NavButton
         active={currentView === "activity"}
         icon={<ReceiptText size={isMobile ? 19 : 20} />}
-        label="Activity"
+        label="Transactions"
         isMobile={isMobile}
         onClick={() => onSelectView("activity")}
       />
@@ -456,6 +464,13 @@ function InventoryNav({
         label="Returns"
         isMobile={isMobile}
         onClick={() => onSelectView("returns")}
+      />
+      <NavButton
+        active={currentView === "logs"}
+        icon={<FileClock size={isMobile ? 19 : 20} />}
+        label="Activity Logs"
+        isMobile={isMobile}
+        onClick={() => onSelectView("logs")}
       />
     </nav>
   );
