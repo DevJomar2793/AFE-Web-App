@@ -53,6 +53,7 @@ class UserResponse(BaseModel):
     id: int
     email: EmailStr
     is_active: bool
+    is_admin: bool
     created_at: datetime
 
 
@@ -65,7 +66,7 @@ class ActivityLogResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    action: Literal["added", "edited", "deleted"]
+    action: Literal["added", "edited", "deleted", "approved"]
     affected_record: str
     admin_email: EmailStr
     created_at: datetime

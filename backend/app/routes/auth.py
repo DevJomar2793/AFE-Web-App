@@ -32,6 +32,8 @@ async def register_user(user_data: UserRegister, session: DatabaseSession) -> Us
     user = User(
         email=user_data.email,
         password_hash=hash_password(user_data.password),
+        is_active=False,
+        is_admin=False,
     )
     session.add(user)
 
@@ -60,14 +62,17 @@ async def login_user(
     session: DatabaseSession,
 ) -> TokenResponse:
     user = await session.scalar(select(User).where(User.email == login_data.email))
-    if user is None or not user.is_active or not verify_password(
-        login_data.password,
-        user.password_hash,
-    ):
+    if user is None or not verify_password(login_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account is waiting for admin approval",
         )
 
     return TokenResponse(access_token=create_access_token(user))

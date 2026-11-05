@@ -11,6 +11,14 @@ from app.models import User
 from app.security import verify_password
 
 
+async def activate_user(email: str) -> None:
+    async with async_session_factory() as session:
+        user = await session.scalar(select(User).where(User.email == email))
+        assert user is not None
+        user.is_active = True
+        await session.commit()
+
+
 @pytest.fixture
 async def registered_user() -> tuple[str, str]:
     email = f"auth-{uuid4()}@example.com"
@@ -37,7 +45,8 @@ async def test_registers_user_with_a_hashed_password(
     assert response.status_code == 201
     data = response.json()
     assert data["email"] == email
-    assert data["is_active"] is True
+    assert data["is_active"] is False
+    assert data["is_admin"] is False
     assert "password" not in data
     assert "password_hash" not in data
 
@@ -93,6 +102,7 @@ async def test_login_and_current_user_profile(
         "/api/v1/auth/register",
         json={"email": email, "password": password},
     )
+    await activate_user(email)
 
     login_response = await unauthenticated_client.post(
         "/api/v1/auth/login",
@@ -108,6 +118,27 @@ async def test_login_and_current_user_profile(
     assert login_response.json()["token_type"] == "bearer"
     assert profile_response.status_code == 200
     assert profile_response.json()["email"] == email
+    assert profile_response.json()["is_admin"] is False
+
+
+@pytest.mark.asyncio
+async def test_pending_user_cannot_login(
+    unauthenticated_client: AsyncClient,
+    registered_user: tuple[str, str],
+) -> None:
+    email, password = registered_user
+    await unauthenticated_client.post(
+        "/api/v1/auth/register",
+        json={"email": email, "password": password},
+    )
+
+    response = await unauthenticated_client.post(
+        "/api/v1/auth/login",
+        json={"email": email, "password": password},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Your account is waiting for admin approval"
 
 
 @pytest.mark.asyncio
@@ -172,6 +203,7 @@ async def test_inactive_user_token_is_rejected(
         "/api/v1/auth/register",
         json={"email": email, "password": password},
     )
+    await activate_user(email)
     login_response = await unauthenticated_client.post(
         "/api/v1/auth/login",
         json={"email": email, "password": password},

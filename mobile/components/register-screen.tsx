@@ -44,8 +44,8 @@ export function RegisterScreen({ onSignIn }: RegisterScreenProps) {
     try {
       await registerUser(email.trim(), password);
       Alert.alert(
-        "Account created",
-        "Your account has been created successfully.",
+        "Waiting for approval",
+        "Your account was created and is waiting for admin approval. You can sign in after it is approved.",
         [{ text: "Go to Sign In", onPress: onSignIn }],
       );
     } catch (error) {

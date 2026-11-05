@@ -35,8 +35,14 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
-        default=True,
-        server_default=text("true"),
+        default=False,
+        server_default=text("false"),
+    )
+    is_admin: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -55,7 +61,7 @@ class ActivityLog(Base):
     __tablename__ = "activity_logs"
     __table_args__ = (
         CheckConstraint(
-            "action IN ('added', 'edited', 'deleted')",
+            "action IN ('added', 'edited', 'deleted', 'approved')",
             name="ck_activity_logs_action",
         ),
     )

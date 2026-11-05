@@ -15,6 +15,7 @@ import {
   Menu,
   ReceiptText,
   RotateCcw,
+  UserCheck,
   UserRound,
   X,
 } from "lucide-react";
@@ -31,7 +32,8 @@ export type InventoryViewName =
   | "inventory"
   | "activity"
   | "returns"
-  | "logs";
+  | "logs"
+  | "accounts";
 
 export type TransactionRange = "daily" | "weekly";
 
@@ -99,7 +101,11 @@ export function InventorySidebar({
     <>
       <aside className="fixed inset-y-0 left-0 z-50 hidden w-56 border-r border-[#e1e7e0] bg-white px-4 py-5 lg:flex lg:flex-col">
         <BrandLink />
-        <InventoryNav currentView={currentView} onSelectView={onSelectView} />
+        <InventoryNav
+          currentView={currentView}
+          onSelectView={onSelectView}
+          showAccountApproval={account?.isAdmin === true}
+        />
 
         <div className="mt-7 border-t border-[#e2e8e1] pt-6">
           <div className="flex items-center gap-2 rounded-2xl bg-[#f0f6f0] p-2.5">
@@ -113,7 +119,11 @@ export function InventorySidebar({
                   : (account?.email ?? "Account unavailable")}
               </strong>
               <span className="block text-xs text-[#69736c]">
-                {account?.isActive ? "Active account" : "Account unavailable"}
+                {account?.isAdmin
+                  ? "Administrator"
+                  : account?.isActive
+                    ? "Active account"
+                    : "Account unavailable"}
               </span>
             </span>
             <ChevronDown
@@ -168,6 +178,7 @@ export function InventorySidebar({
               currentView={currentView}
               onSelectView={onSelectView}
               isMobile
+              showAccountApproval={account?.isAdmin === true}
             />
             <Link
               href="/"
@@ -289,6 +300,7 @@ export function InventoryHeader({
     activity: "Transaction activity",
     returns: "Returns",
     logs: "Activity logs",
+    accounts: "Account approval",
   };
 
   const isTransactionView = currentView === "activity";
@@ -429,7 +441,11 @@ function InventoryNav({
   currentView,
   isMobile = false,
   onSelectView,
-}: NavigationProps & { isMobile?: boolean }) {
+  showAccountApproval = false,
+}: NavigationProps & {
+  isMobile?: boolean;
+  showAccountApproval?: boolean;
+}) {
   return (
     <nav
       className={isMobile ? "mt-8 space-y-1" : "mt-7 space-y-1"}
@@ -472,6 +488,15 @@ function InventoryNav({
         isMobile={isMobile}
         onClick={() => onSelectView("logs")}
       />
+      {showAccountApproval && (
+        <NavButton
+          active={currentView === "accounts"}
+          icon={<UserCheck size={isMobile ? 19 : 20} />}
+          label="Account Approval"
+          isMobile={isMobile}
+          onClick={() => onSelectView("accounts")}
+        />
+      )}
     </nav>
   );
 }

@@ -1,4 +1,5 @@
 import {
+  BadgeCheck,
   Clock3,
   FileClock,
   Pencil,
@@ -174,6 +175,12 @@ function getActionStyle(action: ActivityLogAction) {
     return {
       className: "bg-[#e9eef8] text-[#4566a0]",
       icon: <Pencil size={13} aria-hidden="true" />,
+    };
+  }
+  if (action === "approved") {
+    return {
+      className: "bg-[#e7f2e6] text-[#2f7043]",
+      icon: <BadgeCheck size={14} aria-hidden="true" />,
     };
   }
   return {

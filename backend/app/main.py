@@ -12,6 +12,7 @@ from app.routes.health import router as health_router
 from app.routes.inventory import router as inventory_router
 from app.routes.returns import router as returns_router
 from app.routes.sales import router as sales_router
+from app.routes.users import router as users_router
 
 
 @asynccontextmanager
@@ -40,5 +41,6 @@ for router in (
     sales_router,
     returns_router,
     activity_logs_router,
+    users_router,
 ):
     app.include_router(router, prefix="/api/v1")

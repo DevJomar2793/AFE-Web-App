@@ -1,6 +1,6 @@
 export type InventoryStatus = "in_stock" | "low_stock" | "out_of_stock";
 
-export type ActivityLogAction = "added" | "edited" | "deleted";
+export type ActivityLogAction = "added" | "edited" | "deleted" | "approved";
 
 export type ActivityLog = {
   id: number;
@@ -108,6 +108,13 @@ export type LoginResponse = {
 export type UserAccount = {
   email: string;
   isActive: boolean;
+  isAdmin: boolean;
+};
+
+export type PendingAccount = {
+  id: number;
+  email: string;
+  createdAt: string;
 };
 
 export class ApiRequestError extends Error {
@@ -191,7 +198,8 @@ export async function getCurrentUser(
     !isRecord(response) ||
     typeof response.email !== "string" ||
     !response.email ||
-    typeof response.is_active !== "boolean"
+    typeof response.is_active !== "boolean" ||
+    typeof response.is_admin !== "boolean"
   ) {
     throw new Error("Invalid account response");
   }
@@ -199,7 +207,38 @@ export async function getCurrentUser(
   return {
     email: response.email,
     isActive: response.is_active,
+    isAdmin: response.is_admin,
   };
+}
+
+export async function getPendingAccounts(
+  signal?: AbortSignal,
+): Promise<PendingAccount[]> {
+  const response = await apiRequest(
+    "/api/v1/users/pending",
+    { signal },
+    "Unable to load pending accounts.",
+  );
+  if (!Array.isArray(response)) {
+    throw new Error("Invalid pending accounts response");
+  }
+  return response.map(parsePendingAccount);
+}
+
+export async function approveAccount(userId: number): Promise<void> {
+  const response = await apiRequest(
+    `/api/v1/users/${userId}/approve`,
+    { method: "PATCH" },
+    "The account could not be approved.",
+  );
+
+  if (
+    !isRecord(response) ||
+    response.id !== userId ||
+    response.is_active !== true
+  ) {
+    throw new Error("Invalid account approval response");
+  }
 }
 
 export async function getActivityLogs(
@@ -450,6 +489,26 @@ function parseActivityLog(value: unknown): ActivityLog {
   };
 }
 
+function parsePendingAccount(value: unknown): PendingAccount {
+  if (
+    !isRecord(value) ||
+    !isPositiveInteger(value.id) ||
+    typeof value.email !== "string" ||
+    !value.email.trim() ||
+    value.is_active !== false ||
+    value.is_admin !== false ||
+    !isValidDate(value.created_at)
+  ) {
+    throw new Error("Invalid pending account");
+  }
+
+  return {
+    id: value.id,
+    email: value.email,
+    createdAt: value.created_at,
+  };
+}
+
 function parseSale(value: unknown): Sale {
   if (!isRecord(value) || !Array.isArray(value.items)) {
     throw new Error("Invalid sale");
@@ -571,7 +630,12 @@ function isInventoryStatus(value: unknown): value is InventoryStatus {
 }
 
 function isActivityLogAction(value: unknown): value is ActivityLogAction {
-  return value === "added" || value === "edited" || value === "deleted";
+  return (
+    value === "added" ||
+    value === "edited" ||
+    value === "deleted" ||
+    value === "approved"
+  );
 }
 
 function isValidDate(value: unknown): value is string {

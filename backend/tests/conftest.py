@@ -23,6 +23,8 @@ async def authentication_headers() -> AsyncIterator[dict[str, str]]:
     user = User(
         email=f"test-{uuid4()}@example.com",
         password_hash=hash_password("test-password"),
+        is_active=True,
+        is_admin=True,
     )
     async with async_session_factory() as session:
         session.add(user)

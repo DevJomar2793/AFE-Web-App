@@ -2,12 +2,14 @@
 
 import { CheckCircle2, Trash2, TriangleAlert, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { AccountApproval } from "@/components/inventory/account-approval";
 import { ActivityLogs } from "@/components/inventory/activity-logs";
 import { AddInventoryItemModal } from "@/components/inventory/add-inventory-item-modal";
 import { EditInventoryItemModal } from "@/components/inventory/edit-inventory-item-modal";
 import { EditSaleModal } from "@/components/inventory/edit-sale-modal";
 import { useActivityLogs } from "@/components/inventory/use-activity-logs";
 import { useInventoryItems } from "@/components/inventory/use-inventory-items";
+import { usePendingAccounts } from "@/components/inventory/use-pending-accounts";
 import { useReturns } from "@/components/inventory/use-returns";
 import { useSales } from "@/components/inventory/use-sales";
 import {
@@ -23,7 +25,13 @@ import { NewSaleModal } from "@/components/inventory/new-sale-modal";
 import { InventoryOverview } from "@/components/inventory/overview";
 import { ReturnsList } from "@/components/inventory/returns-list";
 import { SalesActivity } from "@/components/inventory/sales-activity";
-import { deleteSale, type InventoryItem, type Sale } from "@/lib/api";
+import {
+  approveAccount,
+  deleteSale,
+  type InventoryItem,
+  type PendingAccount,
+  type Sale,
+} from "@/lib/api";
 
 type Notice = {
   message: string;
@@ -49,6 +57,8 @@ export function InventoryDashboard() {
   const [transactionRange, setTransactionRange] =
     useState<TransactionRange>("weekly");
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [approvingUserId, setApprovingUserId] = useState<number | null>(null);
+  const [approvalError, setApprovalError] = useState("");
 
   // Inventory, sales, and returns below are loaded from the FastAPI database.
   const {
@@ -81,6 +91,13 @@ export function InventoryDashboard() {
     error: activityLogsError,
     retry: retryActivityLogs,
   } = useActivityLogs(currentView === "logs");
+  const {
+    pendingAccounts,
+    isLoading: arePendingAccountsLoading,
+    error: pendingAccountsError,
+    retry: retryPendingAccounts,
+    removePendingAccount,
+  } = usePendingAccounts(currentView === "accounts");
 
   useEffect(() => {
     if (!notice) return;
@@ -178,6 +195,30 @@ export function InventoryDashboard() {
     });
   };
 
+  const handleApproveAccount = async (account: PendingAccount) => {
+    if (approvingUserId !== null) return;
+
+    setApprovingUserId(account.id);
+    setApprovalError("");
+
+    try {
+      await approveAccount(account.id);
+      removePendingAccount(account.id);
+      setNotice({
+        message: `${account.email} can now sign in.`,
+        tone: "success",
+      });
+    } catch (approveError) {
+      setApprovalError(
+        approveError instanceof Error
+          ? approveError.message
+          : "The account could not be approved.",
+      );
+    } finally {
+      setApprovingUserId(null);
+    }
+  };
+
   const overviewError = [inventoryError, salesError, returnsError]
     .filter(Boolean)
     .join(" ");
@@ -271,6 +312,18 @@ export function InventoryDashboard() {
               error={activityLogsError}
               isLoading={areActivityLogsLoading}
               onRetry={retryActivityLogs}
+            />
+          )}
+
+          {currentView === "accounts" && (
+            <AccountApproval
+              accounts={pendingAccounts}
+              approvalError={approvalError}
+              approvingUserId={approvingUserId}
+              error={pendingAccountsError}
+              isLoading={arePendingAccountsLoading}
+              onApprove={(account) => void handleApproveAccount(account)}
+              onRetry={retryPendingAccounts}
             />
           )}
 
