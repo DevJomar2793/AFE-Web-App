@@ -82,6 +82,12 @@ class InventoryCreate(BaseModel):
         max_digits=12,
         decimal_places=2,
     )
+    purchase_cost: Decimal = Field(
+        default=Decimal("0.00"),
+        ge=0,
+        max_digits=12,
+        decimal_places=2,
+    )
     status: InventoryStatus | None = None
 
     @model_validator(mode="after")
@@ -114,6 +120,12 @@ class InventoryUpdate(BaseModel):
         max_digits=12,
         decimal_places=2,
     )
+    purchase_cost: Decimal | None = Field(
+        default=None,
+        ge=0,
+        max_digits=12,
+        decimal_places=2,
+    )
 
 
 class InventoryResponse(BaseModel):
@@ -125,6 +137,7 @@ class InventoryResponse(BaseModel):
     returns_count: int
     price: Decimal
     wholesale_price: Decimal | None
+    purchase_cost: Decimal
     status: InventoryStatus
     created_at: datetime
     updated_at: datetime
@@ -241,3 +254,46 @@ class ReturnResponse(BaseModel):
     reason: str
     created_at: datetime
     updated_at: datetime
+
+
+class BusinessFundsInitialize(BaseModel):
+    amount: Decimal = Field(ge=0, max_digits=14, decimal_places=2)
+
+
+class FundTransactionCreate(BaseModel):
+    transaction_type: Literal["income", "expense"]
+    amount: Decimal = Field(gt=0, max_digits=14, decimal_places=2)
+    description: str = Field(min_length=1, max_length=255)
+
+    @field_validator("description", mode="before")
+    @classmethod
+    def strip_description(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+
+class BusinessFundsResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    current_total: Decimal
+    is_initialized: bool
+    updated_at: datetime
+
+
+class FundTransactionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    transaction_type: Literal["opening_balance", "income", "expense"]
+    source: Literal[
+        "opening_balance",
+        "manual",
+        "sale",
+        "sale_adjustment",
+        "sale_reversal",
+        "inventory_purchase",
+    ]
+    amount: Decimal
+    description: str
+    related_sale_id: int | None
+    related_inventory_id: int | None
+    created_at: datetime

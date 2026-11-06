@@ -2,6 +2,7 @@
 
 import { CheckCircle2, Trash2, TriangleAlert, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AccountApproval } from "@/components/inventory/account-approval";
 import { ActivityLogs } from "@/components/inventory/activity-logs";
 import { AddInventoryItemModal } from "@/components/inventory/add-inventory-item-modal";
@@ -27,10 +28,15 @@ import { ReturnsList } from "@/components/inventory/returns-list";
 import { SalesActivity } from "@/components/inventory/sales-activity";
 import {
   approveAccount,
+  ApiRequestError,
+  clearAccessToken,
+  deleteInventoryItem,
   deleteSale,
+  getCurrentUser,
   type InventoryItem,
   type PendingAccount,
   type Sale,
+  type UserAccount,
 } from "@/lib/api";
 
 type Notice = {
@@ -39,7 +45,8 @@ type Notice = {
 };
 
 export function InventoryDashboard() {
-  const [currentYear, setCurrentYear] = useState<number | null>(null);
+  const router = useRouter();
+  const currentYear = new Date().getFullYear();
 
   const [currentView, setCurrentView] = useState<InventoryViewName>("overview");
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
@@ -48,6 +55,12 @@ export function InventoryDashboard() {
   const [editingInventoryItem, setEditingInventoryItem] =
     useState<InventoryItem | null>(null);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
+  const [inventoryItemToRemove, setInventoryItemToRemove] =
+    useState<InventoryItem | null>(null);
+  const [removingInventoryId, setRemovingInventoryId] = useState<number | null>(
+    null,
+  );
+  const [removeInventoryError, setRemoveInventoryError] = useState("");
   const [saleToRemove, setSaleToRemove] = useState<Sale | null>(null);
   const [removingSaleId, setRemovingSaleId] = useState<number | null>(null);
   const [removeSaleError, setRemoveSaleError] = useState("");
@@ -59,6 +72,9 @@ export function InventoryDashboard() {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [approvingUserId, setApprovingUserId] = useState<number | null>(null);
   const [approvalError, setApprovalError] = useState("");
+  const [account, setAccount] = useState<UserAccount | null>(null);
+  const [isLoadingAccount, setIsLoadingAccount] = useState(true);
+  const [fundsRefreshKey, setFundsRefreshKey] = useState(0);
 
   // Inventory, sales, and returns below are loaded from the FastAPI database.
   const {
@@ -100,6 +116,28 @@ export function InventoryDashboard() {
   } = usePendingAccounts(currentView === "accounts");
 
   useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadAccount() {
+      try {
+        const currentUser = await getCurrentUser(controller.signal);
+        if (!controller.signal.aborted) setAccount(currentUser);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        if (error instanceof ApiRequestError && error.status === 401) {
+          clearAccessToken();
+          router.replace("/login");
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsLoadingAccount(false);
+      }
+    }
+
+    void loadAccount();
+    return () => controller.abort();
+  }, [router]);
+
+  useEffect(() => {
     if (!notice) return;
 
     const timeout = window.setTimeout(() => setNotice(null), 4000);
@@ -124,6 +162,7 @@ export function InventoryDashboard() {
   const handleInventoryItemCreated = () => {
     setIsAddItemOpen(false);
     retryInventory();
+    setFundsRefreshKey((key) => key + 1);
     setNotice({
       message: "Item successfully added to inventory.",
       tone: "success",
@@ -133,16 +172,43 @@ export function InventoryDashboard() {
   const handleInventoryItemUpdated = () => {
     setEditingInventoryItem(null);
     retryInventory();
+    setFundsRefreshKey((key) => key + 1);
     setNotice({
       message: "Inventory item updated successfully.",
       tone: "success",
     });
   };
 
+  const handleInventoryItemRemoved = async () => {
+    if (!inventoryItemToRemove || removingInventoryId !== null) return;
+
+    setRemovingInventoryId(inventoryItemToRemove.id);
+    setRemoveInventoryError("");
+
+    try {
+      await deleteInventoryItem(inventoryItemToRemove.id);
+      setInventoryItemToRemove(null);
+      retryInventory();
+      setNotice({
+        message: "Inventory item deleted successfully.",
+        tone: "success",
+      });
+    } catch (removeError) {
+      setRemoveInventoryError(
+        removeError instanceof Error
+          ? removeError.message
+          : "The inventory item could not be deleted.",
+      );
+    } finally {
+      setRemovingInventoryId(null);
+    }
+  };
+
   const handleSaleCreated = () => {
     closeNewSale();
     retryInventory();
     retrySales();
+    setFundsRefreshKey((key) => key + 1);
     setNotice({
       message: "Sale saved and inventory updated.",
       tone: "success",
@@ -153,6 +219,7 @@ export function InventoryDashboard() {
     setEditingSale(null);
     retryInventory();
     retrySales();
+    setFundsRefreshKey((key) => key + 1);
     setNotice({
       message: "Sale updated and inventory adjusted.",
       tone: "success",
@@ -170,6 +237,7 @@ export function InventoryDashboard() {
       setSaleToRemove(null);
       retryInventory();
       retrySales();
+      setFundsRefreshKey((key) => key + 1);
       setNotice({
         message: "Sale removed and inventory restored.",
         tone: "success",
@@ -234,7 +302,9 @@ export function InventoryDashboard() {
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-[#f4f6f1] text-[#18251a]">
       <InventorySidebar
+        account={account}
         currentView={currentView}
+        isLoadingAccount={isLoadingAccount}
         isMenuOpen={isMenuOpen}
         onCloseMenu={() => setIsMenuOpen(false)}
         onSelectView={selectView}
@@ -248,7 +318,7 @@ export function InventoryDashboard() {
           onTransactionRangeChange={setTransactionRange}
         />
 
-        <main className="mx-auto min-h-0 w-full max-w-375 flex-1 overflow-hidden px-4 pb-20 pt-3 sm:px-7 lg:px-10 lg:pb-3 lg:pt-4">
+        <main className="mx-auto min-h-0 w-full max-w-375 flex-1 overflow-y-auto px-4 pb-20 pt-3 sm:px-7 lg:px-10 lg:pb-3 lg:pt-4">
           {currentView === "overview" && (
             <InventoryOverview
               error={overviewError}
@@ -269,8 +339,14 @@ export function InventoryDashboard() {
               error={inventoryError}
               isLoading={isInventoryLoading}
               items={databaseItems}
+              isAdmin={account?.isAdmin === true}
+              fundsRefreshKey={fundsRefreshKey}
               query={searchQuery}
               onAddItem={() => setIsAddItemOpen(true)}
+              onDeleteItem={(item) => {
+                setInventoryItemToRemove(item);
+                setRemoveInventoryError("");
+              }}
               onEditItem={setEditingInventoryItem}
               onQueryChange={setSearchQuery}
               onOpenReturns={() => selectView("returns")}
@@ -282,6 +358,8 @@ export function InventoryDashboard() {
             <SalesActivity
               sales={databaseSales}
               error={salesError}
+              fundsRefreshKey={fundsRefreshKey}
+              isAdmin={account?.isAdmin === true}
               isLoading={areSalesLoading}
               onAddSale={() => openNewSale()}
               onEdit={setEditingSale}
@@ -328,7 +406,7 @@ export function InventoryDashboard() {
           )}
 
           <footer className="hidden border-t border-[#d9dfd7] py-2 text-center text-xs text-[#667364] lg:block">
-            © {currentYear ?? ""} Adamos Fresh Eggs. Built by{" "}
+            © {currentYear} Adamos Fresh Eggs. Built by{" "}
             <span className="font-semibold text-[#173b24]">DevJomar</span>
           </footer>
         </main>
@@ -340,6 +418,19 @@ export function InventoryDashboard() {
       />
 
       {notice && <InventoryNotice notice={notice} />}
+
+      {inventoryItemToRemove && (
+        <RemoveInventoryItemModal
+          item={inventoryItemToRemove}
+          error={removeInventoryError}
+          isRemoving={removingInventoryId === inventoryItemToRemove.id}
+          onClose={() => {
+            setInventoryItemToRemove(null);
+            setRemoveInventoryError("");
+          }}
+          onConfirm={() => void handleInventoryItemRemoved()}
+        />
+      )}
 
       {saleToRemove && (
         <RemoveSaleConfirmationModal
@@ -401,6 +492,98 @@ export function InventoryDashboard() {
           onCreated={handleInventoryItemCreated}
         />
       )}
+    </div>
+  );
+}
+
+function RemoveInventoryItemModal({
+  item,
+  error,
+  isRemoving,
+  onClose,
+  onConfirm,
+}: {
+  item: InventoryItem;
+  error: string;
+  isRemoving: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-90 flex items-end justify-center bg-[#0d2417]/55 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+      role="presentation"
+      onMouseDown={() => {
+        if (!isRemoving) onClose();
+      }}
+    >
+      <section
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="remove-inventory-title"
+        aria-describedby="remove-inventory-description"
+        className="w-full max-w-md rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl sm:p-7"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[#fff0e8] text-[#9b431f]">
+            <Trash2 size={21} aria-hidden="true" />
+          </span>
+          <button
+            type="button"
+            aria-label="Close delete inventory confirmation"
+            onClick={onClose}
+            disabled={isRemoving}
+            className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#dfe4dd] text-[#566159] hover:bg-[#f3f5f1] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <X size={19} aria-hidden="true" />
+          </button>
+        </div>
+
+        <h2
+          id="remove-inventory-title"
+          className="mt-5 text-2xl font-black text-[#17281b]"
+        >
+          Delete {item.item}?
+        </h2>
+        <p
+          id="remove-inventory-description"
+          className="mt-2 text-sm leading-6 text-[#6d776f]"
+        >
+          This permanently deletes the item and its {item.quantity} remaining
+          {item.quantity === 1 ? " unit" : " units"}. Items with sale or return
+          history cannot be deleted.
+        </p>
+
+        {error && (
+          <p
+            role="alert"
+            className="mt-4 rounded-xl bg-[#fff0e8] px-4 py-3 text-sm font-bold text-[#9b431f]"
+          >
+            {error}
+          </p>
+        )}
+
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isRemoving}
+            className="h-12 rounded-xl border border-[#cfd8cd] bg-white px-4 text-sm font-black text-[#173b24] hover:bg-[#f8faf7] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isRemoving}
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#9b431f] px-4 text-sm font-black text-white hover:bg-[#803719] disabled:cursor-wait disabled:opacity-70"
+          >
+            <Trash2 size={17} aria-hidden="true" />
+            {isRemoving ? "Deleting..." : "Delete item"}
+          </button>
+        </div>
+      </section>
     </div>
   );
 }

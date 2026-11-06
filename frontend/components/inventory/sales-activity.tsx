@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { useRef, useState } from "react";
+import { FundTransactionHistory } from "@/components/inventory/fund-transaction-history";
 import type { TransactionRange } from "@/components/inventory/inventory-navigation";
 import type { Sale } from "@/lib/api";
 
@@ -29,6 +30,8 @@ type SalesActivityProps = {
   removingSaleId: number | null;
   transactionRange: TransactionRange;
   onTransactionRangeChange: (range: TransactionRange) => void;
+  isAdmin: boolean;
+  fundsRefreshKey: number;
 };
 
 export function SalesActivity({
@@ -42,6 +45,8 @@ export function SalesActivity({
   removingSaleId,
   transactionRange,
   onTransactionRangeChange,
+  isAdmin,
+  fundsRefreshKey,
 }: SalesActivityProps) {
   const todayKey = manilaDateKey(new Date());
   const [rangeEndDate, setRangeEndDate] = useState(todayKey);
@@ -324,6 +329,8 @@ export function SalesActivity({
           </p>
         )}
       </article>
+
+      {isAdmin && <FundTransactionHistory refreshKey={fundsRefreshKey} />}
     </section>
   );
 }

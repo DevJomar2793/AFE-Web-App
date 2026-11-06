@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BarChart3,
@@ -21,9 +21,7 @@ import {
 } from "lucide-react";
 import { BrandMark } from "@/components/storefront/brand-mark";
 import {
-  ApiRequestError,
   clearAccessToken,
-  getCurrentUser,
   type UserAccount,
 } from "@/lib/api";
 
@@ -43,45 +41,24 @@ type NavigationProps = {
 };
 
 type InventorySidebarProps = NavigationProps & {
+  account: UserAccount | null;
+  isLoadingAccount: boolean;
   isMenuOpen: boolean;
   onCloseMenu: () => void;
 };
 
 export function InventorySidebar({
+  account,
+  isLoadingAccount,
   currentView,
   isMenuOpen,
   onCloseMenu,
   onSelectView,
 }: InventorySidebarProps) {
   const router = useRouter();
-  const [account, setAccount] = useState<UserAccount | null>(null);
-  const [isLoadingAccount, setIsLoadingAccount] = useState(true);
   const [isLogoutConfirmationOpen, setIsLogoutConfirmationOpen] =
     useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function loadAccount() {
-      try {
-        const currentUser = await getCurrentUser(controller.signal);
-        if (!controller.signal.aborted) setAccount(currentUser);
-      } catch (error) {
-        if (controller.signal.aborted) return;
-
-        if (error instanceof ApiRequestError && error.status === 401) {
-          clearAccessToken();
-          router.replace("/login");
-        }
-      } finally {
-        if (!controller.signal.aborted) setIsLoadingAccount(false);
-      }
-    }
-
-    void loadAccount();
-    return () => controller.abort();
-  }, [router]);
 
   function handleLogout() {
     setIsLogoutConfirmationOpen(true);

@@ -96,6 +96,10 @@ class Inventory(Base):
             name="ck_inventory_wholesale_price_non_negative",
         ),
         CheckConstraint(
+            "purchase_cost >= 0",
+            name="ck_inventory_purchase_cost_non_negative",
+        ),
+        CheckConstraint(
             "(quantity = 0 AND status = 'out_of_stock') OR "
             "(quantity > 0 AND status IN ('in_stock', 'low_stock'))",
             name="ck_inventory_status_matches_quantity",
@@ -125,6 +129,12 @@ class Inventory(Base):
     wholesale_price: Mapped[Decimal | None] = mapped_column(
         Numeric(12, 2),
         nullable=True,
+    )
+    purchase_cost: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2),
+        nullable=False,
+        default=Decimal("0.00"),
+        server_default=text("0.00"),
     )
     status: Mapped[InventoryStatus] = mapped_column(
         SQLAlchemyEnum(
@@ -250,3 +260,64 @@ class Return(Base):
         onupdate=func.now(),
     )
     item: Mapped[Inventory] = relationship(back_populates="returns")
+
+
+class BusinessFunds(Base):
+    __tablename__ = "business_funds"
+    __table_args__ = (
+        CheckConstraint("id = 1", name="ck_business_funds_single_row"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    current_total: Mapped[Decimal] = mapped_column(
+        Numeric(14, 2),
+        nullable=False,
+        default=Decimal("0.00"),
+        server_default=text("0.00"),
+    )
+    is_initialized: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class FundTransaction(Base):
+    __tablename__ = "fund_transactions"
+    __table_args__ = (
+        CheckConstraint(
+            "transaction_type IN ('opening_balance', 'income', 'expense')",
+            name="ck_fund_transactions_type",
+        ),
+        CheckConstraint(
+            "source IN ('opening_balance', 'manual', 'sale', "
+            "'sale_adjustment', 'sale_reversal', 'inventory_purchase')",
+            name="ck_fund_transactions_source",
+        ),
+        CheckConstraint("amount >= 0", name="ck_fund_transactions_amount"),
+        CheckConstraint(
+            "char_length(trim(description)) > 0",
+            name="ck_fund_transactions_description_not_blank",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    transaction_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    source: Mapped[str] = mapped_column(String(30), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
+    related_sale_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    related_inventory_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        index=True,
+    )

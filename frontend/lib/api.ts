@@ -17,6 +17,7 @@ export type InventoryItem = {
   returnsCount: number;
   price: number;
   wholesalePrice: number | null;
+  purchaseCost: number;
   status: InventoryStatus;
   createdAt: string;
   updatedAt: string;
@@ -54,12 +55,30 @@ export type CreateInventoryItemInput = {
   quantity: number;
   price: number;
   wholesalePrice: number | null;
+  purchaseCost: number;
 };
 
 export type UpdateInventoryItemInput = {
   quantity: number;
   price: number;
   wholesalePrice: number | null;
+  purchaseCost: number;
+};
+
+export type BusinessFunds = {
+  currentTotal: number;
+  isInitialized: boolean;
+  updatedAt: string;
+};
+
+export type FundTransactionType = "opening_balance" | "income" | "expense";
+
+export type FundTransaction = {
+  id: number;
+  transactionType: FundTransactionType;
+  amount: number;
+  description: string;
+  createdAt: string;
 };
 
 export type CreateSaleInput = {
@@ -279,6 +298,7 @@ export async function createInventoryItem(
         quantity: input.quantity,
         price: input.price,
         wholesale_price: input.wholesalePrice,
+        purchase_cost: input.purchaseCost,
       }),
     },
     "The inventory item could not be added.",
@@ -298,11 +318,20 @@ export async function updateInventoryItem(
         quantity: input.quantity,
         price: input.price,
         wholesale_price: input.wholesalePrice,
+        purchase_cost: input.purchaseCost,
       }),
     },
     "The inventory item could not be updated.",
   );
   return parseInventoryItem(response);
+}
+
+export async function deleteInventoryItem(inventoryId: number): Promise<void> {
+  await apiRequest(
+    `/api/v1/inventory/${inventoryId}`,
+    { method: "DELETE" },
+    "The inventory item could not be deleted.",
+  );
 }
 
 export async function getSales(signal?: AbortSignal): Promise<Sale[]> {
@@ -402,6 +431,62 @@ export async function createReturn(
   return parseReturn(response);
 }
 
+export async function getBusinessFunds(
+  signal?: AbortSignal,
+): Promise<BusinessFunds> {
+  const response = await apiRequest(
+    "/api/v1/business-funds",
+    { signal },
+    "Unable to load business funds.",
+  );
+  return parseBusinessFunds(response);
+}
+
+export async function getFundTransactions(
+  signal?: AbortSignal,
+): Promise<FundTransaction[]> {
+  const response = await apiRequest(
+    "/api/v1/business-funds/transactions",
+    { signal },
+    "Unable to load fund transactions.",
+  );
+  if (!Array.isArray(response)) {
+    throw new Error("Invalid fund transaction response");
+  }
+  return response.map(parseFundTransaction);
+}
+
+export async function initializeBusinessFunds(
+  amount: number,
+): Promise<BusinessFunds> {
+  const response = await apiRequest(
+    "/api/v1/business-funds/initialize",
+    { method: "POST", body: JSON.stringify({ amount }) },
+    "Unable to set the current business funds.",
+  );
+  return parseBusinessFunds(response);
+}
+
+export async function createFundTransaction(input: {
+  transactionType: "income" | "expense";
+  amount: number;
+  description: string;
+}): Promise<FundTransaction> {
+  const response = await apiRequest(
+    "/api/v1/business-funds/transactions",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        transaction_type: input.transactionType,
+        amount: input.amount,
+        description: input.description,
+      }),
+    },
+    "Unable to save the fund transaction.",
+  );
+  return parseFundTransaction(response);
+}
+
 async function apiRequest(
   path: string,
   options: RequestInit,
@@ -435,6 +520,7 @@ function parseInventoryItem(value: unknown): InventoryItem {
   if (!isRecord(value)) throw new Error("Invalid inventory item");
   const price = parsePrice(value.price);
   const wholesalePrice = parseNullablePrice(value.wholesale_price);
+  const purchaseCost = parsePrice(value.purchase_cost);
 
   if (
     !isPositiveInteger(value.id) ||
@@ -446,6 +532,8 @@ function parseInventoryItem(value: unknown): InventoryItem {
     price < 0 ||
     (wholesalePrice !== null &&
       (!Number.isFinite(wholesalePrice) || wholesalePrice < 0)) ||
+    !Number.isFinite(purchaseCost) ||
+    purchaseCost < 0 ||
     !isInventoryStatus(value.status) ||
     typeof value.created_at !== "string" ||
     typeof value.updated_at !== "string"
@@ -460,9 +548,50 @@ function parseInventoryItem(value: unknown): InventoryItem {
     returnsCount: value.returns_count,
     price,
     wholesalePrice,
+    purchaseCost,
     status: value.status,
     createdAt: value.created_at,
     updatedAt: value.updated_at,
+  };
+}
+
+function parseBusinessFunds(value: unknown): BusinessFunds {
+  if (!isRecord(value)) throw new Error("Invalid business funds response");
+  const currentTotal = parsePrice(value.current_total);
+  if (
+    !Number.isFinite(currentTotal) ||
+    typeof value.is_initialized !== "boolean" ||
+    !isValidDate(value.updated_at)
+  ) {
+    throw new Error("Invalid business funds response");
+  }
+  return {
+    currentTotal,
+    isInitialized: value.is_initialized,
+    updatedAt: value.updated_at,
+  };
+}
+
+function parseFundTransaction(value: unknown): FundTransaction {
+  if (!isRecord(value)) throw new Error("Invalid fund transaction");
+  const amount = parsePrice(value.amount);
+  if (
+    !isPositiveInteger(value.id) ||
+    !isFundTransactionType(value.transaction_type) ||
+    !Number.isFinite(amount) ||
+    amount < 0 ||
+    typeof value.description !== "string" ||
+    !value.description.trim() ||
+    !isValidDate(value.created_at)
+  ) {
+    throw new Error("Invalid fund transaction");
+  }
+  return {
+    id: value.id,
+    transactionType: value.transaction_type,
+    amount,
+    description: value.description,
+    createdAt: value.created_at,
   };
 }
 
@@ -635,6 +764,12 @@ function isActivityLogAction(value: unknown): value is ActivityLogAction {
     value === "edited" ||
     value === "deleted" ||
     value === "approved"
+  );
+}
+
+function isFundTransactionType(value: unknown): value is FundTransactionType {
+  return (
+    value === "opening_balance" || value === "income" || value === "expense"
   );
 }
 

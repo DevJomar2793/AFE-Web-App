@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -9,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_database_session
+from app.funds import record_fund_transaction
 from app.models import ActivityLog, Inventory, InventoryStatus, Sale, SaleItem, User
 from app.schemas import (
     SaleBatchCreate,
@@ -177,6 +179,19 @@ async def create_sale_transaction(
 
         session.add(sale)
         await session.flush()
+        sale_total = sum(
+            (item.price * item.quantity for item in sale.items),
+            start=Decimal("0.00"),
+        )
+        if sale_total > 0:
+            await record_fund_transaction(
+                session,
+                transaction_type="income",
+                source="sale",
+                amount=sale_total,
+                description=f"Sale #{sale.id} — {sale.customer_name}",
+                related_sale_id=sale.id,
+            )
         session.add(
             ActivityLog(
                 action="added",
@@ -238,6 +253,10 @@ async def update_sale(
             .with_for_update(),
         )
         sale_items = list(sale_items_result.all())
+        previous_total = sum(
+            (item.price * item.quantity for item in sale_items),
+            start=Decimal("0.00"),
+        )
         existing_item_ids = {item.id for item in sale_items}
         requested_item_ids = {item.id for item in sale_data.items}
         if existing_item_ids != requested_item_ids:
@@ -289,6 +308,21 @@ async def update_sale(
             update_inventory_status(inventory_item)
             sale_item.quantity = requested_item.quantity
             sale_item.price = requested_item.price
+
+        updated_total = sum(
+            (item.price * item.quantity for item in sale_items),
+            start=Decimal("0.00"),
+        )
+        total_difference = updated_total - previous_total
+        if total_difference != 0:
+            await record_fund_transaction(
+                session,
+                transaction_type="income" if total_difference > 0 else "expense",
+                source="sale_adjustment",
+                amount=abs(total_difference),
+                description=f"Sale #{sale.id} adjustment — {sale.customer_name}",
+                related_sale_id=sale.id,
+            )
 
         sale.updated_at = datetime.now(timezone.utc)
         session.add(
@@ -344,6 +378,10 @@ async def delete_sale(
             .with_for_update(),
         )
         sale_items = list(sale_items_result.all())
+        sale_total = sum(
+            (item.price * item.quantity for item in sale_items),
+            start=Decimal("0.00"),
+        )
         inventory_ids = sorted({item.inventory_id for item in sale_items})
 
         inventory_result = await session.scalars(
@@ -363,6 +401,16 @@ async def delete_sale(
             inventory_item = inventory_by_id[sale_item.inventory_id]
             inventory_item.quantity += sale_item.quantity
             update_inventory_status(inventory_item)
+
+        if sale_total > 0:
+            await record_fund_transaction(
+                session,
+                transaction_type="expense",
+                source="sale_reversal",
+                amount=sale_total,
+                description=f"Removed sale #{sale.id} — {sale.customer_name}",
+                related_sale_id=sale.id,
+            )
 
         session.add(
             ActivityLog(

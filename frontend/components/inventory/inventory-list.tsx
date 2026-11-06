@@ -1,8 +1,9 @@
 "use client";
 
-import { PackagePlus, Pencil, RotateCcw, Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { PackagePlus, Pencil, RotateCcw, Search, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { ProductPriceCards } from "@/components/inventory/product-price-cards";
+import { BusinessFundsPanel } from "@/components/inventory/business-funds-panel";
 import type { InventoryItem, InventoryStatus } from "@/lib/api";
 
 type InventoryListProps = {
@@ -12,9 +13,12 @@ type InventoryListProps = {
   query: string;
   onAddItem: () => void;
   onEditItem: (item: InventoryItem) => void;
+  onDeleteItem: (item: InventoryItem) => void;
   onOpenReturns: () => void;
   onQueryChange: (query: string) => void;
   onRetry: () => void;
+  isAdmin: boolean;
+  fundsRefreshKey: number;
 };
 
 const STATUS_LABELS: Record<InventoryStatus, string> = {
@@ -52,9 +56,12 @@ export function InventoryList({
   query,
   onAddItem,
   onEditItem,
+  onDeleteItem,
   onOpenReturns,
   onQueryChange,
   onRetry,
+  isAdmin,
+  fundsRefreshKey,
 }: InventoryListProps) {
   const [page, setPage] = useState(0);
   const search = query.trim().toLowerCase();
@@ -63,9 +70,16 @@ export function InventoryList({
   );
   const pageSize = 5;
   const pageCount = Math.max(1, Math.ceil(filteredItems.length / pageSize));
-  const visibleItems = filteredItems.slice(page * pageSize, (page + 1) * pageSize);
+  const currentPage = Math.min(page, pageCount - 1);
+  const visibleItems = filteredItems.slice(
+    currentPage * pageSize,
+    (currentPage + 1) * pageSize,
+  );
 
-  useEffect(() => setPage(0), [query]);
+  function handleQueryChange(nextQuery: string) {
+    setPage(0);
+    onQueryChange(nextQuery);
+  }
 
   return (
     <section>
@@ -94,6 +108,8 @@ export function InventoryList({
         </div>
       </div>
 
+      {isAdmin && <BusinessFundsPanel refreshKey={fundsRefreshKey} />}
+
       <ProductPriceCards
         hasError={Boolean(error)}
         isLoading={isLoading}
@@ -107,7 +123,7 @@ export function InventoryList({
         />
         <input
           value={query}
-          onChange={(event) => onQueryChange(event.target.value)}
+          onChange={(event) => handleQueryChange(event.target.value)}
           className="inventory-field pl-11"
           placeholder="Search item"
           aria-label="Search inventory"
@@ -115,7 +131,7 @@ export function InventoryList({
       </div>
 
       <div className="mt-5 overflow-hidden rounded-2xl border border-[#e0e5de] bg-white">
-        <div className="hidden grid-cols-[1.5fr_.7fr_.7fr_.8fr_.6fr] gap-4 border-b border-[#e7ebe5] bg-[#f8f9f6] px-5 py-3 text-xs font-black uppercase tracking-widest text-[#818b83] md:grid">
+        <div className="hidden grid-cols-[1.5fr_.7fr_.7fr_.8fr_1fr] gap-4 border-b border-[#e7ebe5] bg-[#f8f9f6] px-5 py-3 text-xs font-black uppercase tracking-widest text-[#818b83] md:grid">
           <span>Item</span>
           <span>Quantity</span>
           <span>Returns</span>
@@ -132,16 +148,32 @@ export function InventoryList({
             items={visibleItems}
             query={query}
             total={items.length}
+            isAdmin={isAdmin}
+            onDeleteItem={onDeleteItem}
             onEditItem={onEditItem}
           />
         )}
       </div>
       {!isLoading && !error && pageCount > 1 && (
         <div className="mt-2 flex items-center justify-between text-sm">
-          <span>Page {page + 1} of {pageCount}</span>
+          <span>Page {currentPage + 1} of {pageCount}</span>
           <div className="flex gap-2">
-            <button className="rounded-lg border px-3 py-1" disabled={page === 0} onClick={() => setPage(page - 1)}>Previous</button>
-            <button className="rounded-lg border px-3 py-1" disabled={page + 1 === pageCount} onClick={() => setPage(page + 1)}>Next</button>
+            <button
+              type="button"
+              className="rounded-lg border px-3 py-1"
+              disabled={currentPage === 0}
+              onClick={() => setPage(currentPage - 1)}
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border px-3 py-1"
+              disabled={currentPage + 1 === pageCount}
+              onClick={() => setPage(currentPage + 1)}
+            >
+              Next
+            </button>
           </div>
         </div>
       )}
@@ -187,11 +219,15 @@ function InventoryRows({
   items,
   query,
   total,
+  isAdmin,
+  onDeleteItem,
   onEditItem,
 }: {
   items: InventoryItem[];
   query: string;
   total: number;
+  isAdmin: boolean;
+  onDeleteItem: (item: InventoryItem) => void;
   onEditItem: (item: InventoryItem) => void;
 }) {
   if (!items.length) {
@@ -206,7 +242,7 @@ function InventoryRows({
 
   return items.map((item) => (
     <div
-      className="grid gap-3 border-b border-[#edf0eb] p-5 last:border-b-0 md:grid-cols-[1.5fr_.7fr_.7fr_.8fr_.6fr] md:items-center md:gap-4"
+      className="grid gap-3 border-b border-[#edf0eb] p-5 last:border-b-0 md:grid-cols-[1.5fr_.7fr_.7fr_.8fr_1fr] md:items-center md:gap-4"
       key={item.id}
     >
       <p className="font-extrabold">{item.item}</p>
@@ -229,14 +265,26 @@ function InventoryRows({
         <span className="text-xs font-bold uppercase text-[#929a94] md:hidden">
           Action
         </span>
-        <button
-          type="button"
-          aria-label={`Edit ${item.item}`}
-          onClick={() => onEditItem(item)}
-          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-[#173b24] px-3 text-xs font-black text-white hover:bg-[#245334]"
-        >
-          <Pencil size={14} aria-hidden="true" /> Edit
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            aria-label={`Edit ${item.item}`}
+            onClick={() => onEditItem(item)}
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-[#173b24] px-3 text-xs font-black text-white hover:bg-[#245334]"
+          >
+            <Pencil size={14} aria-hidden="true" /> Edit
+          </button>
+          {isAdmin && (
+            <button
+              type="button"
+              aria-label={`Delete ${item.item}`}
+              onClick={() => onDeleteItem(item)}
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-[#e5c8c0] bg-[#fff6f3] px-3 text-xs font-black text-[#9b431f] hover:bg-[#ffebe5]"
+            >
+              <Trash2 size={14} aria-hidden="true" /> Delete
+            </button>
+          )}
+        </div>
       </div>
     </div>
   ));

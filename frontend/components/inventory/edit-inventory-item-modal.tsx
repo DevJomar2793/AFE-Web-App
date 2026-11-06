@@ -26,6 +26,7 @@ export function EditInventoryItemModal({
   const [wholesalePrice, setWholesalePrice] = useState(
     item.wholesalePrice === null ? "" : String(item.wholesalePrice),
   );
+  const [purchaseCost, setPurchaseCost] = useState(String(item.purchaseCost));
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -37,6 +38,7 @@ export function EditInventoryItemModal({
     const normalizedWholesalePrice =
       wholesalePrice === "" ? null : Number(wholesalePrice);
     const wholesalePriceValue = Number(wholesalePrice);
+    const normalizedPurchaseCost = Number(purchaseCost);
 
     if (!Number.isInteger(normalizedQuantity) || normalizedQuantity < 0) {
       setError("Quantity must be a whole number of zero or more.");
@@ -63,6 +65,15 @@ export function EditInventoryItemModal({
       setError("Enter a valid price with no more than two decimal places.");
       return;
     }
+    if (
+      !PRICE_PATTERN.test(purchaseCost) ||
+      !Number.isFinite(normalizedPurchaseCost) ||
+      normalizedPurchaseCost < 0 ||
+      normalizedPurchaseCost > MAX_PRICE
+    ) {
+      setError("Enter a valid purchase cost with no more than two decimal places.");
+      return;
+    }
 
     setIsSubmitting(true);
     setError("");
@@ -72,6 +83,7 @@ export function EditInventoryItemModal({
         quantity: normalizedQuantity,
         price: normalizedPrice,
         wholesalePrice: normalizedWholesalePrice,
+        purchaseCost: normalizedPurchaseCost,
       });
       onUpdated();
     } catch (submitError) {
@@ -182,6 +194,28 @@ export function EditInventoryItemModal({
               }}
               placeholder="Optional"
             />
+          </label>
+
+          <label className="block text-sm font-extrabold text-[#283b2c]">
+            Purchase cost per unit
+            <input
+              className="inventory-field mt-2"
+              type="number"
+              inputMode="decimal"
+              min="0"
+              max={MAX_PRICE}
+              step="0.01"
+              required
+              disabled={isSubmitting}
+              value={purchaseCost}
+              onChange={(event) => {
+                setPurchaseCost(event.target.value);
+                setError("");
+              }}
+            />
+            <span className="mt-1 block text-xs font-medium text-[#7b867e]">
+              Increasing quantity records the added units as an expense.
+            </span>
           </label>
 
           {error && (

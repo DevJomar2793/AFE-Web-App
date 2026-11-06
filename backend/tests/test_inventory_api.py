@@ -1,13 +1,15 @@
 from collections.abc import AsyncIterator
 from datetime import datetime
 from decimal import Decimal
+from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import delete, select
 
 from app.database import async_session_factory
-from app.models import Inventory, InventoryStatus
+from app.models import ActivityLog, Inventory, InventoryStatus, Return, User
+from app.security import create_access_token, hash_password
 
 
 @pytest.fixture
@@ -119,6 +121,162 @@ async def test_update_inventory_item_quantity_and_price(
     assert stored_inventory is not None
     assert stored_inventory.quantity == 12
     assert stored_inventory.price == Decimal("275.50")
+
+
+@pytest.mark.asyncio
+async def test_admin_deletes_unused_inventory_item_and_records_activity(
+    client: AsyncClient,
+    created_inventory_ids: list[int],
+) -> None:
+    create_response = await client.post(
+        "/api/v1/inventory/add-stock",
+        json={
+            "item": "__delete_inventory_item_test__",
+            "quantity": 8,
+            "price": 250,
+        },
+    )
+    inventory_id = create_response.json()["id"]
+    created_inventory_ids.append(inventory_id)
+    admin_email = (await client.get("/api/v1/auth/me")).json()["email"]
+
+    response = await client.delete(f"/api/v1/inventory/{inventory_id}")
+
+    assert response.status_code == 204
+    async with async_session_factory() as session:
+        stored_inventory = await session.get(Inventory, inventory_id)
+        activity_log = await session.scalar(
+            select(ActivityLog).where(
+                ActivityLog.action == "deleted",
+                ActivityLog.affected_record
+                == "Inventory — __delete_inventory_item_test__",
+                ActivityLog.admin_email == admin_email,
+            ),
+        )
+
+    assert stored_inventory is None
+    assert activity_log is not None
+
+
+@pytest.mark.asyncio
+async def test_inventory_with_sale_history_cannot_be_deleted(
+    client: AsyncClient,
+    created_inventory_ids: list[int],
+) -> None:
+    create_response = await client.post(
+        "/api/v1/inventory/add-stock",
+        json={
+            "item": "__delete_sale_history_test__",
+            "quantity": 5,
+            "price": 100,
+        },
+    )
+    inventory_id = create_response.json()["id"]
+    created_inventory_ids.append(inventory_id)
+    sale_response = await client.post(
+        "/api/v1/sales/add-sales",
+        json={
+            "inventory_id": inventory_id,
+            "quantity": 1,
+            "customer_name": "Deletion Test",
+        },
+    )
+    sale_id = sale_response.json()["id"]
+
+    response = await client.delete(f"/api/v1/inventory/{inventory_id}")
+
+    assert response.status_code == 409
+    assert "sale or return history" in response.json()["detail"]
+    async with async_session_factory() as session:
+        assert await session.get(Inventory, inventory_id) is not None
+
+    await client.delete(f"/api/v1/sales/{sale_id}")
+
+
+@pytest.mark.asyncio
+async def test_inventory_with_return_history_cannot_be_deleted(
+    client: AsyncClient,
+    created_inventory_ids: list[int],
+) -> None:
+    create_response = await client.post(
+        "/api/v1/inventory/add-stock",
+        json={
+            "item": "__delete_return_history_test__",
+            "quantity": 5,
+            "price": 100,
+        },
+    )
+    inventory_id = create_response.json()["id"]
+    created_inventory_ids.append(inventory_id)
+    return_response = await client.post(
+        "/api/v1/returns/add-returns",
+        json={
+            "inventory_id": inventory_id,
+            "quantity": 1,
+            "customer_name": "Deletion Test",
+            "reason": "Damaged item",
+        },
+    )
+    return_id = return_response.json()["id"]
+
+    response = await client.delete(f"/api/v1/inventory/{inventory_id}")
+
+    assert response.status_code == 409
+    async with async_session_factory() as session:
+        assert await session.get(Inventory, inventory_id) is not None
+        await session.execute(delete(Return).where(Return.id == return_id))
+        await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_regular_user_cannot_delete_inventory_item(
+    client: AsyncClient,
+    unauthenticated_client: AsyncClient,
+    created_inventory_ids: list[int],
+) -> None:
+    unauthenticated_response = await unauthenticated_client.delete(
+        "/api/v1/inventory/2147483647",
+        headers={"Authorization": "Bearer invalid-token"},
+    )
+    missing_response = await client.delete("/api/v1/inventory/2147483647")
+    assert unauthenticated_response.status_code == 401
+    assert missing_response.status_code == 404
+
+    create_response = await client.post(
+        "/api/v1/inventory/add-stock",
+        json={
+            "item": "__admin_delete_only_test__",
+            "quantity": 1,
+            "price": 100,
+        },
+    )
+    inventory_id = create_response.json()["id"]
+    created_inventory_ids.append(inventory_id)
+    regular_user = User(
+        email=f"inventory-delete-{uuid4()}@example.com",
+        password_hash=hash_password("secure-password"),
+        is_active=True,
+        is_admin=False,
+    )
+    async with async_session_factory() as session:
+        session.add(regular_user)
+        await session.commit()
+        await session.refresh(regular_user)
+
+    try:
+        response = await unauthenticated_client.delete(
+            f"/api/v1/inventory/{inventory_id}",
+            headers={
+                "Authorization": f"Bearer {create_access_token(regular_user)}",
+            },
+        )
+        assert response.status_code == 403
+        async with async_session_factory() as session:
+            assert await session.get(Inventory, inventory_id) is not None
+    finally:
+        async with async_session_factory() as session:
+            await session.execute(delete(User).where(User.id == regular_user.id))
+            await session.commit()
 
 
 @pytest.mark.asyncio

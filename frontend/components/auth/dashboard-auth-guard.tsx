@@ -15,7 +15,8 @@ export function DashboardAuthGuard({ children }: DashboardAuthGuardProps) {
 
   useEffect(() => {
     if (getAccessToken()) {
-      setIsAuthorized(true);
+      const timeout = window.setTimeout(() => setIsAuthorized(true), 0);
+      return () => window.clearTimeout(timeout);
     } else {
       router.replace("/login");
     }

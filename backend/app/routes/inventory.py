@@ -1,15 +1,23 @@
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_database_session
-from app.models import ActivityLog, Inventory, InventoryStatus, User
+from app.funds import record_fund_transaction
+from app.models import (
+    ActivityLog,
+    Inventory,
+    InventoryStatus,
+    Return,
+    SaleItem,
+    User,
+)
 from app.schemas import InventoryCreate, InventoryResponse, InventoryUpdate
-from app.security import get_current_user
+from app.security import get_current_admin, get_current_user
 
 
 logger = logging.getLogger(__name__)
@@ -20,6 +28,7 @@ router = APIRouter(
 )
 DatabaseSession = Annotated[AsyncSession, Depends(get_database_session)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
+CurrentAdmin = Annotated[User, Depends(get_current_admin)]
 
 
 @router.get(
@@ -62,12 +71,23 @@ async def create_inventory_item(
         returns_count=0,
         price=item_data.price,
         wholesale_price=item_data.wholesale_price,
+        purchase_cost=item_data.purchase_cost,
         status=item_data.status,
     )
     session.add(inventory)
 
     try:
         await session.flush()
+        purchase_total = inventory.purchase_cost * inventory.quantity
+        if purchase_total > 0:
+            await record_fund_transaction(
+                session,
+                transaction_type="expense",
+                source="inventory_purchase",
+                amount=purchase_total,
+                description=f"Initial stock purchase — {inventory.item}",
+                related_inventory_id=inventory.id,
+            )
         session.add(
             ActivityLog(
                 action="added",
@@ -120,14 +140,32 @@ async def update_inventory_item(
                 detail="Inventory item not found",
             )
 
+        previous_quantity = inventory.quantity
         inventory.quantity = item_data.quantity
         inventory.price = item_data.price
         if "wholesale_price" in item_data.model_fields_set:
             inventory.wholesale_price = item_data.wholesale_price
+        if item_data.purchase_cost is not None:
+            inventory.purchase_cost = item_data.purchase_cost
         if item_data.quantity == 0:
             inventory.status = InventoryStatus.OUT_OF_STOCK
         elif inventory.status == InventoryStatus.OUT_OF_STOCK:
             inventory.status = InventoryStatus.IN_STOCK
+
+        added_quantity = inventory.quantity - previous_quantity
+        purchase_total = inventory.purchase_cost * max(added_quantity, 0)
+        if purchase_total > 0:
+            await record_fund_transaction(
+                session,
+                transaction_type="expense",
+                source="inventory_purchase",
+                amount=purchase_total,
+                description=(
+                    f"Stock purchase — {inventory.item} "
+                    f"({added_quantity} units)"
+                ),
+                related_inventory_id=inventory.id,
+            )
 
         session.add(
             ActivityLog(
@@ -147,4 +185,79 @@ async def update_inventory_item(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to update inventory item",
+        ) from error
+
+
+@router.delete(
+    "/{inventory_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete an unused inventory item",
+    responses={
+        status.HTTP_403_FORBIDDEN: {
+            "description": "Administrator access is required",
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "description": "Inventory item not found",
+        },
+        status.HTTP_409_CONFLICT: {
+            "description": "Inventory item has sale or return history",
+        },
+    },
+)
+async def delete_inventory_item(
+    inventory_id: int,
+    session: DatabaseSession,
+    current_admin: CurrentAdmin,
+) -> Response:
+    try:
+        inventory = await session.scalar(
+            select(Inventory)
+            .where(Inventory.id == inventory_id)
+            .with_for_update(),
+        )
+        if inventory is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Inventory item not found",
+            )
+
+        sale_item_id = await session.scalar(
+            select(SaleItem.id)
+            .where(SaleItem.inventory_id == inventory_id)
+            .limit(1),
+        )
+        return_id = await session.scalar(
+            select(Return.id)
+            .where(Return.inventory_id == inventory_id)
+            .limit(1),
+        )
+        if sale_item_id is not None or return_id is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "This inventory item cannot be deleted because it has "
+                    "sale or return history."
+                ),
+            )
+
+        item_name = inventory.item
+        await session.delete(inventory)
+        session.add(
+            ActivityLog(
+                action="deleted",
+                affected_record=f"Inventory — {item_name}",
+                admin_email=current_admin.email,
+            ),
+        )
+        await session.commit()
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except HTTPException:
+        await session.rollback()
+        raise
+    except SQLAlchemyError as error:
+        await session.rollback()
+        logger.exception("Failed to delete inventory item")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to delete inventory item",
         ) from error

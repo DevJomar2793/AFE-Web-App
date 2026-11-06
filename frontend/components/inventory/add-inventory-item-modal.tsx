@@ -20,6 +20,7 @@ export function AddInventoryItemModal({
   const [quantity, setQuantity] = useState("0");
   const [price, setPrice] = useState("");
   const [wholesalePrice, setWholesalePrice] = useState("");
+  const [purchaseCost, setPurchaseCost] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -32,6 +33,7 @@ export function AddInventoryItemModal({
     const normalizedWholesalePrice =
       wholesalePrice === "" ? null : Number(wholesalePrice);
     const wholesalePriceValue = Number(wholesalePrice);
+    const normalizedPurchaseCost = Number(purchaseCost);
 
     if (!normalizedItem) {
       setError("Enter an item name.");
@@ -62,12 +64,22 @@ export function AddInventoryItemModal({
       );
       return;
     }
+    if (
+      !PRICE_PATTERN.test(purchaseCost) ||
+      !Number.isFinite(normalizedPurchaseCost) ||
+      normalizedPurchaseCost < 0 ||
+      normalizedPurchaseCost > 9_999_999_999.99
+    ) {
+      setError("Enter a valid purchase cost with no more than two decimal places.");
+      return;
+    }
 
     const payload: CreateInventoryItemInput = {
       item: normalizedItem,
       quantity: normalizedQuantity,
       price: normalizedPrice,
       wholesalePrice: normalizedWholesalePrice,
+      purchaseCost: normalizedPurchaseCost,
     };
 
     setIsSubmitting(true);
@@ -198,6 +210,28 @@ export function AddInventoryItemModal({
               }}
               placeholder="Optional"
             />
+          </label>
+
+          <label className="block text-sm font-extrabold text-[#283b2c]">
+            Purchase cost per unit
+            <input
+              className="inventory-field mt-2"
+              type="number"
+              inputMode="decimal"
+              min="0"
+              max="9999999999.99"
+              step="0.01"
+              required
+              value={purchaseCost}
+              onChange={(event) => {
+                setPurchaseCost(event.target.value);
+                setError("");
+              }}
+              placeholder="Supplier cost"
+            />
+            <span className="mt-1 block text-xs font-medium text-[#7b867e]">
+              Used to record the starting stock as a business expense.
+            </span>
           </label>
 
           {error && (
