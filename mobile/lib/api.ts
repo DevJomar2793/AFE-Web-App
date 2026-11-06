@@ -5,6 +5,7 @@ import type {
   ProductCategory,
 } from "../types/inventory";
 import { getAccessToken } from "./auth";
+import { API_BASE_URL } from "./config";
 
 const INVENTORY_PATH = "/api/v1/inventory/get-item";
 const ADD_INVENTORY_PATH = "/api/v1/inventory/add-stock";
@@ -358,18 +359,7 @@ async function getApiResponse(
   signal: AbortSignal | undefined,
   fallbackMessage: string,
 ): Promise<unknown> {
-  const apiBaseUrl = process.env.EXPO_PUBLIC_BACKEND_API_URL?.replace(
-    /\/+$/,
-    "",
-  );
-
-  if (!apiBaseUrl) {
-    throw new Error(
-      "The mobile API URL is not configured. Add EXPO_PUBLIC_BACKEND_API_URL to mobile/.env.",
-    );
-  }
-
-  const response = await fetch(`${apiBaseUrl}${path}`, {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: await getApiHeaders(),
     signal,
   });
@@ -388,18 +378,7 @@ async function sendApiRequest(
   body: Record<string, unknown>,
   fallbackMessage: string,
 ): Promise<unknown> {
-  const apiBaseUrl = process.env.EXPO_PUBLIC_BACKEND_API_URL?.replace(
-    /\/+$/,
-    "",
-  );
-
-  if (!apiBaseUrl) {
-    throw new Error(
-      "The mobile API URL is not configured. Add EXPO_PUBLIC_BACKEND_API_URL to mobile/.env.",
-    );
-  }
-
-  const response = await fetch(`${apiBaseUrl}${path}`, {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers: {
       ...(await getApiHeaders()),
@@ -417,13 +396,7 @@ async function sendApiRequest(
 }
 
 async function deleteApiResource(path: string, fallbackMessage: string) {
-  const apiBaseUrl = process.env.EXPO_PUBLIC_BACKEND_API_URL?.replace(/\/+$/, "");
-  if (!apiBaseUrl) {
-    throw new Error(
-      "The mobile API URL is not configured. Add EXPO_PUBLIC_BACKEND_API_URL to mobile/.env.",
-    );
-  }
-  const response = await fetch(`${apiBaseUrl}${path}`, {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "DELETE",
     headers: await getApiHeaders(),
   });

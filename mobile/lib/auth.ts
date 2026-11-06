@@ -1,26 +1,12 @@
 import * as SecureStore from "expo-secure-store";
+import { API_BASE_URL, APP_ENV } from "./config";
 
-const ACCESS_TOKEN_KEY = "access_token";
+const ACCESS_TOKEN_KEY = `access_token_${APP_ENV}`;
 
 export interface UserAccount {
   email: string;
   isActive: boolean;
   isAdmin: boolean;
-}
-
-function getApiBaseUrl() {
-  const apiBaseUrl = process.env.EXPO_PUBLIC_BACKEND_API_URL?.replace(
-    /\/+$/,
-    "",
-  );
-
-  if (!apiBaseUrl) {
-    throw new Error(
-      "The mobile API URL is not configured. Add EXPO_PUBLIC_BACKEND_API_URL to mobile/.env.",
-    );
-  }
-
-  return apiBaseUrl;
 }
 
 async function sendAuthRequest(
@@ -29,7 +15,7 @@ async function sendAuthRequest(
   password: string,
   fallbackMessage: string,
 ): Promise<unknown> {
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
     headers: {
       Accept: "application/json",
@@ -91,7 +77,7 @@ export async function getCurrentUser(): Promise<UserAccount | null> {
   if (!accessToken) return null;
 
   try {
-    const response = await fetch(`${getApiBaseUrl()}/api/v1/auth/me`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
       headers: {
         Accept: "application/json",
         Authorization: `Bearer ${accessToken}`,
