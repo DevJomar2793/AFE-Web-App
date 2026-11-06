@@ -142,7 +142,7 @@ async def update_inventory_item(
                 detail="Inventory item not found",
             )
 
-        previous_quantity = inventory.quantity
+        previous_purchase_total = inventory.purchase_cost * inventory.quantity
         inventory.quantity = item_data.quantity
         inventory.price = item_data.price
         if "wholesale_price" in item_data.model_fields_set:
@@ -167,17 +167,21 @@ async def update_inventory_item(
         elif inventory.status == InventoryStatus.OUT_OF_STOCK:
             inventory.status = InventoryStatus.IN_STOCK
 
-        added_quantity = inventory.quantity - previous_quantity
-        purchase_total = inventory.purchase_cost * max(added_quantity, 0)
-        if purchase_total > 0:
+        updated_purchase_total = inventory.purchase_cost * inventory.quantity
+        purchase_total_difference = (
+            updated_purchase_total - previous_purchase_total
+        )
+        if purchase_total_difference != 0:
+            is_purchase_increase = purchase_total_difference > 0
             await record_fund_transaction(
                 session,
-                transaction_type="expense",
+                transaction_type="expense" if is_purchase_increase else "income",
                 source="inventory_purchase",
-                amount=purchase_total,
+                amount=abs(purchase_total_difference),
                 description=(
-                    f"Stock purchase — {inventory.item} "
-                    f"({added_quantity} units)"
+                    f"Stock purchase adjustment — {inventory.item} "
+                    f"({'increase' if is_purchase_increase else 'decrease'} "
+                    "in stock value)"
                 ),
                 related_inventory_id=inventory.id,
             )
@@ -193,6 +197,7 @@ async def update_inventory_item(
         await session.refresh(inventory)
         return inventory
     except HTTPException:
+        await session.rollback()
         raise
     except SQLAlchemyError as error:
         await session.rollback()

@@ -162,6 +162,130 @@ async def test_sales_and_stock_update_business_funds(
 
 
 @pytest.mark.asyncio
+async def test_stock_edits_adjust_funds_by_purchase_value_difference(
+    client: AsyncClient,
+    isolated_business_funds: None,
+) -> None:
+    await client.post(
+        "/api/v1/business-funds/initialize",
+        json={"amount": "1000.00"},
+    )
+    create_response = await client.post(
+        "/api/v1/inventory/add-stock",
+        json={
+            "item": f"__stock_adjustment_test_{uuid4()}__",
+            "quantity": 10,
+            "price": "50.00",
+            "wholesale_price": None,
+            "purchase_cost": "20.00",
+        },
+    )
+    inventory_id = create_response.json()["id"]
+
+    async def update_stock(quantity: int, purchase_cost: str) -> None:
+        response = await client.patch(
+            f"/api/v1/inventory/{inventory_id}",
+            json={
+                "quantity": quantity,
+                "price": "50.00",
+                "wholesale_price": None,
+                "purchase_cost": purchase_cost,
+            },
+        )
+        assert response.status_code == 200
+
+    try:
+        await update_stock(quantity=12, purchase_cost="20.00")
+        await update_stock(quantity=12, purchase_cost="25.00")
+        await update_stock(quantity=10, purchase_cost="25.00")
+
+        history_before_repeat = await client.get(
+            "/api/v1/business-funds/transactions",
+        )
+        await update_stock(quantity=10, purchase_cost="25.00")
+        history_after_repeat = await client.get(
+            "/api/v1/business-funds/transactions",
+        )
+        funds_response = await client.get("/api/v1/business-funds")
+
+        assert funds_response.json()["current_total"] == "750.00"
+        assert len(history_after_repeat.json()) == len(
+            history_before_repeat.json(),
+        )
+        stock_transactions = [
+            transaction
+            for transaction in history_after_repeat.json()
+            if transaction["related_inventory_id"] == inventory_id
+        ]
+        assert [
+            transaction["transaction_type"] for transaction in stock_transactions
+        ] == ["income", "expense", "expense", "expense"]
+        assert [transaction["amount"] for transaction in stock_transactions] == [
+            "50.00",
+            "60.00",
+            "40.00",
+            "200.00",
+        ]
+    finally:
+        async with async_session_factory() as session:
+            inventory = await session.get(Inventory, inventory_id)
+            if inventory is not None:
+                await session.delete(inventory)
+                await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_reducing_stock_value_can_restore_a_positive_fund_balance(
+    client: AsyncClient,
+    isolated_business_funds: None,
+) -> None:
+    await client.post(
+        "/api/v1/business-funds/initialize",
+        json={"amount": "50.00"},
+    )
+    create_response = await client.post(
+        "/api/v1/inventory/add-stock",
+        json={
+            "item": f"__negative_balance_test_{uuid4()}__",
+            "quantity": 10,
+            "price": "50.00",
+            "wholesale_price": None,
+            "purchase_cost": "20.00",
+        },
+    )
+    inventory_id = create_response.json()["id"]
+
+    try:
+        negative_funds_response = await client.get("/api/v1/business-funds")
+        edit_response = await client.patch(
+            f"/api/v1/inventory/{inventory_id}",
+            json={
+                "quantity": 2,
+                "price": "50.00",
+                "wholesale_price": None,
+                "purchase_cost": "10.00",
+            },
+        )
+        positive_funds_response = await client.get("/api/v1/business-funds")
+        history_response = await client.get(
+            "/api/v1/business-funds/transactions",
+        )
+
+        assert negative_funds_response.json()["current_total"] == "-150.00"
+        assert edit_response.status_code == 200
+        assert positive_funds_response.json()["current_total"] == "30.00"
+        assert history_response.json()[0]["transaction_type"] == "income"
+        assert history_response.json()[0]["amount"] == "180.00"
+        assert history_response.json()[0]["source"] == "inventory_purchase"
+    finally:
+        async with async_session_factory() as session:
+            inventory = await session.get(Inventory, inventory_id)
+            if inventory is not None:
+                await session.delete(inventory)
+                await session.commit()
+
+
+@pytest.mark.asyncio
 async def test_regular_user_cannot_access_business_funds(
     unauthenticated_client: AsyncClient,
     isolated_business_funds: None,
