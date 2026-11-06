@@ -1,4 +1,9 @@
-import type { InventoryRecord, InventoryStatus } from "../types/inventory";
+import type {
+  InventoryRecord,
+  InventoryStatus,
+  OilSize,
+  ProductCategory,
+} from "../types/inventory";
 import { getAccessToken } from "./auth";
 
 const INVENTORY_PATH = "/api/v1/inventory/get-item";
@@ -38,12 +43,16 @@ export interface CreateInventoryItemInput {
   quantity: number;
   price: number;
   wholesalePrice: number | null;
+  category: ProductCategory;
+  oilSize: OilSize | null;
 }
 
 export interface UpdateInventoryItemInput {
   quantity: number;
   price: number;
   wholesalePrice: number | null;
+  category: ProductCategory;
+  oilSize: OilSize | null;
 }
 
 export interface CreateSaleBatchInput {
@@ -52,7 +61,7 @@ export interface CreateSaleBatchInput {
 }
 
 export interface UpdateSaleInput {
-  items: { id: number; price: number; quantity: number }[];
+  items: { id: number; quantity: number }[];
 }
 
 export async function getInventoryItems(
@@ -81,6 +90,8 @@ export async function createInventoryItem(
       quantity: input.quantity,
       price: input.price,
       wholesale_price: input.wholesalePrice,
+      category: input.category,
+      oil_size: input.oilSize,
     },
     "The inventory item could not be added.",
   );
@@ -99,6 +110,8 @@ export async function updateInventoryItem(
       quantity: input.quantity,
       price: input.price,
       wholesale_price: input.wholesalePrice,
+      category: input.category,
+      oil_size: input.oilSize,
     },
     "The inventory item could not be updated.",
   );
@@ -279,6 +292,8 @@ function parseInventoryItem(value: unknown): InventoryRecord {
     !isNonNegativeInteger(value.returns_count) ||
     price === null ||
     (value.wholesale_price !== null && wholesalePrice === null) ||
+    !isProductCategory(value.category) ||
+    !isValidOilSize(value.category, value.oil_size) ||
     !isInventoryStatus(value.status) ||
     !isValidDate(value.created_at) ||
     !isValidDate(value.updated_at)
@@ -293,6 +308,8 @@ function parseInventoryItem(value: unknown): InventoryRecord {
     returnsCount: value.returns_count,
     price,
     wholesalePrice,
+    category: value.category,
+    oilSize: value.oil_size,
     status: value.status,
     createdAt: value.created_at,
     updatedAt: value.updated_at,
@@ -417,6 +434,19 @@ function isInventoryStatus(value: unknown): value is InventoryStatus {
   return (
     value === "in_stock" || value === "low_stock" || value === "out_of_stock"
   );
+}
+
+function isProductCategory(value: unknown): value is ProductCategory {
+  return value === "eggs" || value === "oil";
+}
+
+function isValidOilSize(
+  category: unknown,
+  oilSize: unknown,
+): oilSize is OilSize | null {
+  return category === "eggs"
+    ? oilSize === null
+    : oilSize === "1.5L" || oilSize === "350ml";
 }
 
 function isValidDate(value: unknown): value is string {

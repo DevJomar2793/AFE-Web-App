@@ -1,6 +1,8 @@
 import type { ImageSourcePropType } from "react-native";
 
 export type InventoryStatus = "in_stock" | "low_stock" | "out_of_stock";
+export type ProductCategory = "eggs" | "oil";
+export type OilSize = "1.5L" | "350ml";
 
 export interface InventoryRecord {
   id: number;
@@ -9,6 +11,8 @@ export interface InventoryRecord {
   returnsCount: number;
   price: number;
   wholesalePrice: number | null;
+  category: ProductCategory;
+  oilSize: OilSize | null;
   status: InventoryStatus;
   createdAt: string;
   updatedAt: string;

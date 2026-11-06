@@ -72,6 +72,8 @@ async def create_inventory_item(
         price=item_data.price,
         wholesale_price=item_data.wholesale_price,
         purchase_cost=item_data.purchase_cost,
+        category=item_data.category,
+        oil_size=item_data.oil_size,
         status=item_data.status,
     )
     session.add(inventory)
@@ -147,6 +149,19 @@ async def update_inventory_item(
             inventory.wholesale_price = item_data.wholesale_price
         if item_data.purchase_cost is not None:
             inventory.purchase_cost = item_data.purchase_cost
+        next_category = item_data.category or inventory.category
+        next_oil_size = inventory.oil_size
+        if "oil_size" in item_data.model_fields_set:
+            next_oil_size = item_data.oil_size
+        if next_category == "eggs":
+            next_oil_size = None
+        elif next_oil_size is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Oil products must include a product size",
+            )
+        inventory.category = next_category
+        inventory.oil_size = next_oil_size
         if item_data.quantity == 0:
             inventory.status = InventoryStatus.OUT_OF_STOCK
         elif inventory.status == InventoryStatus.OUT_OF_STOCK:

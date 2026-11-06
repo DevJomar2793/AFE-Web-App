@@ -1,5 +1,8 @@
 import { PhilippinePeso } from "lucide-react";
-import type { InventoryItem } from "@/lib/api";
+import {
+  getWholesaleMinimumQuantity,
+  type InventoryItem,
+} from "@/lib/api";
 
 type ProductPriceCardsProps = {
   items: InventoryItem[];
@@ -49,6 +52,9 @@ export function ProductPriceCards({
                   <PhilippinePeso size={17} aria-hidden="true" />
                 </span>
               </div>
+              <p className="mt-2 text-xs font-bold text-[#768178]">
+                {item.category === "eggs" ? "Eggs" : `Oil · ${item.oilSize}`}
+              </p>
               <p className="mt-4 text-2xl font-black text-[#173b24]">
                 {currency.format(item.price)}
               </p>
@@ -59,6 +65,10 @@ export function ProductPriceCards({
                   </p>
                   <p className="mt-1 text-lg font-black text-[#39704a]">
                     {currency.format(item.wholesalePrice)}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold text-[#768178]">
+                    Applies at {getWholesaleMinimumQuantity(item)}+{" "}
+                    {item.category === "eggs" ? "trays" : "bottles"}
                   </p>
                 </div>
               )}

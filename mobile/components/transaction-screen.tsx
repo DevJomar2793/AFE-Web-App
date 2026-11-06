@@ -33,7 +33,6 @@ type SaleLine = {
   id: number;
   inventoryId: number;
   quantity: string;
-  price?: string;
 };
 
 const currency = new Intl.NumberFormat("en-PH", {
@@ -76,6 +75,21 @@ function saleTotal(sale: SaleRecord) {
     (total, item) => total + item.price * item.quantity,
     0,
   );
+}
+
+function automaticUnitPrice(item: InventoryRecord, quantity: number) {
+  const wholesaleMinimum =
+    item.category === "eggs" ? 6 : item.oilSize === "1.5L" ? 3 : 5;
+
+  if (
+    item.wholesalePrice !== null &&
+    Number.isInteger(quantity) &&
+    quantity >= wholesaleMinimum
+  ) {
+    return item.wholesalePrice;
+  }
+
+  return item.price;
 }
 
 function SaleRow({
@@ -207,7 +221,6 @@ function SaleEditorModal({
             id: item.id,
             inventoryId: item.inventoryId,
             quantity: String(item.quantity),
-            price: String(item.price),
           }))
         : inventory
             .filter((item) => item.quantity > 0)
@@ -253,12 +266,10 @@ function SaleEditorModal({
       id?: number;
       inventoryId: number;
       quantity: number;
-      price?: number;
     }[];
     for (const line of lines) {
       const quantity = Number(line.quantity);
       const item = inventory.find((entry) => entry.id === line.inventoryId);
-      const price = Number(line.price);
       if (!Number.isInteger(quantity) || quantity < 1) {
         setError("Each quantity must be at least one.");
         return;
@@ -267,15 +278,10 @@ function SaleEditorModal({
         setError(`Not enough stock for ${item?.item ?? "the selected item"}.`);
         return;
       }
-      if (isEdit && (!Number.isFinite(price) || price < 0)) {
-        setError("Enter a valid price for every item.");
-        return;
-      }
       normalized.push({
         id: isEdit ? line.id : undefined,
         inventoryId: line.inventoryId,
         quantity,
-        price: isEdit ? price : undefined,
       });
     }
     setIsSaving(true);
@@ -286,7 +292,6 @@ function SaleEditorModal({
           items: normalized.map((line) => ({
             id: line.id!,
             quantity: line.quantity,
-            price: line.price!,
           })),
         });
       else
@@ -356,6 +361,10 @@ function SaleEditorModal({
               const item = inventory.find(
                 (entry) => entry.id === line.inventoryId,
               );
+              const quantity = Number(line.quantity);
+              const unitPrice = item
+                ? automaticUnitPrice(item, quantity)
+                : null;
               return (
                 <View style={styles.lineCard} key={line.id}>
                   <View style={styles.lineHeader}>
@@ -416,20 +425,16 @@ function SaleEditorModal({
                         style={styles.field}
                       />
                     </View>
-                    {isEdit && (
-                      <View style={styles.smallField}>
-                        <Text style={styles.label}>Price</Text>
-                        <TextInput
-                          value={line.price ?? ""}
-                          onChangeText={(value) =>
-                            updateLine(line.id, { price: value })
-                          }
-                          editable={!isSaving}
-                          keyboardType="decimal-pad"
-                          style={styles.field}
-                        />
+                    <View style={styles.smallField}>
+                      <Text style={styles.label}>Automatic price</Text>
+                      <View style={[styles.field, styles.priceField]}>
+                        <Text style={styles.priceFieldText}>
+                          {unitPrice === null
+                            ? "Unavailable"
+                            : `${currency.format(unitPrice)} each`}
+                        </Text>
                       </View>
-                    )}
+                    </View>
                   </View>
                 </View>
               );
@@ -1113,6 +1118,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
     paddingHorizontal: 12,
   },
+  priceField: { justifyContent: "center" },
+  priceFieldText: { color: "#173b24", fontSize: 14, fontWeight: "800" },
   addLineButton: {
     height: 44,
     flexDirection: "row",

@@ -100,6 +100,15 @@ class Inventory(Base):
             name="ck_inventory_purchase_cost_non_negative",
         ),
         CheckConstraint(
+            "category IN ('eggs', 'oil')",
+            name="ck_inventory_category",
+        ),
+        CheckConstraint(
+            "(category = 'eggs' AND oil_size IS NULL) OR "
+            "(category = 'oil' AND oil_size IN ('1.5L', '350ml'))",
+            name="ck_inventory_category_size",
+        ),
+        CheckConstraint(
             "(quantity = 0 AND status = 'out_of_stock') OR "
             "(quantity > 0 AND status IN ('in_stock', 'low_stock'))",
             name="ck_inventory_status_matches_quantity",
@@ -136,6 +145,13 @@ class Inventory(Base):
         default=Decimal("0.00"),
         server_default=text("0.00"),
     )
+    category: Mapped[str] = mapped_column(
+        String(10),
+        nullable=False,
+        default="eggs",
+        server_default=text("'eggs'"),
+    )
+    oil_size: Mapped[str | None] = mapped_column(String(10), nullable=True)
     status: Mapped[InventoryStatus] = mapped_column(
         SQLAlchemyEnum(
             InventoryStatus,

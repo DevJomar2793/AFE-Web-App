@@ -14,7 +14,12 @@ import {
 } from "react-native";
 
 import { createInventoryItem, updateInventoryItem } from "../lib/api";
-import type { InventoryRecord, SuccessNotice } from "../types/inventory";
+import type {
+  InventoryRecord,
+  OilSize,
+  ProductCategory,
+  SuccessNotice,
+} from "../types/inventory";
 
 interface AddStockModalProps {
   onClose: () => void;
@@ -100,6 +105,49 @@ function FormField({
   );
 }
 
+function ChoiceField<T extends string>({
+  label,
+  options,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  options: { label: string; value: T }[];
+  value: T | null;
+  disabled: boolean;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <View style={styles.fieldGroup}>
+      <Text style={styles.label}>{label}</Text>
+      <View style={styles.choiceRow}>
+        {options.map((option) => (
+          <Pressable
+            key={option.value}
+            disabled={disabled}
+            onPress={() => onChange(option.value)}
+            style={[
+              styles.choiceButton,
+              value === option.value && styles.selectedChoiceButton,
+              disabled && styles.disabledButton,
+            ]}
+          >
+            <Text
+              style={[
+                styles.choiceButtonText,
+                value === option.value && styles.selectedChoiceButtonText,
+              ]}
+            >
+              {option.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 function ModalLayout({
   children,
   isSubmitting,
@@ -157,6 +205,8 @@ export function AddStockModal({ onClose, onCreated }: AddStockModalProps) {
   const [quantity, setQuantity] = useState("0");
   const [price, setPrice] = useState("");
   const [wholesalePrice, setWholesalePrice] = useState("");
+  const [category, setCategory] = useState<ProductCategory>("eggs");
+  const [oilSize, setOilSize] = useState<OilSize | null>(null);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -191,6 +241,10 @@ export function AddStockModal({ onClose, onCreated }: AddStockModalProps) {
       );
       return;
     }
+    if (category === "oil" && oilSize === null) {
+      setError("Select an oil size.");
+      return;
+    }
 
     setIsSubmitting(true);
     setError("");
@@ -200,6 +254,8 @@ export function AddStockModal({ onClose, onCreated }: AddStockModalProps) {
         quantity: normalizedQuantity,
         price: Number(price),
         wholesalePrice: wholesalePrice ? Number(wholesalePrice) : null,
+        category,
+        oilSize: category === "oil" ? oilSize : null,
       });
       onCreated(createdItem);
     } catch (submitError) {
@@ -230,6 +286,35 @@ export function AddStockModal({ onClose, onCreated }: AddStockModalProps) {
           autoFocus
           onChangeText={(value) => updateField(setItemName, value)}
         />
+        <ChoiceField
+          label="Category"
+          options={[
+            { label: "Eggs", value: "eggs" },
+            { label: "Oil", value: "oil" },
+          ]}
+          value={category}
+          disabled={isSubmitting}
+          onChange={(value) => {
+            setCategory(value);
+            if (value === "eggs") setOilSize(null);
+            setError("");
+          }}
+        />
+        {category === "oil" ? (
+          <ChoiceField
+            label="Oil size"
+            options={[
+              { label: "1.5L", value: "1.5L" },
+              { label: "350ml", value: "350ml" },
+            ]}
+            value={oilSize}
+            disabled={isSubmitting}
+            onChange={(value) => {
+              setOilSize(value);
+              setError("");
+            }}
+          />
+        ) : null}
         <FormField
           label="Starting quantity"
           value={quantity}
@@ -284,6 +369,8 @@ export function EditItemModal({
   const [wholesalePrice, setWholesalePrice] = useState(
     item.wholesalePrice === null ? "" : String(item.wholesalePrice),
   );
+  const [category, setCategory] = useState<ProductCategory>(item.category);
+  const [oilSize, setOilSize] = useState<OilSize | null>(item.oilSize);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -313,6 +400,10 @@ export function EditItemModal({
       );
       return;
     }
+    if (category === "oil" && oilSize === null) {
+      setError("Select an oil size.");
+      return;
+    }
 
     setIsSubmitting(true);
     setError("");
@@ -321,6 +412,8 @@ export function EditItemModal({
         quantity: normalizedQuantity,
         price: Number(price),
         wholesalePrice: wholesalePrice ? Number(wholesalePrice) : null,
+        category,
+        oilSize: category === "oil" ? oilSize : null,
       });
       onUpdated(updatedItem);
     } catch (submitError) {
@@ -343,6 +436,35 @@ export function EditItemModal({
         onClose={onClose}
       />
       <View style={styles.form}>
+        <ChoiceField
+          label="Category"
+          options={[
+            { label: "Eggs", value: "eggs" },
+            { label: "Oil", value: "oil" },
+          ]}
+          value={category}
+          disabled={isSubmitting}
+          onChange={(value) => {
+            setCategory(value);
+            if (value === "eggs") setOilSize(null);
+            setError("");
+          }}
+        />
+        {category === "oil" ? (
+          <ChoiceField
+            label="Oil size"
+            options={[
+              { label: "1.5L", value: "1.5L" },
+              { label: "350ml", value: "350ml" },
+            ]}
+            value={oilSize}
+            disabled={isSubmitting}
+            onChange={(value) => {
+              setOilSize(value);
+              setError("");
+            }}
+          />
+        ) : null}
         <FormField
           label="Quantity"
           value={quantity}
@@ -488,6 +610,23 @@ const styles = StyleSheet.create({
   },
   form: { gap: 18, marginTop: 24 },
   fieldGroup: { gap: 8 },
+  choiceRow: { flexDirection: "row", gap: 10 },
+  choiceButton: {
+    flex: 1,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#d7ded5",
+    borderRadius: 12,
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+  },
+  selectedChoiceButton: {
+    borderColor: "#4f9a66",
+    backgroundColor: "#e5f3e4",
+  },
+  choiceButtonText: { color: "#566159", fontSize: 14, fontWeight: "700" },
+  selectedChoiceButtonText: { color: "#173b24" },
   label: { color: "#283b2c", fontSize: 14, fontWeight: "800" },
   field: {
     height: 50,

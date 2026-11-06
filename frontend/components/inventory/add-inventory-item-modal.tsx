@@ -5,6 +5,8 @@ import { LoaderCircle, Plus, X } from "lucide-react";
 import {
   createInventoryItem,
   type CreateInventoryItemInput,
+  type OilSize,
+  type ProductCategory,
 } from "@/lib/api";
 
 const PRICE_PATTERN = /^\d+(?:\.\d{1,2})?$/;
@@ -18,6 +20,8 @@ export function AddInventoryItemModal({
 }) {
   const [item, setItem] = useState("");
   const [quantity, setQuantity] = useState("0");
+  const [category, setCategory] = useState<ProductCategory>("eggs");
+  const [oilSize, setOilSize] = useState<OilSize | "">("");
   const [price, setPrice] = useState("");
   const [wholesalePrice, setWholesalePrice] = useState("");
   const [purchaseCost, setPurchaseCost] = useState("");
@@ -37,6 +41,10 @@ export function AddInventoryItemModal({
 
     if (!normalizedItem) {
       setError("Enter an item name.");
+      return;
+    }
+    if (category === "oil" && !oilSize) {
+      setError("Choose an oil product size.");
       return;
     }
     if (!Number.isInteger(normalizedQuantity) || normalizedQuantity < 0) {
@@ -80,6 +88,8 @@ export function AddInventoryItemModal({
       price: normalizedPrice,
       wholesalePrice: normalizedWholesalePrice,
       purchaseCost: normalizedPurchaseCost,
+      category,
+      oilSize: category === "oil" ? (oilSize as OilSize) : null,
     };
 
     setIsSubmitting(true);
@@ -157,6 +167,43 @@ export function AddInventoryItemModal({
               placeholder="Large eggs"
             />
           </label>
+
+          <label className="block text-sm font-extrabold text-[#283b2c]">
+            Category
+            <select
+              className="inventory-field mt-2"
+              required
+              value={category}
+              onChange={(event) => {
+                const nextCategory = event.target.value as ProductCategory;
+                setCategory(nextCategory);
+                if (nextCategory === "eggs") setOilSize("");
+                setError("");
+              }}
+            >
+              <option value="eggs">Eggs</option>
+              <option value="oil">Oil</option>
+            </select>
+          </label>
+
+          {category === "oil" && (
+            <label className="block text-sm font-extrabold text-[#283b2c]">
+              Oil size
+              <select
+                className="inventory-field mt-2"
+                required
+                value={oilSize}
+                onChange={(event) => {
+                  setOilSize(event.target.value as OilSize);
+                  setError("");
+                }}
+              >
+                <option value="">Choose a size</option>
+                <option value="1.5L">1.5L</option>
+                <option value="350ml">350ml</option>
+              </select>
+            </label>
+          )}
 
           <label className="block text-sm font-extrabold text-[#283b2c]">
             Starting quantity

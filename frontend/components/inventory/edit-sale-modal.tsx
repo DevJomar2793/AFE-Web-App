@@ -2,23 +2,27 @@
 
 import { type FormEvent, useState } from "react";
 import { Pencil, X } from "lucide-react";
-import { updateSale, type Sale } from "@/lib/api";
+import {
+  getAutomaticUnitPrice,
+  updateSale,
+  type InventoryItem,
+  type Sale,
+} from "@/lib/api";
 
 type EditSaleModalProps = {
   sale: Sale;
+  inventoryItems: InventoryItem[];
   onClose: () => void;
   onUpdated: () => void;
 };
 
 type EditableSaleItem = {
   id: number;
+  inventoryId: number;
   itemName: string;
-  price: string;
   quantity: string;
 };
 
-const PRICE_PATTERN = /^\d+(?:\.\d{1,2})?$/;
-const MAX_PRICE = 9_999_999_999.99;
 const currency = new Intl.NumberFormat("en-PH", {
   style: "currency",
   currency: "PHP",
@@ -28,34 +32,34 @@ const currency = new Intl.NumberFormat("en-PH", {
 
 export function EditSaleModal({
   sale,
+  inventoryItems,
   onClose,
   onUpdated,
 }: EditSaleModalProps) {
   const [saleItems, setSaleItems] = useState<EditableSaleItem[]>(
     sale.items.map((item) => ({
       id: item.id,
+      inventoryId: item.inventoryId,
       itemName: item.item.name,
-      price: String(item.price),
       quantity: String(item.quantity),
     })),
   );
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const saleTotal = saleItems.reduce((total, item) => {
-    const price = Number(item.price);
     const quantity = Number(item.quantity);
-    if (!Number.isFinite(price) || !Number.isFinite(quantity)) return total;
-    return total + Math.max(price, 0) * Math.max(quantity, 0);
+    const inventoryItem = inventoryItems.find(
+      (candidate) => candidate.id === item.inventoryId,
+    );
+    if (!inventoryItem || !Number.isFinite(quantity)) return total;
+    const pricing = getAutomaticUnitPrice(inventoryItem, quantity);
+    return total + pricing.price * Math.max(quantity, 0);
   }, 0);
 
-  const updateItem = (
-    itemId: number,
-    field: "price" | "quantity",
-    value: string,
-  ) => {
+  const updateItemQuantity = (itemId: number, value: string) => {
     setSaleItems((currentItems) =>
       currentItems.map((item) =>
-        item.id === itemId ? { ...item, [field]: value } : item,
+        item.id === itemId ? { ...item, quantity: value } : item,
       ),
     );
     setError("");
@@ -63,29 +67,16 @@ export function EditSaleModal({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const updatedItems: { id: number; price: number; quantity: number }[] = [];
+    const updatedItems: { id: number; quantity: number }[] = [];
 
     for (const item of saleItems) {
-      const price = Number(item.price);
       const quantity = Number(item.quantity);
-
-      if (
-        !PRICE_PATTERN.test(item.price) ||
-        !Number.isFinite(price) ||
-        price < 0 ||
-        price > MAX_PRICE
-      ) {
-        setError(
-          `Enter a valid price with no more than two decimal places for ${item.itemName}.`,
-        );
-        return;
-      }
       if (!Number.isInteger(quantity) || quantity < 1) {
         setError(`Enter a whole quantity of at least one for ${item.itemName}.`);
         return;
       }
 
-      updatedItems.push({ id: item.id, price, quantity });
+      updatedItems.push({ id: item.id, quantity });
     }
 
     setIsSubmitting(true);
@@ -157,58 +148,58 @@ export function EditSaleModal({
 
         <form className="mt-5 space-y-5" onSubmit={handleSubmit}>
           <div className="space-y-3">
-            {saleItems.map((item, index) => (
-              <div
-                className="rounded-2xl border border-[#dfe4dd] bg-[#fbfcfa] p-4"
-                key={item.id}
-              >
-                <p className="font-black text-[#283b2c]">
-                  {item.itemName}
-                </p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <label className="block text-sm font-extrabold text-[#283b2c]">
-                    Price
-                    <input
-                      className="inventory-field mt-2"
-                      type="number"
-                      inputMode="decimal"
-                      min="0"
-                      max={MAX_PRICE}
-                      step="0.01"
-                      required
-                      autoFocus={index === 0}
-                      disabled={isSubmitting}
-                      value={item.price}
-                      onChange={(event) =>
-                        updateItem(item.id, "price", event.target.value)
-                      }
-                    />
-                  </label>
-                  <label className="block text-sm font-extrabold text-[#283b2c]">
-                    Quantity
-                    <input
-                      className="inventory-field mt-2"
-                      type="number"
-                      inputMode="numeric"
-                      min="1"
-                      step="1"
-                      required
-                      disabled={isSubmitting}
-                      value={item.quantity}
-                      onChange={(event) =>
-                        updateItem(item.id, "quantity", event.target.value)
-                      }
-                    />
-                  </label>
+            {saleItems.map((item, index) => {
+              const inventoryItem = inventoryItems.find(
+                (candidate) => candidate.id === item.inventoryId,
+              );
+              const quantity = Number(item.quantity);
+              const pricing = inventoryItem
+                ? getAutomaticUnitPrice(inventoryItem, quantity)
+                : { price: 0, usesWholesalePrice: false };
+
+              return (
+                <div
+                  className="rounded-2xl border border-[#dfe4dd] bg-[#fbfcfa] p-4"
+                  key={item.id}
+                >
+                  <p className="font-black text-[#283b2c]">
+                    {item.itemName}
+                  </p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl bg-[#f3f6f1] px-4 py-3">
+                      <p className="text-xs font-bold uppercase text-[#89928b]">
+                        Automatic price
+                      </p>
+                      <p className="mt-1 font-black text-[#173b24]">
+                        {currency.format(pricing.price)} ·{" "}
+                        {pricing.usesWholesalePrice ? "Wholesale" : "Retail"}
+                      </p>
+                    </div>
+                    <label className="block text-sm font-extrabold text-[#283b2c]">
+                      Quantity
+                      <input
+                        className="inventory-field mt-2"
+                        type="number"
+                        inputMode="numeric"
+                        min="1"
+                        step="1"
+                        required
+                        autoFocus={index === 0}
+                        disabled={isSubmitting}
+                        value={item.quantity}
+                        onChange={(event) =>
+                          updateItemQuantity(item.id, event.target.value)
+                        }
+                      />
+                    </label>
+                  </div>
+                  <p className="mt-3 text-right text-xs font-bold text-[#68736b]">
+                    Subtotal:{" "}
+                    {currency.format(pricing.price * quantity || 0)}
+                  </p>
                 </div>
-                <p className="mt-3 text-right text-xs font-bold text-[#68736b]">
-                  Subtotal:{" "}
-                  {currency.format(
-                    Number(item.price) * Number(item.quantity) || 0,
-                  )}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="flex items-center justify-between gap-4 rounded-2xl bg-[#f3f6f1] px-4 py-3">

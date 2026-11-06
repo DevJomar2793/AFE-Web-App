@@ -88,6 +88,8 @@ class InventoryCreate(BaseModel):
         max_digits=12,
         decimal_places=2,
     )
+    category: Literal["eggs", "oil"] = "eggs"
+    oil_size: Literal["1.5L", "350ml"] | None = None
     status: InventoryStatus | None = None
 
     @model_validator(mode="after")
@@ -106,6 +108,10 @@ class InventoryCreate(BaseModel):
             raise ValueError("An item with zero quantity must be out of stock")
         elif self.quantity > 0 and self.status == InventoryStatus.OUT_OF_STOCK:
             raise ValueError("An item with available quantity cannot be out of stock")
+        if self.category == "oil" and self.oil_size is None:
+            raise ValueError("Oil products must include a product size")
+        if self.category == "eggs" and self.oil_size is not None:
+            raise ValueError("Egg products cannot include an oil size")
         return self
 
 
@@ -126,6 +132,8 @@ class InventoryUpdate(BaseModel):
         max_digits=12,
         decimal_places=2,
     )
+    category: Literal["eggs", "oil"] | None = None
+    oil_size: Literal["1.5L", "350ml"] | None = None
 
 
 class InventoryResponse(BaseModel):
@@ -138,6 +146,8 @@ class InventoryResponse(BaseModel):
     price: Decimal
     wholesale_price: Decimal | None
     purchase_cost: Decimal
+    category: Literal["eggs", "oil"]
+    oil_size: Literal["1.5L", "350ml"] | None
     status: InventoryStatus
     created_at: datetime
     updated_at: datetime
@@ -181,7 +191,13 @@ class SaleItemUpdate(BaseModel):
 
     id: int = Field(gt=0, strict=True)
     quantity: int = Field(gt=0, strict=True)
-    price: Decimal = Field(ge=0, max_digits=12, decimal_places=2)
+    # Accepted for compatibility with older clients. Pricing is calculated by the API.
+    price: Decimal | None = Field(
+        default=None,
+        ge=0,
+        max_digits=12,
+        decimal_places=2,
+    )
 
 
 class SaleUpdate(BaseModel):

@@ -47,6 +47,8 @@ async def test_create_inventory_item(
     assert data["returns_count"] == 0
     assert data["price"] == "250.50"
     assert data["wholesale_price"] == "225.50"
+    assert data["category"] == "eggs"
+    assert data["oil_size"] is None
     assert data["status"] == "in_stock"
     assert datetime.fromisoformat(data["created_at"])
     assert datetime.fromisoformat(data["updated_at"])
@@ -62,7 +64,52 @@ async def test_create_inventory_item(
     assert stored_inventory.returns_count == 0
     assert stored_inventory.price == Decimal("250.50")
     assert stored_inventory.wholesale_price == Decimal("225.50")
+    assert stored_inventory.category == "eggs"
+    assert stored_inventory.oil_size is None
     assert stored_inventory.status == InventoryStatus.IN_STOCK
+
+
+@pytest.mark.asyncio
+async def test_create_oil_requires_a_supported_size(
+    client: AsyncClient,
+    created_inventory_ids: list[int],
+) -> None:
+    missing_size_response = await client.post(
+        "/api/v1/inventory/add-stock",
+        json={
+            "item": "__oil_without_size_test__",
+            "quantity": 5,
+            "price": 100,
+            "category": "oil",
+        },
+    )
+    invalid_size_response = await client.post(
+        "/api/v1/inventory/add-stock",
+        json={
+            "item": "__oil_invalid_size_test__",
+            "quantity": 5,
+            "price": 100,
+            "category": "oil",
+            "oil_size": "1L",
+        },
+    )
+    valid_response = await client.post(
+        "/api/v1/inventory/add-stock",
+        json={
+            "item": "__oil_350ml_test__",
+            "quantity": 5,
+            "price": 100,
+            "category": "oil",
+            "oil_size": "350ml",
+        },
+    )
+
+    assert missing_size_response.status_code == 422
+    assert invalid_size_response.status_code == 422
+    assert valid_response.status_code == 201
+    created_inventory_ids.append(valid_response.json()["id"])
+    assert valid_response.json()["category"] == "oil"
+    assert valid_response.json()["oil_size"] == "350ml"
 
 
 @pytest.mark.asyncio

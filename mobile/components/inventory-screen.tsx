@@ -363,7 +363,7 @@ export function InventoryScreen({
                 ? `No inventory items match “${query}”.`
                 : "No inventory items are stored in the database."}
             </Text>
-          ) : null
+          ) : undefined
         }
       />
     </View>

@@ -470,6 +470,7 @@ export function InventoryDashboard() {
 
       {editingSale && (
         <EditSaleModal
+          inventoryItems={databaseItems}
           key={editingSale.id}
           sale={editingSale}
           onClose={() => setEditingSale(null)}

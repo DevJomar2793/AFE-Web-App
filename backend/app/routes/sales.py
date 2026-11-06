@@ -159,12 +159,7 @@ async def create_sale_transaction(
 
         for requested_item in requested_items:
             inventory_item = inventory_by_id[requested_item.inventory_id]
-            sale_price = inventory_item.price
-            if (
-                requested_item.quantity >= 6
-                and inventory_item.wholesale_price is not None
-            ):
-                sale_price = inventory_item.wholesale_price
+            sale_price = get_sale_price(inventory_item, requested_item.quantity)
 
             inventory_item.quantity -= requested_item.quantity
             update_inventory_status(inventory_item)
@@ -304,10 +299,12 @@ async def update_sale(
             requested_item = requested_by_id[sale_item.id]
             inventory_item = inventory_by_id[sale_item.inventory_id]
             inventory_item.quantity -= requested_item.quantity - sale_item.quantity
-            inventory_item.price = requested_item.price
             update_inventory_status(inventory_item)
             sale_item.quantity = requested_item.quantity
-            sale_item.price = requested_item.price
+            sale_item.price = get_sale_price(
+                inventory_item,
+                requested_item.quantity,
+            )
 
         updated_total = sum(
             (item.price * item.quantity for item in sale_items),
@@ -455,3 +452,16 @@ def update_inventory_status(inventory_item: Inventory) -> None:
         inventory_item.status = InventoryStatus.OUT_OF_STOCK
     elif inventory_item.status == InventoryStatus.OUT_OF_STOCK:
         inventory_item.status = InventoryStatus.IN_STOCK
+
+
+def get_sale_price(inventory_item: Inventory, quantity: int) -> Decimal:
+    wholesale_minimum = 6
+    if inventory_item.category == "oil":
+        wholesale_minimum = 3 if inventory_item.oil_size == "1.5L" else 5
+
+    if (
+        quantity >= wholesale_minimum
+        and inventory_item.wholesale_price is not None
+    ):
+        return inventory_item.wholesale_price
+    return inventory_item.price

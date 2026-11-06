@@ -1,4 +1,6 @@
 export type InventoryStatus = "in_stock" | "low_stock" | "out_of_stock";
+export type ProductCategory = "eggs" | "oil";
+export type OilSize = "1.5L" | "350ml";
 
 export type ActivityLogAction = "added" | "edited" | "deleted" | "approved";
 
@@ -18,6 +20,8 @@ export type InventoryItem = {
   price: number;
   wholesalePrice: number | null;
   purchaseCost: number;
+  category: ProductCategory;
+  oilSize: OilSize | null;
   status: InventoryStatus;
   createdAt: string;
   updatedAt: string;
@@ -56,6 +60,8 @@ export type CreateInventoryItemInput = {
   price: number;
   wholesalePrice: number | null;
   purchaseCost: number;
+  category: ProductCategory;
+  oilSize: OilSize | null;
 };
 
 export type UpdateInventoryItemInput = {
@@ -63,6 +69,8 @@ export type UpdateInventoryItemInput = {
   price: number;
   wholesalePrice: number | null;
   purchaseCost: number;
+  category: ProductCategory;
+  oilSize: OilSize | null;
 };
 
 export type BusinessFunds = {
@@ -98,7 +106,6 @@ export type CreateSaleBatchInput = {
 export type UpdateSaleInput = {
   items: {
     id: number;
-    price: number;
     quantity: number;
   }[];
 };
@@ -299,6 +306,8 @@ export async function createInventoryItem(
         price: input.price,
         wholesale_price: input.wholesalePrice,
         purchase_cost: input.purchaseCost,
+        category: input.category,
+        oil_size: input.oilSize,
       }),
     },
     "The inventory item could not be added.",
@@ -319,6 +328,8 @@ export async function updateInventoryItem(
         price: input.price,
         wholesale_price: input.wholesalePrice,
         purchase_cost: input.purchaseCost,
+        category: input.category,
+        oil_size: input.oilSize,
       }),
     },
     "The inventory item could not be updated.",
@@ -534,6 +545,8 @@ function parseInventoryItem(value: unknown): InventoryItem {
       (!Number.isFinite(wholesalePrice) || wholesalePrice < 0)) ||
     !Number.isFinite(purchaseCost) ||
     purchaseCost < 0 ||
+    !isProductCategory(value.category) ||
+    !isValidOilSize(value.category, value.oil_size) ||
     !isInventoryStatus(value.status) ||
     typeof value.created_at !== "string" ||
     typeof value.updated_at !== "string"
@@ -549,6 +562,8 @@ function parseInventoryItem(value: unknown): InventoryItem {
     price,
     wholesalePrice,
     purchaseCost,
+    category: value.category,
+    oilSize: value.oil_size,
     status: value.status,
     createdAt: value.created_at,
     updatedAt: value.updated_at,
@@ -756,6 +771,37 @@ function isInventoryStatus(value: unknown): value is InventoryStatus {
   return (
     value === "in_stock" || value === "low_stock" || value === "out_of_stock"
   );
+}
+
+function isProductCategory(value: unknown): value is ProductCategory {
+  return value === "eggs" || value === "oil";
+}
+
+function isValidOilSize(
+  category: unknown,
+  oilSize: unknown,
+): oilSize is OilSize | null {
+  return category === "eggs"
+    ? oilSize === null
+    : oilSize === "1.5L" || oilSize === "350ml";
+}
+
+export function getWholesaleMinimumQuantity(item: InventoryItem): number {
+  if (item.category === "eggs") return 6;
+  return item.oilSize === "1.5L" ? 3 : 5;
+}
+
+export function getAutomaticUnitPrice(
+  item: InventoryItem,
+  quantity: number,
+): { price: number; usesWholesalePrice: boolean } {
+  const usesWholesalePrice =
+    item.wholesalePrice !== null &&
+    quantity >= getWholesaleMinimumQuantity(item);
+  return {
+    price: usesWholesalePrice ? (item.wholesalePrice ?? item.price) : item.price,
+    usesWholesalePrice,
+  };
 }
 
 function isActivityLogAction(value: unknown): value is ActivityLogAction {
