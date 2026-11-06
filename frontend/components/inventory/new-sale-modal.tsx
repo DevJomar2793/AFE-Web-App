@@ -2,7 +2,11 @@
 
 import { type FormEvent, useRef, useState } from "react";
 import { LoaderCircle, Plus, RotateCcw, Trash2, X } from "lucide-react";
-import { createSaleBatch, type InventoryItem } from "@/lib/api";
+import {
+  createSaleBatch,
+  getAutomaticUnitPrice,
+  type InventoryItem,
+} from "@/lib/api";
 
 type NewSaleModalProps = {
   initialInventoryId?: number;
@@ -58,12 +62,11 @@ export function NewSaleModal({
     );
     const item = selectedItem ?? (index === 0 ? preferredItem : undefined);
     const quantity = Number(line.quantity);
-    const usesWholesalePrice = Boolean(
-      item && quantity >= 6 && item.wholesalePrice !== null,
-    );
-    const unitPrice = usesWholesalePrice
-      ? (item?.wholesalePrice ?? 0)
-      : (item?.price ?? 0);
+    const automaticPrice = item
+      ? getAutomaticUnitPrice(item, quantity)
+      : { price: 0, usesWholesalePrice: false };
+    const usesWholesalePrice = automaticPrice.usesWholesalePrice;
+    const unitPrice = automaticPrice.price;
     const total = Number.isFinite(quantity)
       ? unitPrice * Math.max(quantity, 0)
       : 0;

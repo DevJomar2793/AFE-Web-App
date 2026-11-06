@@ -7,18 +7,25 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "environment": "development",
       "env": {
-        "EXPO_PUBLIC_BACKEND_API_URL": "http://192.168.0.26:8000"
+        "EXPO_PUBLIC_APP_ENV": "staging",
+        "EXPO_PUBLIC_BACKEND_API_URL": "http://192.168.1.19:8000"
       }
     },
     "preview": {
+      "distribution": "internal",
+      "environment": "preview",
       "env": {
-        "EXPO_PUBLIC_BACKEND_API_URL": "http://[IP_ADDRESS]"
+        "EXPO_PUBLIC_APP_ENV": "staging",
+        "EXPO_PUBLIC_BACKEND_API_URL": "http://192.168.1.19:8000"
       }
     },
     "production": {
       "autoIncrement": true,
+      "environment": "production",
       "env": {
+        "EXPO_PUBLIC_APP_ENV": "production",
         "EXPO_PUBLIC_BACKEND_API_URL": "https://atbackend-web-app-afe.onrender.com"
       }
     }

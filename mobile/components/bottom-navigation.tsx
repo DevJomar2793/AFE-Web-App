@@ -1,7 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-export type MobileTab = "home" | "inventory" | "orders" | "returns";
+export type MobileTab =
+  | "home"
+  | "inventory"
+  | "transactions"
+  | "returns"
+  | "more";
 
 interface BottomNavigationProps {
   activeTab: MobileTab;
@@ -36,7 +41,9 @@ function NavigationItem({
       <View style={isActive ? styles.activeIcon : undefined}>
         <Ionicons name={icon} size={27} color={color} />
       </View>
-      <Text style={[styles.navigationLabel, { color }]}>{label}</Text>
+      <Text numberOfLines={1} style={[styles.navigationLabel, { color }]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -62,15 +69,21 @@ export function BottomNavigation({
         />
         <NavigationItem
           icon="receipt-outline"
-          label="Orders"
-          isActive={activeTab === "orders"}
-          onPress={() => onTabChange("orders")}
+          label="Transactions"
+          isActive={activeTab === "transactions"}
+          onPress={() => onTabChange("transactions")}
         />
         <NavigationItem
           icon="bar-chart-outline"
-          label="Return"
+          label="Returns"
           isActive={activeTab === "returns"}
           onPress={() => onTabChange("returns")}
+        />
+        <NavigationItem
+          icon="ellipsis-horizontal-circle-outline"
+          label="More"
+          isActive={activeTab === "more"}
+          onPress={() => onTabChange("more")}
         />
       </View>
     </View>
@@ -102,5 +115,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  navigationLabel: { fontSize: 11 },
+  navigationLabel: { fontSize: 10 },
 });

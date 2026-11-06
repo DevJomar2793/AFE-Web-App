@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -9,7 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_database_session
-from app.models import Inventory, InventoryStatus, Sale, SaleItem
+from app.funds import record_fund_transaction
+from app.models import ActivityLog, Inventory, InventoryStatus, Sale, SaleItem, User
 from app.schemas import (
     SaleBatchCreate,
     SaleBatchItemCreate,
@@ -17,11 +19,17 @@ from app.schemas import (
     SaleResponse,
     SaleUpdate,
 )
+from app.security import get_current_user
 
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/sales", tags=["sales"])
+router = APIRouter(
+    prefix="/sales",
+    tags=["sales"],
+    dependencies=[Depends(get_current_user)],
+)
 DatabaseSession = Annotated[AsyncSession, Depends(get_database_session)]
+CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 @router.get(
@@ -67,6 +75,7 @@ async def get_sales(session: DatabaseSession) -> list[Sale]:
 async def create_sale(
     sale_data: SaleCreate,
     session: DatabaseSession,
+    current_user: CurrentUser,
 ) -> Sale:
     requested_items = [
         SaleBatchItemCreate(
@@ -78,6 +87,7 @@ async def create_sale(
         sale_data.customer_name,
         requested_items,
         session,
+        current_user.email,
     )
 
 
@@ -101,11 +111,13 @@ async def create_sale(
 async def create_sale_batch(
     sale_data: SaleBatchCreate,
     session: DatabaseSession,
+    current_user: CurrentUser,
 ) -> Sale:
     return await create_sale_transaction(
         sale_data.customer_name,
         sale_data.items,
         session,
+        current_user.email,
     )
 
 
@@ -113,6 +125,7 @@ async def create_sale_transaction(
     customer_name: str,
     requested_items: list[SaleBatchItemCreate],
     session: AsyncSession,
+    admin_email: str,
 ) -> Sale:
     try:
         requested_inventory_ids = [item.inventory_id for item in requested_items]
@@ -146,12 +159,7 @@ async def create_sale_transaction(
 
         for requested_item in requested_items:
             inventory_item = inventory_by_id[requested_item.inventory_id]
-            sale_price = inventory_item.price
-            if (
-                requested_item.quantity >= 6
-                and inventory_item.wholesale_price is not None
-            ):
-                sale_price = inventory_item.wholesale_price
+            sale_price = get_sale_price(inventory_item, requested_item.quantity)
 
             inventory_item.quantity -= requested_item.quantity
             update_inventory_status(inventory_item)
@@ -165,6 +173,27 @@ async def create_sale_transaction(
             )
 
         session.add(sale)
+        await session.flush()
+        sale_total = sum(
+            (item.price * item.quantity for item in sale.items),
+            start=Decimal("0.00"),
+        )
+        if sale_total > 0:
+            await record_fund_transaction(
+                session,
+                transaction_type="income",
+                source="sale",
+                amount=sale_total,
+                description=f"Sale #{sale.id} — {sale.customer_name}",
+                related_sale_id=sale.id,
+            )
+        session.add(
+            ActivityLog(
+                action="added",
+                affected_record=f"Sale — {sale.customer_name}",
+                admin_email=admin_email,
+            ),
+        )
         await session.commit()
         return await load_sale(sale.id, session)
     except HTTPException:
@@ -200,6 +229,7 @@ async def update_sale(
     sale_id: int,
     sale_data: SaleUpdate,
     session: DatabaseSession,
+    current_user: CurrentUser,
 ) -> Sale:
     try:
         sale = await session.scalar(
@@ -218,6 +248,10 @@ async def update_sale(
             .with_for_update(),
         )
         sale_items = list(sale_items_result.all())
+        previous_total = sum(
+            (item.price * item.quantity for item in sale_items),
+            start=Decimal("0.00"),
+        )
         existing_item_ids = {item.id for item in sale_items}
         requested_item_ids = {item.id for item in sale_data.items}
         if existing_item_ids != requested_item_ids:
@@ -265,12 +299,36 @@ async def update_sale(
             requested_item = requested_by_id[sale_item.id]
             inventory_item = inventory_by_id[sale_item.inventory_id]
             inventory_item.quantity -= requested_item.quantity - sale_item.quantity
-            inventory_item.price = requested_item.price
             update_inventory_status(inventory_item)
             sale_item.quantity = requested_item.quantity
-            sale_item.price = requested_item.price
+            sale_item.price = get_sale_price(
+                inventory_item,
+                requested_item.quantity,
+            )
+
+        updated_total = sum(
+            (item.price * item.quantity for item in sale_items),
+            start=Decimal("0.00"),
+        )
+        total_difference = updated_total - previous_total
+        if total_difference != 0:
+            await record_fund_transaction(
+                session,
+                transaction_type="income" if total_difference > 0 else "expense",
+                source="sale_adjustment",
+                amount=abs(total_difference),
+                description=f"Sale #{sale.id} adjustment — {sale.customer_name}",
+                related_sale_id=sale.id,
+            )
 
         sale.updated_at = datetime.now(timezone.utc)
+        session.add(
+            ActivityLog(
+                action="edited",
+                affected_record=f"Sale — {sale.customer_name}",
+                admin_email=current_user.email,
+            ),
+        )
         await session.commit()
         return await load_sale(sale.id, session)
     except HTTPException:
@@ -298,6 +356,7 @@ async def update_sale(
 async def delete_sale(
     sale_id: int,
     session: DatabaseSession,
+    current_user: CurrentUser,
 ) -> Response:
     try:
         sale = await session.scalar(
@@ -316,6 +375,10 @@ async def delete_sale(
             .with_for_update(),
         )
         sale_items = list(sale_items_result.all())
+        sale_total = sum(
+            (item.price * item.quantity for item in sale_items),
+            start=Decimal("0.00"),
+        )
         inventory_ids = sorted({item.inventory_id for item in sale_items})
 
         inventory_result = await session.scalars(
@@ -336,6 +399,23 @@ async def delete_sale(
             inventory_item.quantity += sale_item.quantity
             update_inventory_status(inventory_item)
 
+        if sale_total > 0:
+            await record_fund_transaction(
+                session,
+                transaction_type="expense",
+                source="sale_reversal",
+                amount=sale_total,
+                description=f"Removed sale #{sale.id} — {sale.customer_name}",
+                related_sale_id=sale.id,
+            )
+
+        session.add(
+            ActivityLog(
+                action="deleted",
+                affected_record=f"Sale — {sale.customer_name}",
+                admin_email=current_user.email,
+            ),
+        )
         await session.delete(sale)
         await session.commit()
         return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -372,3 +452,16 @@ def update_inventory_status(inventory_item: Inventory) -> None:
         inventory_item.status = InventoryStatus.OUT_OF_STOCK
     elif inventory_item.status == InventoryStatus.OUT_OF_STOCK:
         inventory_item.status = InventoryStatus.IN_STOCK
+
+
+def get_sale_price(inventory_item: Inventory, quantity: int) -> Decimal:
+    wholesale_minimum = 6
+    if inventory_item.category == "oil":
+        wholesale_minimum = 3 if inventory_item.oil_size == "1.5L" else 5
+
+    if (
+        quantity >= wholesale_minimum
+        and inventory_item.wholesale_price is not None
+    ):
+        return inventory_item.wholesale_price
+    return inventory_item.price

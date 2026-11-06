@@ -1,5 +1,11 @@
-import type { InventoryRecord, InventoryStatus } from "../types/inventory";
+import type {
+  InventoryRecord,
+  InventoryStatus,
+  OilSize,
+  ProductCategory,
+} from "../types/inventory";
 import { getAccessToken } from "./auth";
+import { API_BASE_URL } from "./config";
 
 const INVENTORY_PATH = "/api/v1/inventory/get-item";
 const ADD_INVENTORY_PATH = "/api/v1/inventory/add-stock";
@@ -33,17 +39,56 @@ export interface ReturnRecord {
   updatedAt: string;
 }
 
+export type ActivityLogAction = "added" | "edited" | "deleted" | "approved";
+
+export interface ActivityLogRecord {
+  id: number;
+  action: ActivityLogAction;
+  affectedRecord: string;
+  adminEmail: string;
+  createdAt: string;
+}
+
+export interface PendingAccountRecord {
+  id: number;
+  email: string;
+  createdAt: string;
+}
+
+export interface BusinessFundsRecord {
+  currentTotal: number;
+  isInitialized: boolean;
+  updatedAt: string;
+}
+
+export type FundTransactionType = "opening_balance" | "income" | "expense";
+
+export interface FundTransactionRecord {
+  id: number;
+  transactionType: FundTransactionType;
+  source: string;
+  amount: number;
+  description: string;
+  createdAt: string;
+}
+
 export interface CreateInventoryItemInput {
   item: string;
   quantity: number;
   price: number;
   wholesalePrice: number | null;
+  purchaseCost: number;
+  category: ProductCategory;
+  oilSize: OilSize | null;
 }
 
 export interface UpdateInventoryItemInput {
   quantity: number;
   price: number;
   wholesalePrice: number | null;
+  purchaseCost: number;
+  category: ProductCategory;
+  oilSize: OilSize | null;
 }
 
 export interface CreateSaleBatchInput {
@@ -52,7 +97,14 @@ export interface CreateSaleBatchInput {
 }
 
 export interface UpdateSaleInput {
-  items: { id: number; price: number; quantity: number }[];
+  items: { id: number; quantity: number }[];
+}
+
+export interface CreateReturnInput {
+  inventoryId: number;
+  quantity: number;
+  customerName: string;
+  reason: string;
 }
 
 export async function getInventoryItems(
@@ -81,6 +133,9 @@ export async function createInventoryItem(
       quantity: input.quantity,
       price: input.price,
       wholesale_price: input.wholesalePrice,
+      purchase_cost: input.purchaseCost,
+      category: input.category,
+      oil_size: input.oilSize,
     },
     "The inventory item could not be added.",
   );
@@ -99,11 +154,21 @@ export async function updateInventoryItem(
       quantity: input.quantity,
       price: input.price,
       wholesale_price: input.wholesalePrice,
+      purchase_cost: input.purchaseCost,
+      category: input.category,
+      oil_size: input.oilSize,
     },
     "The inventory item could not be updated.",
   );
 
   return parseInventoryItem(responseBody);
+}
+
+export async function deleteInventoryItem(inventoryId: number): Promise<void> {
+  await deleteApiResource(
+    `/api/v1/inventory/${inventoryId}`,
+    "The inventory item could not be deleted.",
+  );
 }
 
 export async function getSales(signal?: AbortSignal): Promise<SaleRecord[]> {
@@ -153,25 +218,124 @@ export async function updateSale(
 }
 
 export async function deleteSale(saleId: number): Promise<void> {
-  const apiBaseUrl = process.env.EXPO_PUBLIC_BACKEND_API_URL?.replace(
-    /\/+$/,
-    "",
+  await deleteApiResource(
+    `/api/v1/sales/${saleId}`,
+    "The sale could not be removed.",
   );
-  if (!apiBaseUrl) {
-    throw new Error(
-      "The mobile API URL is not configured. Add EXPO_PUBLIC_BACKEND_API_URL to mobile/.env.",
-    );
-  }
+}
 
-  const response = await fetch(`${apiBaseUrl}/api/v1/sales/${saleId}`, {
-    method: "DELETE",
-    headers: await getApiHeaders(),
-  });
-  if (!response.ok) {
-    const responseBody: unknown = await response.json().catch(() => null);
-    throw new Error(
-      getApiErrorMessage(responseBody, "The sale could not be removed."),
-    );
+export async function createReturn(
+  input: CreateReturnInput,
+): Promise<ReturnRecord> {
+  const responseBody = await sendApiRequest(
+    "/api/v1/returns/add-returns",
+    "POST",
+    {
+      inventory_id: input.inventoryId,
+      quantity: input.quantity,
+      customer_name: input.customerName,
+      reason: input.reason,
+    },
+    "The return could not be saved.",
+  );
+  return parseReturn(responseBody);
+}
+
+export async function getBusinessFunds(
+  signal?: AbortSignal,
+): Promise<BusinessFundsRecord> {
+  return parseBusinessFunds(
+    await getApiResponse(
+      "/api/v1/business-funds",
+      signal,
+      "Unable to load business funds.",
+    ),
+  );
+}
+
+export async function initializeBusinessFunds(
+  amount: number,
+): Promise<BusinessFundsRecord> {
+  return parseBusinessFunds(
+    await sendApiRequest(
+      "/api/v1/business-funds/initialize",
+      "POST",
+      { amount },
+      "Unable to set the current business funds.",
+    ),
+  );
+}
+
+export async function createFundTransaction(input: {
+  transactionType: "income" | "expense";
+  amount: number;
+  description: string;
+}): Promise<FundTransactionRecord> {
+  return parseFundTransaction(
+    await sendApiRequest(
+      "/api/v1/business-funds/transactions",
+      "POST",
+      {
+        transaction_type: input.transactionType,
+        amount: input.amount,
+        description: input.description,
+      },
+      "Unable to save the fund transaction.",
+    ),
+  );
+}
+
+export async function getFundTransactions(
+  signal?: AbortSignal,
+): Promise<FundTransactionRecord[]> {
+  const responseBody = await getApiResponse(
+    "/api/v1/business-funds/transactions",
+    signal,
+    "Unable to load fund transactions.",
+  );
+  if (!Array.isArray(responseBody)) {
+    throw new Error("The fund transaction API returned an invalid response.");
+  }
+  return responseBody.map(parseFundTransaction);
+}
+
+export async function getActivityLogs(
+  signal?: AbortSignal,
+): Promise<ActivityLogRecord[]> {
+  const responseBody = await getApiResponse(
+    "/api/v1/activity-logs",
+    signal,
+    "Activity logs could not be loaded.",
+  );
+  if (!Array.isArray(responseBody)) {
+    throw new Error("The activity log API returned an invalid response.");
+  }
+  return responseBody.map(parseActivityLog);
+}
+
+export async function getPendingAccounts(
+  signal?: AbortSignal,
+): Promise<PendingAccountRecord[]> {
+  const responseBody = await getApiResponse(
+    "/api/v1/users/pending",
+    signal,
+    "Unable to load pending accounts.",
+  );
+  if (!Array.isArray(responseBody)) {
+    throw new Error("The pending account API returned an invalid response.");
+  }
+  return responseBody.map(parsePendingAccount);
+}
+
+export async function approveAccount(userId: number): Promise<void> {
+  const responseBody = await sendApiRequest(
+    `/api/v1/users/${userId}/approve`,
+    "PATCH",
+    {},
+    "The account could not be approved.",
+  );
+  if (!isRecord(responseBody) || responseBody.id !== userId || responseBody.is_active !== true) {
+    throw new Error("The account approval API returned an invalid response.");
   }
 }
 
@@ -195,18 +359,7 @@ async function getApiResponse(
   signal: AbortSignal | undefined,
   fallbackMessage: string,
 ): Promise<unknown> {
-  const apiBaseUrl = process.env.EXPO_PUBLIC_BACKEND_API_URL?.replace(
-    /\/+$/,
-    "",
-  );
-
-  if (!apiBaseUrl) {
-    throw new Error(
-      "The mobile API URL is not configured. Add EXPO_PUBLIC_BACKEND_API_URL to mobile/.env.",
-    );
-  }
-
-  const response = await fetch(`${apiBaseUrl}${path}`, {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: await getApiHeaders(),
     signal,
   });
@@ -225,18 +378,7 @@ async function sendApiRequest(
   body: Record<string, unknown>,
   fallbackMessage: string,
 ): Promise<unknown> {
-  const apiBaseUrl = process.env.EXPO_PUBLIC_BACKEND_API_URL?.replace(
-    /\/+$/,
-    "",
-  );
-
-  if (!apiBaseUrl) {
-    throw new Error(
-      "The mobile API URL is not configured. Add EXPO_PUBLIC_BACKEND_API_URL to mobile/.env.",
-    );
-  }
-
-  const response = await fetch(`${apiBaseUrl}${path}`, {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers: {
       ...(await getApiHeaders()),
@@ -251,6 +393,17 @@ async function sendApiRequest(
   }
 
   return responseBody;
+}
+
+async function deleteApiResource(path: string, fallbackMessage: string) {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "DELETE",
+    headers: await getApiHeaders(),
+  });
+  if (!response.ok) {
+    const responseBody: unknown = await response.json().catch(() => null);
+    throw new Error(getApiErrorMessage(responseBody, fallbackMessage));
+  }
 }
 
 async function getApiHeaders() {
@@ -270,6 +423,7 @@ function parseInventoryItem(value: unknown): InventoryRecord {
   const price = parsePrice(value.price);
   const wholesalePrice =
     value.wholesale_price === null ? null : parsePrice(value.wholesale_price);
+  const purchaseCost = parsePrice(value.purchase_cost);
 
   if (
     !isPositiveInteger(value.id) ||
@@ -279,6 +433,9 @@ function parseInventoryItem(value: unknown): InventoryRecord {
     !isNonNegativeInteger(value.returns_count) ||
     price === null ||
     (value.wholesale_price !== null && wholesalePrice === null) ||
+    purchaseCost === null ||
+    !isProductCategory(value.category) ||
+    !isValidOilSize(value.category, value.oil_size) ||
     !isInventoryStatus(value.status) ||
     !isValidDate(value.created_at) ||
     !isValidDate(value.updated_at)
@@ -293,10 +450,87 @@ function parseInventoryItem(value: unknown): InventoryRecord {
     returnsCount: value.returns_count,
     price,
     wholesalePrice,
+    purchaseCost,
+    category: value.category,
+    oilSize: value.oil_size,
     status: value.status,
     createdAt: value.created_at,
     updatedAt: value.updated_at,
   };
+}
+
+function parseBusinessFunds(value: unknown): BusinessFundsRecord {
+  if (!isRecord(value)) throw new Error("Invalid business funds response.");
+  const currentTotal = parseSignedPrice(value.current_total);
+  if (
+    currentTotal === null ||
+    typeof value.is_initialized !== "boolean" ||
+    !isValidDate(value.updated_at)
+  ) {
+    throw new Error("Invalid business funds response.");
+  }
+  return {
+    currentTotal,
+    isInitialized: value.is_initialized,
+    updatedAt: value.updated_at,
+  };
+}
+
+function parseFundTransaction(value: unknown): FundTransactionRecord {
+  if (!isRecord(value)) throw new Error("Invalid fund transaction response.");
+  const amount = parsePrice(value.amount);
+  if (
+    !isPositiveInteger(value.id) ||
+    !isFundTransactionType(value.transaction_type) ||
+    typeof value.source !== "string" ||
+    amount === null ||
+    typeof value.description !== "string" ||
+    !value.description.trim() ||
+    !isValidDate(value.created_at)
+  ) {
+    throw new Error("Invalid fund transaction response.");
+  }
+  return {
+    id: value.id,
+    transactionType: value.transaction_type,
+    source: value.source,
+    amount,
+    description: value.description,
+    createdAt: value.created_at,
+  };
+}
+
+function parseActivityLog(value: unknown): ActivityLogRecord {
+  if (
+    !isRecord(value) ||
+    !isPositiveInteger(value.id) ||
+    !isActivityLogAction(value.action) ||
+    typeof value.affected_record !== "string" ||
+    typeof value.admin_email !== "string" ||
+    !isValidDate(value.created_at)
+  ) {
+    throw new Error("Invalid activity log response.");
+  }
+  return {
+    id: value.id,
+    action: value.action,
+    affectedRecord: value.affected_record,
+    adminEmail: value.admin_email,
+    createdAt: value.created_at,
+  };
+}
+
+function parsePendingAccount(value: unknown): PendingAccountRecord {
+  if (
+    !isRecord(value) ||
+    !isPositiveInteger(value.id) ||
+    typeof value.email !== "string" ||
+    !value.email.trim() ||
+    !isValidDate(value.created_at)
+  ) {
+    throw new Error("Invalid pending account response.");
+  }
+  return { id: value.id, email: value.email, createdAt: value.created_at };
 }
 
 function parseSale(value: unknown): SaleRecord {
@@ -401,6 +635,12 @@ function parsePrice(value: unknown): number | null {
   return Number.isFinite(parsedPrice) && parsedPrice >= 0 ? parsedPrice : null;
 }
 
+function parseSignedPrice(value: unknown): number | null {
+  if (typeof value !== "number" && typeof value !== "string") return null;
+  const parsedPrice = Number(value);
+  return Number.isFinite(parsedPrice) ? parsedPrice : null;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -417,6 +657,27 @@ function isInventoryStatus(value: unknown): value is InventoryStatus {
   return (
     value === "in_stock" || value === "low_stock" || value === "out_of_stock"
   );
+}
+
+function isProductCategory(value: unknown): value is ProductCategory {
+  return value === "eggs" || value === "oil";
+}
+
+function isActivityLogAction(value: unknown): value is ActivityLogAction {
+  return value === "added" || value === "edited" || value === "deleted" || value === "approved";
+}
+
+function isFundTransactionType(value: unknown): value is FundTransactionType {
+  return value === "opening_balance" || value === "income" || value === "expense";
+}
+
+function isValidOilSize(
+  category: unknown,
+  oilSize: unknown,
+): oilSize is OilSize | null {
+  return category === "eggs"
+    ? oilSize === null
+    : oilSize === "1.5L" || oilSize === "350ml";
 }
 
 function isValidDate(value: unknown): value is string {

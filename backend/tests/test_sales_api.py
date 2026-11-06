@@ -166,6 +166,60 @@ async def test_create_sale_uses_wholesale_price_per_item(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("oil_size", "wholesale_minimum"),
+    [("1.5L", 3), ("350ml", 5)],
+)
+async def test_oil_wholesale_price_starts_at_size_threshold(
+    client: AsyncClient,
+    oil_size: str,
+    wholesale_minimum: int,
+) -> None:
+    async with async_session_factory() as session:
+        item = Inventory(
+            item=f"__oil_{oil_size}_wholesale_test__",
+            quantity=20,
+            price=Decimal("100.00"),
+            wholesale_price=Decimal("80.00"),
+            category="oil",
+            oil_size=oil_size,
+            status=InventoryStatus.IN_STOCK,
+        )
+        session.add(item)
+        await session.commit()
+        await session.refresh(item)
+
+    try:
+        retail_response = await client.post(
+            "/api/v1/sales/add-sales",
+            json={
+                "inventory_id": item.id,
+                "quantity": wholesale_minimum - 1,
+                "customer_name": "Retail Customer",
+            },
+        )
+        wholesale_response = await client.post(
+            "/api/v1/sales/add-sales",
+            json={
+                "inventory_id": item.id,
+                "quantity": wholesale_minimum,
+                "customer_name": "Wholesale Customer",
+            },
+        )
+
+        assert retail_response.status_code == 201
+        assert wholesale_response.status_code == 201
+        assert Decimal(retail_response.json()["items"][0]["price"]) == Decimal(
+            "100.00",
+        )
+        assert Decimal(wholesale_response.json()["items"][0]["price"]) == Decimal(
+            "80.00",
+        )
+    finally:
+        await remove_inventory_test_data(item.id)
+
+
+@pytest.mark.asyncio
 async def test_batch_failure_rolls_back_sale_and_inventory(
     client: AsyncClient,
     inventory_item: Inventory,
@@ -263,7 +317,7 @@ async def test_get_sales_returns_one_transaction_with_all_items(
 
 
 @pytest.mark.asyncio
-async def test_update_sale_adjusts_every_inventory_quantity_and_price(
+async def test_update_sale_adjusts_quantities_and_recalculates_prices(
     client: AsyncClient,
     inventory_item: Inventory,
     second_inventory_item: Inventory,
@@ -290,12 +344,10 @@ async def test_update_sale_adjusts_every_inventory_quantity_and_price(
                 {
                     "id": items_by_inventory_id[inventory_item.id]["id"],
                     "quantity": 4,
-                    "price": 300.50,
                 },
                 {
                     "id": items_by_inventory_id[second_inventory_item.id]["id"],
                     "quantity": 1,
-                    "price": 175,
                 },
             ],
         },
@@ -307,6 +359,10 @@ async def test_update_sale_adjusts_every_inventory_quantity_and_price(
     }
     assert updated_items[inventory_item.id]["quantity"] == 4
     assert updated_items[second_inventory_item.id]["quantity"] == 1
+    assert Decimal(updated_items[inventory_item.id]["price"]) == Decimal("250.00")
+    assert Decimal(updated_items[second_inventory_item.id]["price"]) == Decimal(
+        "180.00",
+    )
 
     async with async_session_factory() as session:
         first_inventory = await session.get(Inventory, inventory_item.id)
@@ -314,10 +370,10 @@ async def test_update_sale_adjusts_every_inventory_quantity_and_price(
 
     assert first_inventory is not None
     assert first_inventory.quantity == 6
-    assert first_inventory.price == Decimal("300.50")
+    assert first_inventory.price == Decimal("250.00")
     assert second_inventory is not None
     assert second_inventory.quantity == 19
-    assert second_inventory.price == Decimal("175.00")
+    assert second_inventory.price == Decimal("180.00")
 
 
 @pytest.mark.asyncio
@@ -450,7 +506,6 @@ async def test_concurrent_sales_do_not_oversell_inventory(
         {"items": [{"id": 1, "quantity": 1.5, "price": 250}]},
         {"items": [{"id": 1, "quantity": 1, "price": -1}]},
         {"items": [{"id": 1, "quantity": 1, "price": 10.123}]},
-        {"items": [{"id": 1, "quantity": 1}]},
     ],
 )
 async def test_update_sale_rejects_invalid_data(

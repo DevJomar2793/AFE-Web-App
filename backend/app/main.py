@@ -6,11 +6,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import engine
+from app.routes.activity_logs import router as activity_logs_router
 from app.routes.auth import router as auth_router
+from app.routes.business_funds import router as business_funds_router
 from app.routes.health import router as health_router
 from app.routes.inventory import router as inventory_router
 from app.routes.returns import router as returns_router
 from app.routes.sales import router as sales_router
+from app.routes.users import router as users_router
 
 
 @asynccontextmanager
@@ -38,5 +41,8 @@ for router in (
     inventory_router,
     sales_router,
     returns_router,
+    activity_logs_router,
+    users_router,
+    business_funds_router,
 ):
     app.include_router(router, prefix="/api/v1")

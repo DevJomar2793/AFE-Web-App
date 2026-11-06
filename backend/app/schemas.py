@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import (
     BaseModel,
@@ -52,12 +53,23 @@ class UserResponse(BaseModel):
     id: int
     email: EmailStr
     is_active: bool
+    is_admin: bool
     created_at: datetime
 
 
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class ActivityLogResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    action: Literal["added", "edited", "deleted", "approved"]
+    affected_record: str
+    admin_email: EmailStr
+    created_at: datetime
 
 
 class InventoryCreate(BaseModel):
@@ -70,6 +82,14 @@ class InventoryCreate(BaseModel):
         max_digits=12,
         decimal_places=2,
     )
+    purchase_cost: Decimal = Field(
+        default=Decimal("0.00"),
+        ge=0,
+        max_digits=12,
+        decimal_places=2,
+    )
+    category: Literal["eggs", "oil"] = "eggs"
+    oil_size: Literal["1.5L", "350ml"] | None = None
     status: InventoryStatus | None = None
 
     @model_validator(mode="after")
@@ -88,6 +108,10 @@ class InventoryCreate(BaseModel):
             raise ValueError("An item with zero quantity must be out of stock")
         elif self.quantity > 0 and self.status == InventoryStatus.OUT_OF_STOCK:
             raise ValueError("An item with available quantity cannot be out of stock")
+        if self.category == "oil" and self.oil_size is None:
+            raise ValueError("Oil products must include a product size")
+        if self.category == "eggs" and self.oil_size is not None:
+            raise ValueError("Egg products cannot include an oil size")
         return self
 
 
@@ -102,6 +126,14 @@ class InventoryUpdate(BaseModel):
         max_digits=12,
         decimal_places=2,
     )
+    purchase_cost: Decimal | None = Field(
+        default=None,
+        ge=0,
+        max_digits=12,
+        decimal_places=2,
+    )
+    category: Literal["eggs", "oil"] | None = None
+    oil_size: Literal["1.5L", "350ml"] | None = None
 
 
 class InventoryResponse(BaseModel):
@@ -113,6 +145,9 @@ class InventoryResponse(BaseModel):
     returns_count: int
     price: Decimal
     wholesale_price: Decimal | None
+    purchase_cost: Decimal
+    category: Literal["eggs", "oil"]
+    oil_size: Literal["1.5L", "350ml"] | None
     status: InventoryStatus
     created_at: datetime
     updated_at: datetime
@@ -156,7 +191,13 @@ class SaleItemUpdate(BaseModel):
 
     id: int = Field(gt=0, strict=True)
     quantity: int = Field(gt=0, strict=True)
-    price: Decimal = Field(ge=0, max_digits=12, decimal_places=2)
+    # Accepted for compatibility with older clients. Pricing is calculated by the API.
+    price: Decimal | None = Field(
+        default=None,
+        ge=0,
+        max_digits=12,
+        decimal_places=2,
+    )
 
 
 class SaleUpdate(BaseModel):
@@ -229,3 +270,46 @@ class ReturnResponse(BaseModel):
     reason: str
     created_at: datetime
     updated_at: datetime
+
+
+class BusinessFundsInitialize(BaseModel):
+    amount: Decimal = Field(ge=0, max_digits=14, decimal_places=2)
+
+
+class FundTransactionCreate(BaseModel):
+    transaction_type: Literal["income", "expense"]
+    amount: Decimal = Field(gt=0, max_digits=14, decimal_places=2)
+    description: str = Field(min_length=1, max_length=255)
+
+    @field_validator("description", mode="before")
+    @classmethod
+    def strip_description(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+
+class BusinessFundsResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    current_total: Decimal
+    is_initialized: bool
+    updated_at: datetime
+
+
+class FundTransactionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    transaction_type: Literal["opening_balance", "income", "expense"]
+    source: Literal[
+        "opening_balance",
+        "manual",
+        "sale",
+        "sale_adjustment",
+        "sale_reversal",
+        "inventory_purchase",
+    ]
+    amount: Decimal
+    description: str
+    related_sale_id: int | None
+    related_inventory_id: int | None
+    created_at: datetime

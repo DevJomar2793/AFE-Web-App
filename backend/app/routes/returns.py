@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_database_session
-from app.models import Inventory, Return
+from app.models import ActivityLog, Inventory, Return, User
 from app.schemas import ReturnCreate, ReturnResponse
 from app.security import get_current_user
 
@@ -20,6 +20,7 @@ router = APIRouter(
     dependencies=[Depends(get_current_user)],
 )
 DatabaseSession = Annotated[AsyncSession, Depends(get_database_session)]
+CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 @router.get(
@@ -62,6 +63,7 @@ async def get_returns(session: DatabaseSession) -> list[Return]:
 async def create_return(
     return_data: ReturnCreate,
     session: DatabaseSession,
+    current_user: CurrentUser,
 ) -> Return:
     try:
         inventory_item = await session.scalar(
@@ -84,6 +86,17 @@ async def create_return(
             item=inventory_item,
         )
         session.add(inventory_return)
+        await session.flush()
+        session.add(
+            ActivityLog(
+                action="added",
+                affected_record=(
+                    f"Return — {inventory_item.item} "
+                    f"for {inventory_return.customer_name}"
+                ),
+                admin_email=current_user.email,
+            ),
+        )
         await session.commit()
         await session.refresh(inventory_return, attribute_names=["item"])
         return inventory_return

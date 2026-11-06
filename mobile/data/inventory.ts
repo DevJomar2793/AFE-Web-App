@@ -91,13 +91,14 @@ export function toMockInventoryItem(record: InventoryRecord): InventoryItem {
   const matchingMockItem = inventoryItems.find(
     (item) => item.name.toLowerCase() === record.item.toLowerCase(),
   );
-  const stockUnit =
-    matchingMockItem?.stock.split(" ").slice(1).join(" ") || "units";
+  const stockUnit = record.category === "eggs" ? "trays" : "bottles";
+  const categoryLabel =
+    record.category === "eggs" ? "Eggs" : `Oil · ${record.oilSize}`;
 
   return {
     id: record.id,
     name: record.item,
-    category: matchingMockItem?.category ?? "Inventory",
+    category: categoryLabel,
     price: formatCurrency(record.price),
     wholesalePrice:
       record.wholesalePrice === null
@@ -107,7 +108,10 @@ export function toMockInventoryItem(record: InventoryRecord): InventoryItem {
     stockLabel: statusLabels[record.status],
     isLowStock: record.status !== "in_stock",
     returnsCount: record.returnsCount,
-    image: matchingMockItem?.image ?? eggsImage,
+    image:
+      record.category === "oil"
+        ? palmOilImage
+        : matchingMockItem?.image ?? eggsImage,
   };
 }
 

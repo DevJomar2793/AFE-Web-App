@@ -24,6 +24,7 @@ import type { InventoryRecord } from "../types/inventory";
 import type { MobileTab } from "./bottom-navigation";
 
 interface OverviewScreenProps {
+  isAdmin: boolean;
   isLoggingOut: boolean;
   onLogOut: () => void;
   onTabChange: (tab: MobileTab) => void;
@@ -117,11 +118,13 @@ function LoadingState() {
 function AccountHeader({
   email,
   isLoading,
+  isAdmin,
   isLoggingOut,
   onLogOut,
 }: {
   email: string;
   isLoading: boolean;
+  isAdmin: boolean;
   isLoggingOut: boolean;
   onLogOut: () => void;
 }) {
@@ -139,7 +142,9 @@ function AccountHeader({
           {isLoading ? "Loading account..." : email}
         </Text>
         <View style={styles.accountBadge}>
-          <Text style={styles.accountBadgeText}>Active account</Text>
+          <Text style={styles.accountBadgeText}>
+            {isAdmin ? "Admin · Active" : "Staff · Active"}
+          </Text>
         </View>
       </View>
       <Pressable
@@ -258,6 +263,7 @@ function ErrorState({
 }
 
 export function OverviewScreen({
+  isAdmin,
   isLoggingOut,
   onLogOut,
   onTabChange,
@@ -435,6 +441,7 @@ export function OverviewScreen({
       >
         <AccountHeader
           email={accountEmail}
+          isAdmin={isAdmin}
           isLoading={isLoadingAccount}
           isLoggingOut={isLoggingOut}
           onLogOut={onLogOut}
@@ -600,7 +607,7 @@ export function OverviewScreen({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="View sales"
-                  onPress={() => onTabChange("orders")}
+                  onPress={() => onTabChange("transactions")}
                   hitSlop={8}
                 >
                   <Text style={styles.viewSalesText}>View sales</Text>

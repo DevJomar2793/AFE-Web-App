@@ -1,4 +1,16 @@
 export type InventoryStatus = "in_stock" | "low_stock" | "out_of_stock";
+export type ProductCategory = "eggs" | "oil";
+export type OilSize = "1.5L" | "350ml";
+
+export type ActivityLogAction = "added" | "edited" | "deleted" | "approved";
+
+export type ActivityLog = {
+  id: number;
+  action: ActivityLogAction;
+  affectedRecord: string;
+  adminEmail: string;
+  createdAt: string;
+};
 
 export type InventoryItem = {
   id: number;
@@ -7,6 +19,9 @@ export type InventoryItem = {
   returnsCount: number;
   price: number;
   wholesalePrice: number | null;
+  purchaseCost: number;
+  category: ProductCategory;
+  oilSize: OilSize | null;
   status: InventoryStatus;
   createdAt: string;
   updatedAt: string;
@@ -44,12 +59,34 @@ export type CreateInventoryItemInput = {
   quantity: number;
   price: number;
   wholesalePrice: number | null;
+  purchaseCost: number;
+  category: ProductCategory;
+  oilSize: OilSize | null;
 };
 
 export type UpdateInventoryItemInput = {
   quantity: number;
   price: number;
   wholesalePrice: number | null;
+  purchaseCost: number;
+  category: ProductCategory;
+  oilSize: OilSize | null;
+};
+
+export type BusinessFunds = {
+  currentTotal: number;
+  isInitialized: boolean;
+  updatedAt: string;
+};
+
+export type FundTransactionType = "opening_balance" | "income" | "expense";
+
+export type FundTransaction = {
+  id: number;
+  transactionType: FundTransactionType;
+  amount: number;
+  description: string;
+  createdAt: string;
 };
 
 export type CreateSaleInput = {
@@ -69,7 +106,6 @@ export type CreateSaleBatchInput = {
 export type UpdateSaleInput = {
   items: {
     id: number;
-    price: number;
     quantity: number;
   }[];
 };
@@ -98,6 +134,13 @@ export type LoginResponse = {
 export type UserAccount = {
   email: string;
   isActive: boolean;
+  isAdmin: boolean;
+};
+
+export type PendingAccount = {
+  id: number;
+  email: string;
+  createdAt: string;
 };
 
 export class ApiRequestError extends Error {
@@ -117,9 +160,10 @@ const DEFAULT_API_BASE_URL =
     ? "https://atbackend-web-app-afe.onrender.com"
     : "http://127.0.0.1:8000";
 
-const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_BACKEND_API_URL ?? DEFAULT_API_BASE_URL
-).replace(/\/+$/, "");
+const API_BASE_URL = (process.env.NEXT_API_URL ?? DEFAULT_API_BASE_URL).replace(
+  /\/+$/,
+  "",
+);
 
 export async function registerUser(input: RegisterInput): Promise<void> {
   await apiRequest(
@@ -180,7 +224,8 @@ export async function getCurrentUser(
     !isRecord(response) ||
     typeof response.email !== "string" ||
     !response.email ||
-    typeof response.is_active !== "boolean"
+    typeof response.is_active !== "boolean" ||
+    typeof response.is_admin !== "boolean"
   ) {
     throw new Error("Invalid account response");
   }
@@ -188,7 +233,52 @@ export async function getCurrentUser(
   return {
     email: response.email,
     isActive: response.is_active,
+    isAdmin: response.is_admin,
   };
+}
+
+export async function getPendingAccounts(
+  signal?: AbortSignal,
+): Promise<PendingAccount[]> {
+  const response = await apiRequest(
+    "/api/v1/users/pending",
+    { signal },
+    "Unable to load pending accounts.",
+  );
+  if (!Array.isArray(response)) {
+    throw new Error("Invalid pending accounts response");
+  }
+  return response.map(parsePendingAccount);
+}
+
+export async function approveAccount(userId: number): Promise<void> {
+  const response = await apiRequest(
+    `/api/v1/users/${userId}/approve`,
+    { method: "PATCH" },
+    "The account could not be approved.",
+  );
+
+  if (
+    !isRecord(response) ||
+    response.id !== userId ||
+    response.is_active !== true
+  ) {
+    throw new Error("Invalid account approval response");
+  }
+}
+
+export async function getActivityLogs(
+  signal?: AbortSignal,
+): Promise<ActivityLog[]> {
+  const response = await apiRequest(
+    "/api/v1/activity-logs",
+    { signal },
+    "Unable to load activity logs.",
+  );
+  if (!Array.isArray(response)) {
+    throw new Error("Invalid activity logs response");
+  }
+  return response.map(parseActivityLog);
 }
 
 export async function getInventoryItems(
@@ -215,6 +305,9 @@ export async function createInventoryItem(
         quantity: input.quantity,
         price: input.price,
         wholesale_price: input.wholesalePrice,
+        purchase_cost: input.purchaseCost,
+        category: input.category,
+        oil_size: input.oilSize,
       }),
     },
     "The inventory item could not be added.",
@@ -234,11 +327,22 @@ export async function updateInventoryItem(
         quantity: input.quantity,
         price: input.price,
         wholesale_price: input.wholesalePrice,
+        purchase_cost: input.purchaseCost,
+        category: input.category,
+        oil_size: input.oilSize,
       }),
     },
     "The inventory item could not be updated.",
   );
   return parseInventoryItem(response);
+}
+
+export async function deleteInventoryItem(inventoryId: number): Promise<void> {
+  await apiRequest(
+    `/api/v1/inventory/${inventoryId}`,
+    { method: "DELETE" },
+    "The inventory item could not be deleted.",
+  );
 }
 
 export async function getSales(signal?: AbortSignal): Promise<Sale[]> {
@@ -338,6 +442,62 @@ export async function createReturn(
   return parseReturn(response);
 }
 
+export async function getBusinessFunds(
+  signal?: AbortSignal,
+): Promise<BusinessFunds> {
+  const response = await apiRequest(
+    "/api/v1/business-funds",
+    { signal },
+    "Unable to load business funds.",
+  );
+  return parseBusinessFunds(response);
+}
+
+export async function getFundTransactions(
+  signal?: AbortSignal,
+): Promise<FundTransaction[]> {
+  const response = await apiRequest(
+    "/api/v1/business-funds/transactions",
+    { signal },
+    "Unable to load fund transactions.",
+  );
+  if (!Array.isArray(response)) {
+    throw new Error("Invalid fund transaction response");
+  }
+  return response.map(parseFundTransaction);
+}
+
+export async function initializeBusinessFunds(
+  amount: number,
+): Promise<BusinessFunds> {
+  const response = await apiRequest(
+    "/api/v1/business-funds/initialize",
+    { method: "POST", body: JSON.stringify({ amount }) },
+    "Unable to set the current business funds.",
+  );
+  return parseBusinessFunds(response);
+}
+
+export async function createFundTransaction(input: {
+  transactionType: "income" | "expense";
+  amount: number;
+  description: string;
+}): Promise<FundTransaction> {
+  const response = await apiRequest(
+    "/api/v1/business-funds/transactions",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        transaction_type: input.transactionType,
+        amount: input.amount,
+        description: input.description,
+      }),
+    },
+    "Unable to save the fund transaction.",
+  );
+  return parseFundTransaction(response);
+}
+
 async function apiRequest(
   path: string,
   options: RequestInit,
@@ -371,6 +531,7 @@ function parseInventoryItem(value: unknown): InventoryItem {
   if (!isRecord(value)) throw new Error("Invalid inventory item");
   const price = parsePrice(value.price);
   const wholesalePrice = parseNullablePrice(value.wholesale_price);
+  const purchaseCost = parsePrice(value.purchase_cost);
 
   if (
     !isPositiveInteger(value.id) ||
@@ -382,6 +543,10 @@ function parseInventoryItem(value: unknown): InventoryItem {
     price < 0 ||
     (wholesalePrice !== null &&
       (!Number.isFinite(wholesalePrice) || wholesalePrice < 0)) ||
+    !Number.isFinite(purchaseCost) ||
+    purchaseCost < 0 ||
+    !isProductCategory(value.category) ||
+    !isValidOilSize(value.category, value.oil_size) ||
     !isInventoryStatus(value.status) ||
     typeof value.created_at !== "string" ||
     typeof value.updated_at !== "string"
@@ -396,9 +561,95 @@ function parseInventoryItem(value: unknown): InventoryItem {
     returnsCount: value.returns_count,
     price,
     wholesalePrice,
+    purchaseCost,
+    category: value.category,
+    oilSize: value.oil_size,
     status: value.status,
     createdAt: value.created_at,
     updatedAt: value.updated_at,
+  };
+}
+
+function parseBusinessFunds(value: unknown): BusinessFunds {
+  if (!isRecord(value)) throw new Error("Invalid business funds response");
+  const currentTotal = parsePrice(value.current_total);
+  if (
+    !Number.isFinite(currentTotal) ||
+    typeof value.is_initialized !== "boolean" ||
+    !isValidDate(value.updated_at)
+  ) {
+    throw new Error("Invalid business funds response");
+  }
+  return {
+    currentTotal,
+    isInitialized: value.is_initialized,
+    updatedAt: value.updated_at,
+  };
+}
+
+function parseFundTransaction(value: unknown): FundTransaction {
+  if (!isRecord(value)) throw new Error("Invalid fund transaction");
+  const amount = parsePrice(value.amount);
+  if (
+    !isPositiveInteger(value.id) ||
+    !isFundTransactionType(value.transaction_type) ||
+    !Number.isFinite(amount) ||
+    amount < 0 ||
+    typeof value.description !== "string" ||
+    !value.description.trim() ||
+    !isValidDate(value.created_at)
+  ) {
+    throw new Error("Invalid fund transaction");
+  }
+  return {
+    id: value.id,
+    transactionType: value.transaction_type,
+    amount,
+    description: value.description,
+    createdAt: value.created_at,
+  };
+}
+
+function parseActivityLog(value: unknown): ActivityLog {
+  if (
+    !isRecord(value) ||
+    !isPositiveInteger(value.id) ||
+    !isActivityLogAction(value.action) ||
+    typeof value.affected_record !== "string" ||
+    !value.affected_record.trim() ||
+    typeof value.admin_email !== "string" ||
+    !value.admin_email.trim() ||
+    !isValidDate(value.created_at)
+  ) {
+    throw new Error("Invalid activity log");
+  }
+
+  return {
+    id: value.id,
+    action: value.action,
+    affectedRecord: value.affected_record,
+    adminEmail: value.admin_email,
+    createdAt: value.created_at,
+  };
+}
+
+function parsePendingAccount(value: unknown): PendingAccount {
+  if (
+    !isRecord(value) ||
+    !isPositiveInteger(value.id) ||
+    typeof value.email !== "string" ||
+    !value.email.trim() ||
+    value.is_active !== false ||
+    value.is_admin !== false ||
+    !isValidDate(value.created_at)
+  ) {
+    throw new Error("Invalid pending account");
+  }
+
+  return {
+    id: value.id,
+    email: value.email,
+    createdAt: value.created_at,
   };
 }
 
@@ -519,6 +770,52 @@ function parseNullablePrice(value: unknown) {
 function isInventoryStatus(value: unknown): value is InventoryStatus {
   return (
     value === "in_stock" || value === "low_stock" || value === "out_of_stock"
+  );
+}
+
+function isProductCategory(value: unknown): value is ProductCategory {
+  return value === "eggs" || value === "oil";
+}
+
+function isValidOilSize(
+  category: unknown,
+  oilSize: unknown,
+): oilSize is OilSize | null {
+  return category === "eggs"
+    ? oilSize === null
+    : oilSize === "1.5L" || oilSize === "350ml";
+}
+
+export function getWholesaleMinimumQuantity(item: InventoryItem): number {
+  if (item.category === "eggs") return 6;
+  return item.oilSize === "1.5L" ? 3 : 5;
+}
+
+export function getAutomaticUnitPrice(
+  item: InventoryItem,
+  quantity: number,
+): { price: number; usesWholesalePrice: boolean } {
+  const usesWholesalePrice =
+    item.wholesalePrice !== null &&
+    quantity >= getWholesaleMinimumQuantity(item);
+  return {
+    price: usesWholesalePrice ? (item.wholesalePrice ?? item.price) : item.price,
+    usesWholesalePrice,
+  };
+}
+
+function isActivityLogAction(value: unknown): value is ActivityLogAction {
+  return (
+    value === "added" ||
+    value === "edited" ||
+    value === "deleted" ||
+    value === "approved"
+  );
+}
+
+function isFundTransactionType(value: unknown): value is FundTransactionType {
+  return (
+    value === "opening_balance" || value === "income" || value === "expense"
   );
 }
 

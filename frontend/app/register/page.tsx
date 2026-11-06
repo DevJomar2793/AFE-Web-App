@@ -55,7 +55,8 @@ export default function RegisterPage() {
         {isRegistered ? (
           <div className="mt-8 text-center">
             <p className="rounded-xl bg-[#eef7f0] px-4 py-3 text-lg font-medium text-[#075c2d]">
-              Your account has been created successfully.
+              Your account is waiting for admin approval. You can sign in after
+              an administrator approves it.
             </p>
             <Link
               href="/login"

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAccessToken } from "@/lib/api";
 
@@ -11,17 +11,18 @@ interface DashboardAuthGuardProps {
 
 export function DashboardAuthGuard({ children }: DashboardAuthGuardProps) {
   const router = useRouter();
-  const hasAccessToken = Boolean(getAccessToken());
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
-    if (!hasAccessToken) {
+    if (getAccessToken()) {
+      const timeout = window.setTimeout(() => setIsAuthorized(true), 0);
+      return () => window.clearTimeout(timeout);
+    } else {
       router.replace("/login");
     }
-  }, [hasAccessToken, router]);
+  }, [router]);
 
-  if (!hasAccessToken) {
-    return null;
-  }
+  if (!isAuthorized) return null;
 
   return children;
 }

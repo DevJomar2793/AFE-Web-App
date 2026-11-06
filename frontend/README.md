@@ -69,3 +69,7 @@ Sales are not duplicated in browser storage.
 The Returns page loads database return history from
 `GET /api/v1/returns/get-returns` and submits new returns directly to
 `POST /api/v1/returns/add-returns`.
+
+The Activity Logs page loads successful admin data changes from
+`GET /api/v1/activity-logs`. The existing sales Activity view is labeled
+Transactions in the navbar so it remains separate from the audit history.

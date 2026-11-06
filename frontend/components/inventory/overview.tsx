@@ -46,17 +46,17 @@ export function InventoryOverview({
   onOpenInventory,
   onViewActivity,
 }: InventoryOverviewProps) {
-  const currentDate = new Date();
-  const today = localDateKey(currentDate);
-  const last30DaysStart = new Date(currentDate);
-  last30DaysStart.setDate(last30DaysStart.getDate() - 29);
-  const last30DaysStartKey = localDateKey(last30DaysStart);
+  const today = manilaDateKey(new Date());
+  const last30DaysStartKey = shiftDateKey(today, -29);
   const metrics = useMemo(
     () =>
       calculateMetrics(items, sales, returns, today, last30DaysStartKey),
     [items, sales, returns, today, last30DaysStartKey],
   );
-  const chartDays = useMemo(() => calculateChartDays(sales), [sales]);
+  const chartDays = useMemo(
+    () => calculateChartDays(sales, today),
+    [sales, today],
+  );
   const chartMax = Math.max(...chartDays.map((day) => day.total), 1);
   const recentActivity = useMemo(
     () => buildRecentActivity(sales, returns),
@@ -392,14 +392,14 @@ function calculateMetrics(
   last30DaysStart: string,
 ) {
   const todaySales = sales.filter(
-    (sale) => localDateKey(new Date(sale.createdAt)) === today,
+    (sale) => manilaDateKey(new Date(sale.createdAt)) === today,
   );
   const last30DaysSales = sales.filter((sale) => {
-    const saleDate = localDateKey(new Date(sale.createdAt));
+    const saleDate = manilaDateKey(new Date(sale.createdAt));
     return saleDate >= last30DaysStart && saleDate <= today;
   });
   const todayReturns = returns.filter(
-    (itemReturn) => localDateKey(new Date(itemReturn.createdAt)) === today,
+    (itemReturn) => manilaDateKey(new Date(itemReturn.createdAt)) === today,
   );
 
   return {
@@ -423,17 +423,21 @@ function calculateMetrics(
   };
 }
 
-function calculateChartDays(sales: Sale[]) {
+function calculateChartDays(sales: Sale[], today: string) {
+  const [year, month, day] = today.split("-").map(Number);
+
   return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (6 - index));
-    const key = localDateKey(date);
+    const date = new Date(Date.UTC(year, month - 1, day - (6 - index)));
+    const key = date.toISOString().slice(0, 10);
     const total = sales
-      .filter((sale) => localDateKey(new Date(sale.createdAt)) === key)
+      .filter((sale) => manilaDateKey(new Date(sale.createdAt)) === key)
       .reduce((sum, sale) => sum + calculateSaleTotal(sale), 0);
     return {
       key,
-      label: date.toLocaleDateString("en-PH", { weekday: "short" }),
+      label: date.toLocaleDateString("en-PH", {
+        weekday: "short",
+        timeZone: "UTC",
+      }),
       total,
     };
   });
@@ -482,10 +486,23 @@ function formatActivityDate(value: string) {
   });
 }
 
-function localDateKey(date: Date) {
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0"),
-  ].join("-");
+function manilaDateKey(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "Asia/Manila",
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  return `${year}-${month}-${day}`;
+}
+
+function shiftDateKey(dateKey: string, numberOfDays: number) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + numberOfDays))
+    .toISOString()
+    .slice(0, 10);
 }

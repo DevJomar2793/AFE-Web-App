@@ -17,15 +17,19 @@ import {
   createSaleBatch,
   deleteSale,
   getInventoryItems,
+  getFundTransactions,
   getSales,
   updateSale,
   type SaleRecord,
+  type FundTransactionRecord,
 } from "../lib/api";
 import type { InventoryRecord } from "../types/inventory";
 
 interface TransactionScreenProps {
   onBack: () => void;
   onShowSuccess: (title: string, message: string) => void;
+  isAdmin: boolean;
+  fundsRefreshKey: number;
 }
 
 type DateRange = "daily" | "weekly";
@@ -33,7 +37,6 @@ type SaleLine = {
   id: number;
   inventoryId: number;
   quantity: string;
-  price?: string;
 };
 
 const currency = new Intl.NumberFormat("en-PH", {
@@ -76,6 +79,21 @@ function saleTotal(sale: SaleRecord) {
     (total, item) => total + item.price * item.quantity,
     0,
   );
+}
+
+function automaticUnitPrice(item: InventoryRecord, quantity: number) {
+  const wholesaleMinimum =
+    item.category === "eggs" ? 6 : item.oilSize === "1.5L" ? 3 : 5;
+
+  if (
+    item.wholesalePrice !== null &&
+    Number.isInteger(quantity) &&
+    quantity >= wholesaleMinimum
+  ) {
+    return item.wholesalePrice;
+  }
+
+  return item.price;
 }
 
 function SaleRow({
@@ -207,7 +225,6 @@ function SaleEditorModal({
             id: item.id,
             inventoryId: item.inventoryId,
             quantity: String(item.quantity),
-            price: String(item.price),
           }))
         : inventory
             .filter((item) => item.quantity > 0)
@@ -253,12 +270,10 @@ function SaleEditorModal({
       id?: number;
       inventoryId: number;
       quantity: number;
-      price?: number;
     }[];
     for (const line of lines) {
       const quantity = Number(line.quantity);
       const item = inventory.find((entry) => entry.id === line.inventoryId);
-      const price = Number(line.price);
       if (!Number.isInteger(quantity) || quantity < 1) {
         setError("Each quantity must be at least one.");
         return;
@@ -267,15 +282,10 @@ function SaleEditorModal({
         setError(`Not enough stock for ${item?.item ?? "the selected item"}.`);
         return;
       }
-      if (isEdit && (!Number.isFinite(price) || price < 0)) {
-        setError("Enter a valid price for every item.");
-        return;
-      }
       normalized.push({
         id: isEdit ? line.id : undefined,
         inventoryId: line.inventoryId,
         quantity,
-        price: isEdit ? price : undefined,
       });
     }
     setIsSaving(true);
@@ -286,7 +296,6 @@ function SaleEditorModal({
           items: normalized.map((line) => ({
             id: line.id!,
             quantity: line.quantity,
-            price: line.price!,
           })),
         });
       else
@@ -356,6 +365,10 @@ function SaleEditorModal({
               const item = inventory.find(
                 (entry) => entry.id === line.inventoryId,
               );
+              const quantity = Number(line.quantity);
+              const unitPrice = item
+                ? automaticUnitPrice(item, quantity)
+                : null;
               return (
                 <View style={styles.lineCard} key={line.id}>
                   <View style={styles.lineHeader}>
@@ -416,20 +429,16 @@ function SaleEditorModal({
                         style={styles.field}
                       />
                     </View>
-                    {isEdit && (
-                      <View style={styles.smallField}>
-                        <Text style={styles.label}>Price</Text>
-                        <TextInput
-                          value={line.price ?? ""}
-                          onChangeText={(value) =>
-                            updateLine(line.id, { price: value })
-                          }
-                          editable={!isSaving}
-                          keyboardType="decimal-pad"
-                          style={styles.field}
-                        />
+                    <View style={styles.smallField}>
+                      <Text style={styles.label}>Automatic price</Text>
+                      <View style={[styles.field, styles.priceField]}>
+                        <Text style={styles.priceFieldText}>
+                          {unitPrice === null
+                            ? "Unavailable"
+                            : `${currency.format(unitPrice)} each`}
+                        </Text>
                       </View>
-                    )}
+                    </View>
                   </View>
                 </View>
               );
@@ -477,10 +486,13 @@ function SaleEditorModal({
 export function TransactionScreen({
   onBack,
   onShowSuccess,
+  isAdmin,
+  fundsRefreshKey,
 }: TransactionScreenProps) {
   const today = manilaDateKey(new Date());
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [inventory, setInventory] = useState<InventoryRecord[]>([]);
+  const [fundTransactions, setFundTransactions] = useState<FundTransactionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -497,12 +509,14 @@ export function TransactionScreen({
     else setLoading(true);
     setError("");
     try {
-      const [nextSales, nextInventory] = await Promise.all([
+      const [nextSales, nextInventory, nextFundTransactions] = await Promise.all([
         getSales(),
         getInventoryItems(),
+        isAdmin ? getFundTransactions() : Promise.resolve([]),
       ]);
       setSales(nextSales);
       setInventory(nextInventory);
+      setFundTransactions(nextFundTransactions);
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -513,10 +527,10 @@ export function TransactionScreen({
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [isAdmin]);
   useEffect(() => {
     void loadData();
-  }, [loadData]);
+  }, [loadData, fundsRefreshKey]);
   const days = useMemo(
     () =>
       Array.from({ length: 7 }, (_, index) =>
@@ -775,6 +789,9 @@ export function TransactionScreen({
             </Text>
           </View>
         )}
+        {isAdmin && !loading && !error ? (
+          <FundHistory transactions={fundTransactions} />
+        ) : null}
       </ScrollView>
       <DatePickerModal
         visible={isDatePickerOpen}
@@ -789,6 +806,68 @@ export function TransactionScreen({
         onClose={() => setEditingSale(undefined)}
         onSaved={savedSale}
       />
+    </View>
+  );
+}
+
+function FundHistory({
+  transactions,
+}: {
+  transactions: FundTransactionRecord[];
+}) {
+  return (
+    <View style={styles.fundCard}>
+      <Text style={styles.fundTitle}>Fund transaction history</Text>
+      <Text style={styles.fundSubtitle}>
+        Income and expenses are shown newest first.
+      </Text>
+      {transactions.length ? (
+        transactions.map((transaction) => {
+          const isExpense = transaction.transactionType === "expense";
+          const typeLabel =
+            transaction.transactionType === "opening_balance"
+              ? "Opening balance"
+              : isExpense
+                ? "Expense"
+                : "Income";
+          return (
+            <View style={styles.fundRow} key={transaction.id}>
+              <View style={styles.fundRowHeader}>
+                <Text
+                  style={[
+                    styles.fundType,
+                    isExpense ? styles.expenseText : styles.incomeText,
+                  ]}
+                >
+                  {typeLabel}
+                </Text>
+                <Text
+                  style={[
+                    styles.fundAmount,
+                    isExpense ? styles.expenseText : styles.incomeText,
+                  ]}
+                >
+                  {isExpense ? "−" : "+"}
+                  {currency.format(transaction.amount)}
+                </Text>
+              </View>
+              <Text style={styles.fundDescription}>{transaction.description}</Text>
+              <Text style={styles.fundDate}>
+                {new Date(transaction.createdAt).toLocaleString("en-PH", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                  timeZone: "Asia/Manila",
+                })}
+              </Text>
+            </View>
+          );
+        })
+      ) : (
+        <Text style={styles.emptyText}>No fund transactions recorded yet.</Text>
+      )}
     </View>
   );
 }
@@ -1113,6 +1192,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
     paddingHorizontal: 12,
   },
+  priceField: { justifyContent: "center" },
+  priceFieldText: { color: "#173b24", fontSize: 14, fontWeight: "800" },
   addLineButton: {
     height: 44,
     flexDirection: "row",
@@ -1145,4 +1226,23 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   saveButtonText: { color: "#ffffff", fontSize: 15, fontWeight: "800" },
+  fundCard: {
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#dce3da",
+    borderRadius: 18,
+    backgroundColor: "#ffffff",
+    marginTop: 18,
+    paddingTop: 17,
+  },
+  fundTitle: { color: "#18251a", fontSize: 18, fontWeight: "800", paddingHorizontal: 16 },
+  fundSubtitle: { color: "#768178", fontSize: 13, marginTop: 4, paddingHorizontal: 16, paddingBottom: 12 },
+  fundRow: { borderTopWidth: 1, borderTopColor: "#edf0eb", padding: 16 },
+  fundRowHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  fundType: { fontSize: 12, fontWeight: "800" },
+  fundAmount: { fontSize: 15, fontWeight: "800" },
+  incomeText: { color: "#28643c" },
+  expenseText: { color: "#9b431f" },
+  fundDescription: { color: "#35453a", fontSize: 13, fontWeight: "700", marginTop: 7 },
+  fundDate: { color: "#89928b", fontSize: 11, marginTop: 5 },
 });

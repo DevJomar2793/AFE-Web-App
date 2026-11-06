@@ -64,6 +64,7 @@ POST /api/v1/sales/add-sales-batch
 PATCH /api/v1/sales/{sale_id}
 GET  /api/v1/returns/get-returns
 POST /api/v1/returns/add-returns
+GET  /api/v1/activity-logs
 ```
 
 ## Authentication
@@ -96,6 +97,11 @@ curl http://127.0.0.1:8000/api/v1/inventory/get-item \
 `GET /api/v1/auth/me` returns the signed-in user's profile. Registration and
 login are public; all inventory, sales, and returns routes require a valid
 Bearer token.
+
+Inventory and sales write requests use the signed-in account to create an
+activity log. Each successful add, edit, or delete is stored in the same
+database transaction as the data change, so failed requests do not create a
+misleading entry. Returns are logged when they are added.
 
 Create an item without putting an ID in the URL or request body. PostgreSQL
 generates the ID:
@@ -184,6 +190,17 @@ List returns, newest first, with:
 ```bash
 curl http://127.0.0.1:8000/api/v1/returns/get-returns
 ```
+
+List admin activity logs, newest first, with:
+
+```bash
+curl http://127.0.0.1:8000/api/v1/activity-logs \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+Each entry contains `action`, `affected_record`, `admin_email`, and
+`created_at`. The `admin_email` value is a snapshot of the signed-in account
+that completed the change.
 
 ## Code organization
 
