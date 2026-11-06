@@ -205,6 +205,7 @@ export function AddStockModal({ onClose, onCreated }: AddStockModalProps) {
   const [quantity, setQuantity] = useState("0");
   const [price, setPrice] = useState("");
   const [wholesalePrice, setWholesalePrice] = useState("");
+  const [purchaseCost, setPurchaseCost] = useState("");
   const [category, setCategory] = useState<ProductCategory>("eggs");
   const [oilSize, setOilSize] = useState<OilSize | null>(null);
   const [error, setError] = useState("");
@@ -241,6 +242,10 @@ export function AddStockModal({ onClose, onCreated }: AddStockModalProps) {
       );
       return;
     }
+    if (!validatePrice(purchaseCost)) {
+      setError("Enter a valid purchase cost with no more than two decimal places.");
+      return;
+    }
     if (category === "oil" && oilSize === null) {
       setError("Select an oil size.");
       return;
@@ -254,6 +259,7 @@ export function AddStockModal({ onClose, onCreated }: AddStockModalProps) {
         quantity: normalizedQuantity,
         price: Number(price),
         wholesalePrice: wholesalePrice ? Number(wholesalePrice) : null,
+        purchaseCost: Number(purchaseCost),
         category,
         oilSize: category === "oil" ? oilSize : null,
       });
@@ -338,6 +344,14 @@ export function AddStockModal({ onClose, onCreated }: AddStockModalProps) {
           editable={!isSubmitting}
           onChangeText={(value) => updateField(setWholesalePrice, value)}
         />
+        <FormField
+          label="Purchase cost per unit"
+          value={purchaseCost}
+          placeholder="0.00"
+          keyboardType="decimal-pad"
+          editable={!isSubmitting}
+          onChangeText={(value) => updateField(setPurchaseCost, value)}
+        />
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         <Pressable
           accessibilityRole="button"
@@ -369,6 +383,7 @@ export function EditItemModal({
   const [wholesalePrice, setWholesalePrice] = useState(
     item.wholesalePrice === null ? "" : String(item.wholesalePrice),
   );
+  const [purchaseCost, setPurchaseCost] = useState(String(item.purchaseCost));
   const [category, setCategory] = useState<ProductCategory>(item.category);
   const [oilSize, setOilSize] = useState<OilSize | null>(item.oilSize);
   const [error, setError] = useState("");
@@ -400,6 +415,10 @@ export function EditItemModal({
       );
       return;
     }
+    if (!validatePrice(purchaseCost)) {
+      setError("Enter a valid purchase cost with no more than two decimal places.");
+      return;
+    }
     if (category === "oil" && oilSize === null) {
       setError("Select an oil size.");
       return;
@@ -412,6 +431,7 @@ export function EditItemModal({
         quantity: normalizedQuantity,
         price: Number(price),
         wholesalePrice: wholesalePrice ? Number(wholesalePrice) : null,
+        purchaseCost: Number(purchaseCost),
         category,
         oilSize: category === "oil" ? oilSize : null,
       });
@@ -487,6 +507,13 @@ export function EditItemModal({
           keyboardType="decimal-pad"
           editable={!isSubmitting}
           onChangeText={(value) => updateField(setWholesalePrice, value)}
+        />
+        <FormField
+          label="Purchase cost per unit"
+          value={purchaseCost}
+          keyboardType="decimal-pad"
+          editable={!isSubmitting}
+          onChangeText={(value) => updateField(setPurchaseCost, value)}
         />
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         <View style={styles.buttonRow}>

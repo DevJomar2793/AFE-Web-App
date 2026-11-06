@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -12,14 +13,19 @@ import {
   View,
 } from "react-native";
 
-import { getInventoryItems } from "../lib/api";
+import { deleteInventoryItem, getInventoryItems } from "../lib/api";
 import type { InventoryRecord, InventoryStatus } from "../types/inventory";
+import { BusinessFundsPanel } from "./business-funds-panel";
 
 interface InventoryScreenProps {
   onAddItem: () => void;
   onEditItem: (item: InventoryRecord) => void;
   onReturn: () => void;
   refreshKey: number;
+  isAdmin: boolean;
+  fundsRefreshKey: number;
+  onFundsChanged: () => void;
+  onShowSuccess: (title: string, message: string) => void;
 }
 
 interface ProductPriceCardProps {
@@ -62,11 +68,17 @@ function ProductPriceCard({ item, columns }: ProductPriceCardProps) {
         </View>
       </View>
       <Text style={styles.priceValue}>{currency.format(item.price)}</Text>
+      <Text style={styles.categoryText}>
+        {item.category === "eggs" ? "Eggs" : `Oil · ${item.oilSize}`}
+      </Text>
       {item.wholesalePrice !== null && (
         <View style={styles.wholesalePriceSection}>
           <Text style={styles.wholesalePriceLabel}>Wholesale/Batch Price</Text>
           <Text style={styles.wholesalePriceValue}>
             {currency.format(item.wholesalePrice)}
+          </Text>
+          <Text style={styles.thresholdText}>
+            Starts at {item.category === "eggs" ? 6 : item.oilSize === "1.5L" ? 3 : 5} {item.category === "eggs" ? "trays" : "bottles"}
           </Text>
         </View>
       )}
@@ -88,9 +100,13 @@ function StatusBadge({ status }: { status: InventoryStatus }) {
 function InventoryCard({
   item,
   onEdit,
+  onDelete,
+  isAdmin,
 }: {
   item: InventoryRecord;
   onEdit: () => void;
+  onDelete: () => void;
+  isAdmin: boolean;
 }) {
   const status = getStatus(item);
 
@@ -111,7 +127,10 @@ function InventoryCard({
       </View>
       <View style={styles.detailRow}>
         <Text style={styles.detailLabel}>Action</Text>
-        <EditButton itemName={item.item} onPress={onEdit} />
+        <View style={styles.actionButtons}>
+          <EditButton itemName={item.item} onPress={onEdit} />
+          {isAdmin ? <DeleteButton itemName={item.item} onPress={onDelete} /> : null}
+        </View>
       </View>
     </View>
   );
@@ -120,9 +139,13 @@ function InventoryCard({
 function InventoryTableRow({
   item,
   onEdit,
+  onDelete,
+  isAdmin,
 }: {
   item: InventoryRecord;
   onEdit: () => void;
+  onDelete: () => void;
+  isAdmin: boolean;
 }) {
   return (
     <View style={styles.tableRow}>
@@ -139,9 +162,25 @@ function InventoryTableRow({
         <StatusBadge status={getStatus(item)} />
       </View>
       <View style={styles.actionColumn}>
-        <EditButton itemName={item.item} onPress={onEdit} />
+        <View style={styles.actionButtons}>
+          <EditButton itemName={item.item} onPress={onEdit} />
+          {isAdmin ? <DeleteButton itemName={item.item} onPress={onDelete} /> : null}
+        </View>
       </View>
     </View>
+  );
+}
+
+function DeleteButton({ itemName, onPress }: { itemName: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Delete ${itemName}`}
+      onPress={onPress}
+      style={styles.deleteButton}
+    >
+      <Ionicons name="trash-outline" size={15} color="#9b431f" />
+    </Pressable>
   );
 }
 
@@ -170,6 +209,10 @@ export function InventoryScreen({
   onEditItem,
   onReturn,
   refreshKey,
+  isAdmin,
+  fundsRefreshKey,
+  onFundsChanged,
+  onShowSuccess,
 }: InventoryScreenProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -218,6 +261,35 @@ export function InventoryScreen({
     );
   }, [items, query]);
 
+  function confirmDelete(item: InventoryRecord) {
+    Alert.alert(
+      "Delete inventory item?",
+      `${item.item} can only be deleted when it has no linked sales or returns.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () =>
+            void (async () => {
+              try {
+                await deleteInventoryItem(item.id);
+                await loadInventory(undefined, true);
+                onShowSuccess("Item deleted", `${item.item} was removed.`);
+              } catch (deleteError) {
+                Alert.alert(
+                  "Unable to delete item",
+                  deleteError instanceof Error
+                    ? deleteError.message
+                    : "Please try again.",
+                );
+              }
+            })(),
+        },
+      ],
+    );
+  }
+
   return (
     <View style={[styles.screen, isTablet && styles.tabletScreen]}>
       <FlatList
@@ -261,6 +333,13 @@ export function InventoryScreen({
                 </Pressable>
               </View>
             </View>
+
+            {isAdmin ? (
+              <BusinessFundsPanel
+                refreshKey={fundsRefreshKey}
+                onChanged={onFundsChanged}
+              />
+            ) : null}
 
             {!error && (
               <View style={styles.priceSection}>
@@ -351,9 +430,19 @@ export function InventoryScreen({
         }
         renderItem={({ item }) =>
           isTablet ? (
-            <InventoryTableRow item={item} onEdit={() => onEditItem(item)} />
+            <InventoryTableRow
+              item={item}
+              isAdmin={isAdmin}
+              onEdit={() => onEditItem(item)}
+              onDelete={() => confirmDelete(item)}
+            />
           ) : (
-            <InventoryCard item={item} onEdit={() => onEditItem(item)} />
+            <InventoryCard
+              item={item}
+              isAdmin={isAdmin}
+              onEdit={() => onEditItem(item)}
+              onDelete={() => confirmDelete(item)}
+            />
           )
         }
         ListEmptyComponent={
@@ -454,6 +543,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginTop: 14,
   },
+  categoryText: { color: "#718078", fontSize: 12, fontWeight: "700", marginTop: 4 },
   wholesalePriceSection: {
     borderTopWidth: 1,
     borderTopColor: "#e8ece6",
@@ -473,6 +563,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginTop: 4,
   },
+  thresholdText: { color: "#768178", fontSize: 11, marginTop: 3 },
   loadingPrices: {
     minHeight: 110,
     flexDirection: "row",
@@ -562,6 +653,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   editButtonText: { color: "#ffffff", fontSize: 12, fontWeight: "800" },
+  actionButtons: { flexDirection: "row", alignItems: "center", gap: 7 },
+  deleteButton: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#e8c5bc",
+    borderRadius: 8,
+    backgroundColor: "#fff9f7",
+  },
   tableHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -599,7 +701,7 @@ const styles = StyleSheet.create({
   quantityColumn: { flex: 0.7, textAlign: "center" },
   returnsColumn: { flex: 0.7, textAlign: "center" },
   statusColumn: { flex: 0.9 },
-  actionColumn: { flex: 0.65, alignItems: "flex-start" },
+  actionColumn: { flex: 1, alignItems: "flex-start" },
   tableItem: { color: "#18251a", fontSize: 14, fontWeight: "800" },
   tableNumber: { color: "#18251a", fontSize: 16, fontWeight: "800" },
   tableReturns: { color: "#9b3f3f", fontSize: 16, fontWeight: "800" },

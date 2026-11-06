@@ -5,6 +5,7 @@ const ACCESS_TOKEN_KEY = "access_token";
 export interface UserAccount {
   email: string;
   isActive: boolean;
+  isAdmin: boolean;
 }
 
 function getApiBaseUrl() {
@@ -103,11 +104,13 @@ export async function getCurrentUser(): Promise<UserAccount | null> {
       response.ok &&
       isRecord(responseBody) &&
       typeof responseBody.email === "string" &&
-      typeof responseBody.is_active === "boolean"
+      typeof responseBody.is_active === "boolean" &&
+      typeof responseBody.is_admin === "boolean"
     ) {
       return {
         email: responseBody.email,
         isActive: responseBody.is_active,
+        isAdmin: responseBody.is_admin,
       };
     }
   } catch {

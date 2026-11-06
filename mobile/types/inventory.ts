@@ -11,6 +11,7 @@ export interface InventoryRecord {
   returnsCount: number;
   price: number;
   wholesalePrice: number | null;
+  purchaseCost: number;
   category: ProductCategory;
   oilSize: OilSize | null;
   status: InventoryStatus;

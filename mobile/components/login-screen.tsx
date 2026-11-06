@@ -17,7 +17,7 @@ import { AppFooter } from "./app-footer";
 
 interface LoginScreenProps {
   onRegister: () => void;
-  onSignIn: () => void;
+  onSignIn: () => Promise<void>;
 }
 
 export function LoginScreen({ onRegister, onSignIn }: LoginScreenProps) {
@@ -38,7 +38,7 @@ export function LoginScreen({ onRegister, onSignIn }: LoginScreenProps) {
 
     try {
       await login(email.trim(), password);
-      onSignIn();
+      await onSignIn();
     } catch (error) {
       setErrorMessage(
         error instanceof Error

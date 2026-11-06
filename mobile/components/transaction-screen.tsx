@@ -17,15 +17,19 @@ import {
   createSaleBatch,
   deleteSale,
   getInventoryItems,
+  getFundTransactions,
   getSales,
   updateSale,
   type SaleRecord,
+  type FundTransactionRecord,
 } from "../lib/api";
 import type { InventoryRecord } from "../types/inventory";
 
 interface TransactionScreenProps {
   onBack: () => void;
   onShowSuccess: (title: string, message: string) => void;
+  isAdmin: boolean;
+  fundsRefreshKey: number;
 }
 
 type DateRange = "daily" | "weekly";
@@ -482,10 +486,13 @@ function SaleEditorModal({
 export function TransactionScreen({
   onBack,
   onShowSuccess,
+  isAdmin,
+  fundsRefreshKey,
 }: TransactionScreenProps) {
   const today = manilaDateKey(new Date());
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [inventory, setInventory] = useState<InventoryRecord[]>([]);
+  const [fundTransactions, setFundTransactions] = useState<FundTransactionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -502,12 +509,14 @@ export function TransactionScreen({
     else setLoading(true);
     setError("");
     try {
-      const [nextSales, nextInventory] = await Promise.all([
+      const [nextSales, nextInventory, nextFundTransactions] = await Promise.all([
         getSales(),
         getInventoryItems(),
+        isAdmin ? getFundTransactions() : Promise.resolve([]),
       ]);
       setSales(nextSales);
       setInventory(nextInventory);
+      setFundTransactions(nextFundTransactions);
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -518,10 +527,10 @@ export function TransactionScreen({
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [isAdmin]);
   useEffect(() => {
     void loadData();
-  }, [loadData]);
+  }, [loadData, fundsRefreshKey]);
   const days = useMemo(
     () =>
       Array.from({ length: 7 }, (_, index) =>
@@ -780,6 +789,9 @@ export function TransactionScreen({
             </Text>
           </View>
         )}
+        {isAdmin && !loading && !error ? (
+          <FundHistory transactions={fundTransactions} />
+        ) : null}
       </ScrollView>
       <DatePickerModal
         visible={isDatePickerOpen}
@@ -794,6 +806,68 @@ export function TransactionScreen({
         onClose={() => setEditingSale(undefined)}
         onSaved={savedSale}
       />
+    </View>
+  );
+}
+
+function FundHistory({
+  transactions,
+}: {
+  transactions: FundTransactionRecord[];
+}) {
+  return (
+    <View style={styles.fundCard}>
+      <Text style={styles.fundTitle}>Fund transaction history</Text>
+      <Text style={styles.fundSubtitle}>
+        Income and expenses are shown newest first.
+      </Text>
+      {transactions.length ? (
+        transactions.map((transaction) => {
+          const isExpense = transaction.transactionType === "expense";
+          const typeLabel =
+            transaction.transactionType === "opening_balance"
+              ? "Opening balance"
+              : isExpense
+                ? "Expense"
+                : "Income";
+          return (
+            <View style={styles.fundRow} key={transaction.id}>
+              <View style={styles.fundRowHeader}>
+                <Text
+                  style={[
+                    styles.fundType,
+                    isExpense ? styles.expenseText : styles.incomeText,
+                  ]}
+                >
+                  {typeLabel}
+                </Text>
+                <Text
+                  style={[
+                    styles.fundAmount,
+                    isExpense ? styles.expenseText : styles.incomeText,
+                  ]}
+                >
+                  {isExpense ? "−" : "+"}
+                  {currency.format(transaction.amount)}
+                </Text>
+              </View>
+              <Text style={styles.fundDescription}>{transaction.description}</Text>
+              <Text style={styles.fundDate}>
+                {new Date(transaction.createdAt).toLocaleString("en-PH", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                  timeZone: "Asia/Manila",
+                })}
+              </Text>
+            </View>
+          );
+        })
+      ) : (
+        <Text style={styles.emptyText}>No fund transactions recorded yet.</Text>
+      )}
     </View>
   );
 }
@@ -1152,4 +1226,23 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   saveButtonText: { color: "#ffffff", fontSize: 15, fontWeight: "800" },
+  fundCard: {
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#dce3da",
+    borderRadius: 18,
+    backgroundColor: "#ffffff",
+    marginTop: 18,
+    paddingTop: 17,
+  },
+  fundTitle: { color: "#18251a", fontSize: 18, fontWeight: "800", paddingHorizontal: 16 },
+  fundSubtitle: { color: "#768178", fontSize: 13, marginTop: 4, paddingHorizontal: 16, paddingBottom: 12 },
+  fundRow: { borderTopWidth: 1, borderTopColor: "#edf0eb", padding: 16 },
+  fundRowHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  fundType: { fontSize: 12, fontWeight: "800" },
+  fundAmount: { fontSize: 15, fontWeight: "800" },
+  incomeText: { color: "#28643c" },
+  expenseText: { color: "#9b431f" },
+  fundDescription: { color: "#35453a", fontSize: 13, fontWeight: "700", marginTop: 7 },
+  fundDate: { color: "#89928b", fontSize: 11, marginTop: 5 },
 });

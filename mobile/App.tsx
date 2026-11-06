@@ -23,8 +23,13 @@ import { AppFooter } from "./components/app-footer";
 import { BottomNavigation } from "./components/bottom-navigation";
 import { InventoryScreen } from "./components/inventory-screen";
 import { LoginScreen } from "./components/login-screen";
+import { MoreScreen } from "./components/more-screen";
 import { RegisterScreen } from "./components/register-screen";
-import { clearAccessToken, hasValidSession } from "./lib/auth";
+import {
+  clearAccessToken,
+  getCurrentUser,
+  type UserAccount,
+} from "./lib/auth";
 import { OverviewScreen } from "./components/overview-screen";
 import { TransactionScreen } from "./components/transaction-screen";
 import { ReturnsScreen } from "./components/returns-screen";
@@ -45,6 +50,8 @@ export default function App() {
   const [isAddStockModalVisible, setIsAddStockModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryRecord | null>(null);
   const [inventoryRefreshKey, setInventoryRefreshKey] = useState(0);
+  const [fundsRefreshKey, setFundsRefreshKey] = useState(0);
+  const [account, setAccount] = useState<UserAccount | null>(null);
   const [successNotice, setSuccessNotice] = useState<SuccessNotice | null>(
     null,
   );
@@ -81,10 +88,13 @@ export default function App() {
 
     async function restoreSession() {
       try {
-        const isSessionValid = await hasValidSession();
+        const currentAccount = await getCurrentUser();
         if (!isMounted) return;
 
-        if (isSessionValid) setCurrentScreen("dashboard");
+        if (currentAccount) {
+          setAccount(currentAccount);
+          setCurrentScreen("dashboard");
+        }
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unknown session error";
@@ -119,6 +129,7 @@ export default function App() {
   function completeAddStock(createdItem: InventoryRecord) {
     setIsAddStockModalVisible(false);
     setInventoryRefreshKey((currentKey) => currentKey + 1);
+    setFundsRefreshKey((currentKey) => currentKey + 1);
     setSuccessNotice({
       title: "Item added!",
       message: `${createdItem.item} has been added to your inventory.`,
@@ -127,18 +138,12 @@ export default function App() {
 
   function saveItemChanges(updatedItem: InventoryRecord) {
     setInventoryRefreshKey((currentKey) => currentKey + 1);
+    setFundsRefreshKey((currentKey) => currentKey + 1);
     setSuccessNotice({
       title: "Changes saved!",
       message: `${updatedItem.item} details have been updated.`,
     });
     setEditingItem(null);
-  }
-
-  function showReturnNotice() {
-    setSuccessNotice({
-      title: "Returns",
-      message: "The return feature is not available yet.",
-    });
   }
 
   function showTransactionSuccess(title: string, message: string) {
@@ -152,11 +157,21 @@ export default function App() {
 
     try {
       await clearAccessToken();
+      setAccount(null);
       setActiveTab("home");
       setCurrentScreen("login");
     } finally {
       setIsLoggingOut(false);
     }
+  }
+
+  async function completeSignIn() {
+    const currentAccount = await getCurrentUser();
+    if (!currentAccount) {
+      throw new Error("Unable to load your account. Please sign in again.");
+    }
+    setAccount(currentAccount);
+    setCurrentScreen("dashboard");
   }
 
   if (!isAppReady || !isSessionReady) {
@@ -169,7 +184,7 @@ export default function App() {
       {currentScreen === "login" ? (
         <LoginScreen
           onRegister={() => setCurrentScreen("register")}
-          onSignIn={() => setCurrentScreen("dashboard")}
+          onSignIn={completeSignIn}
         />
       ) : currentScreen === "register" ? (
         <RegisterScreen onSignIn={() => setCurrentScreen("login")} />
@@ -177,6 +192,7 @@ export default function App() {
         <>
           {activeTab === "home" ? (
             <OverviewScreen
+              isAdmin={account?.isAdmin === true}
               isLoggingOut={isLoggingOut}
               onLogOut={() => void logOut()}
               onTabChange={setActiveTab}
@@ -185,23 +201,32 @@ export default function App() {
             <InventoryScreen
               onAddItem={() => setIsAddStockModalVisible(true)}
               onEditItem={setEditingItem}
-              onReturn={showReturnNotice}
+              onReturn={() => setActiveTab("returns")}
               refreshKey={inventoryRefreshKey}
+              isAdmin={account?.isAdmin === true}
+              fundsRefreshKey={fundsRefreshKey}
+              onFundsChanged={() => {
+                setFundsRefreshKey((key) => key + 1);
+                setSuccessNotice({
+                  title: "Business funds updated",
+                  message: "The balance and transaction history were updated.",
+                });
+              }}
+              onShowSuccess={showTransactionSuccess}
             />
-          ) : activeTab === "orders" ? (
+          ) : activeTab === "transactions" ? (
             <TransactionScreen
               onBack={() => setActiveTab("home")}
               onShowSuccess={showTransactionSuccess}
+              isAdmin={account?.isAdmin === true}
+              fundsRefreshKey={fundsRefreshKey}
+            />
+          ) : activeTab === "returns" ? (
+            <ReturnsScreen
+              onShowSuccess={showTransactionSuccess}
             />
           ) : (
-            <ReturnsScreen
-              onShowUnavailableNotice={(featureName) =>
-                setSuccessNotice({
-                  title: `${featureName} coming soon`,
-                  message: "This feature is not available yet.",
-                })
-              }
-            />
+            <MoreScreen isAdmin={account?.isAdmin === true} />
           )}
 
           <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
