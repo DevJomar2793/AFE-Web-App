@@ -8,7 +8,14 @@ from httpx import AsyncClient
 from sqlalchemy import delete, select
 
 from app.database import async_session_factory
-from app.models import ActivityLog, Inventory, InventoryStatus, Return, User
+from app.models import (
+    ActivityLog,
+    Inventory,
+    InventoryPriceHistory,
+    InventoryStatus,
+    Return,
+    User,
+)
 from app.security import create_access_token, hash_password
 
 
@@ -19,6 +26,11 @@ async def created_inventory_ids() -> AsyncIterator[list[int]]:
 
     if inventory_ids:
         async with async_session_factory() as session:
+            await session.execute(
+                delete(InventoryPriceHistory).where(
+                    InventoryPriceHistory.inventory_id.in_(inventory_ids),
+                ),
+            )
             await session.execute(
                 delete(Inventory).where(Inventory.id.in_(inventory_ids)),
             )
@@ -67,6 +79,20 @@ async def test_create_inventory_item(
     assert stored_inventory.category == "eggs"
     assert stored_inventory.oil_size is None
     assert stored_inventory.status == InventoryStatus.IN_STOCK
+
+    history_response = await client.get("/api/v1/inventory/price-history")
+    initial_record = next(
+        record
+        for record in history_response.json()
+        if record["inventory_id"] == data["id"]
+    )
+    assert initial_record["event_type"] == "initial"
+    assert initial_record["quantity"] == 5
+    assert initial_record["previous_purchase_cost"] is None
+    assert initial_record["new_purchase_cost"] == "0.00"
+    assert initial_record["price_difference"] is None
+    assert initial_record["percentage_change"] is None
+    assert initial_record["change_direction"] == "initial"
 
 
 @pytest.mark.asyncio
@@ -200,9 +226,140 @@ async def test_admin_deletes_unused_inventory_item_and_records_activity(
                 ActivityLog.admin_email == admin_email,
             ),
         )
+        price_history = await session.scalar(
+            select(InventoryPriceHistory).where(
+                InventoryPriceHistory.product_name
+                == "__delete_inventory_item_test__",
+            ),
+        )
 
     assert stored_inventory is None
     assert activity_log is not None
+    assert price_history is not None
+    assert price_history.inventory_id is None
+
+    async with async_session_factory() as session:
+        await session.execute(
+            delete(InventoryPriceHistory).where(
+                InventoryPriceHistory.id == price_history.id,
+            ),
+        )
+        await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_inventory_updates_record_price_history(
+    client: AsyncClient,
+    created_inventory_ids: list[int],
+) -> None:
+    create_response = await client.post(
+        "/api/v1/inventory/add-stock",
+        json={
+            "item": "__price_history_update_test__",
+            "quantity": 5,
+            "price": 150,
+            "purchase_cost": 100,
+        },
+    )
+    inventory_id = create_response.json()["id"]
+    created_inventory_ids.append(inventory_id)
+
+    stock_response = await client.patch(
+        f"/api/v1/inventory/{inventory_id}",
+        json={"quantity": 8, "price": 150, "purchase_cost": 120},
+    )
+    price_response = await client.patch(
+        f"/api/v1/inventory/{inventory_id}",
+        json={"quantity": 8, "price": 150, "purchase_cost": 90},
+    )
+    unchanged_price_response = await client.patch(
+        f"/api/v1/inventory/{inventory_id}",
+        json={"quantity": 9, "price": 150, "purchase_cost": 90},
+    )
+    no_op_response = await client.patch(
+        f"/api/v1/inventory/{inventory_id}",
+        json={"quantity": 9, "price": 150, "purchase_cost": 90},
+    )
+
+    assert stock_response.status_code == 200
+    assert price_response.status_code == 200
+    assert unchanged_price_response.status_code == 200
+    assert no_op_response.status_code == 200
+
+    history_response = await client.get("/api/v1/inventory/price-history")
+    records = [
+        record
+        for record in history_response.json()
+        if record["inventory_id"] == inventory_id
+    ]
+
+    assert len(records) == 4
+    assert [record["event_type"] for record in records] == [
+        "stock_added",
+        "price_update",
+        "stock_added",
+        "initial",
+    ]
+    assert records[0]["quantity"] == 9
+    assert records[0]["price_difference"] == "0.00"
+    assert records[0]["percentage_change"] == "0.00"
+    assert records[0]["change_direction"] == "unchanged"
+    assert records[1]["previous_purchase_cost"] == "120.00"
+    assert records[1]["new_purchase_cost"] == "90.00"
+    assert records[1]["price_difference"] == "-30.00"
+    assert records[1]["percentage_change"] == "-25.00"
+    assert records[1]["change_direction"] == "decreased"
+    assert records[2]["quantity"] == 8
+    assert records[2]["previous_purchase_cost"] == "100.00"
+    assert records[2]["new_purchase_cost"] == "120.00"
+    assert records[2]["price_difference"] == "20.00"
+    assert records[2]["percentage_change"] == "20.00"
+    assert records[2]["change_direction"] == "increased"
+
+
+@pytest.mark.asyncio
+async def test_zero_previous_price_has_no_percentage_change(
+    client: AsyncClient,
+    created_inventory_ids: list[int],
+) -> None:
+    create_response = await client.post(
+        "/api/v1/inventory/add-stock",
+        json={
+            "item": "__zero_price_history_test__",
+            "quantity": 1,
+            "price": 10,
+            "purchase_cost": 0,
+        },
+    )
+    inventory_id = create_response.json()["id"]
+    created_inventory_ids.append(inventory_id)
+
+    await client.patch(
+        f"/api/v1/inventory/{inventory_id}",
+        json={"quantity": 1, "price": 10, "purchase_cost": 50},
+    )
+    history_response = await client.get("/api/v1/inventory/price-history")
+    updated_record = next(
+        record
+        for record in history_response.json()
+        if record["inventory_id"] == inventory_id
+        and record["event_type"] == "price_update"
+    )
+
+    assert updated_record["price_difference"] == "50.00"
+    assert updated_record["percentage_change"] is None
+    assert updated_record["change_direction"] == "increased"
+
+
+@pytest.mark.asyncio
+async def test_price_history_requires_authentication(
+    unauthenticated_client: AsyncClient,
+) -> None:
+    response = await unauthenticated_client.get(
+        "/api/v1/inventory/price-history",
+    )
+
+    assert response.status_code == 401
 
 
 @pytest.mark.asyncio

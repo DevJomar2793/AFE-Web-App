@@ -20,6 +20,7 @@ import { BusinessFundsPanel } from "./business-funds-panel";
 interface InventoryScreenProps {
   onAddItem: () => void;
   onEditItem: (item: InventoryRecord) => void;
+  onPriceHistory: () => void;
   onReturn: () => void;
   refreshKey: number;
   isAdmin: boolean;
@@ -207,6 +208,7 @@ function EditButton({
 export function InventoryScreen({
   onAddItem,
   onEditItem,
+  onPriceHistory,
   onReturn,
   refreshKey,
   isAdmin,
@@ -319,6 +321,14 @@ export function InventoryScreen({
                 </Text>
               </View>
               <View style={styles.headerActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={onPriceHistory}
+                  style={styles.historyButton}
+                >
+                  <Ionicons name="time-outline" size={18} color="#173b24" />
+                  <Text style={styles.addStockText}>Price History</Text>
+                </Pressable>
                 <Pressable onPress={onAddItem} style={styles.addStockButton}>
                   <Ionicons name="cube-outline" size={18} color="#173b24" />
                   <Text style={styles.addStockText}>Add stock</Text>
@@ -479,7 +489,20 @@ const styles = StyleSheet.create({
   headerText: { flex: 1, minWidth: 0 },
   title: { color: "#18251a", fontSize: 24, fontWeight: "800" },
   subtitle: { color: "#768178", fontSize: 14, marginTop: 4 },
-  headerActions: { flexDirection: "row", gap: 8 },
+  headerActions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  historyButton: {
+    height: 44,
+    flexBasis: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    borderWidth: 1,
+    borderColor: "#cfd8cd",
+    borderRadius: 12,
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 14,
+  },
   addStockButton: {
     height: 44,
     flex: 1,

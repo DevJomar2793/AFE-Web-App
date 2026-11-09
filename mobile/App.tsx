@@ -31,6 +31,7 @@ import {
   type UserAccount,
 } from "./lib/auth";
 import { OverviewScreen } from "./components/overview-screen";
+import { PriceHistoryScreen } from "./components/price-history-screen";
 import { TransactionScreen } from "./components/transaction-screen";
 import { ReturnsScreen } from "./components/returns-screen";
 import type { MobileTab } from "./components/bottom-navigation";
@@ -47,6 +48,7 @@ export default function App() {
     "login" | "register" | "dashboard"
   >("login");
   const [activeTab, setActiveTab] = useState<MobileTab>("home");
+  const [isPriceHistoryOpen, setIsPriceHistoryOpen] = useState(false);
   const [isAddStockModalVisible, setIsAddStockModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryRecord | null>(null);
   const [inventoryRefreshKey, setInventoryRefreshKey] = useState(0);
@@ -150,6 +152,11 @@ export default function App() {
     setSuccessNotice({ title, message });
   }
 
+  function changeTab(tab: MobileTab) {
+    setActiveTab(tab);
+    setIsPriceHistoryOpen(false);
+  }
+
   async function logOut() {
     if (isLoggingOut) return;
 
@@ -195,25 +202,30 @@ export default function App() {
               isAdmin={account?.isAdmin === true}
               isLoggingOut={isLoggingOut}
               onLogOut={() => void logOut()}
-              onTabChange={setActiveTab}
+              onTabChange={changeTab}
             />
           ) : activeTab === "inventory" ? (
-            <InventoryScreen
-              onAddItem={() => setIsAddStockModalVisible(true)}
-              onEditItem={setEditingItem}
-              onReturn={() => setActiveTab("returns")}
-              refreshKey={inventoryRefreshKey}
-              isAdmin={account?.isAdmin === true}
-              fundsRefreshKey={fundsRefreshKey}
-              onFundsChanged={() => {
-                setFundsRefreshKey((key) => key + 1);
-                setSuccessNotice({
-                  title: "Business funds updated",
-                  message: "The balance and transaction history were updated.",
-                });
-              }}
-              onShowSuccess={showTransactionSuccess}
-            />
+            isPriceHistoryOpen ? (
+              <PriceHistoryScreen onBack={() => setIsPriceHistoryOpen(false)} />
+            ) : (
+              <InventoryScreen
+                onAddItem={() => setIsAddStockModalVisible(true)}
+                onEditItem={setEditingItem}
+                onPriceHistory={() => setIsPriceHistoryOpen(true)}
+                onReturn={() => changeTab("returns")}
+                refreshKey={inventoryRefreshKey}
+                isAdmin={account?.isAdmin === true}
+                fundsRefreshKey={fundsRefreshKey}
+                onFundsChanged={() => {
+                  setFundsRefreshKey((key) => key + 1);
+                  setSuccessNotice({
+                    title: "Business funds updated",
+                    message: "The balance and transaction history were updated.",
+                  });
+                }}
+                onShowSuccess={showTransactionSuccess}
+              />
+            )
           ) : activeTab === "transactions" ? (
             <TransactionScreen
               onBack={() => setActiveTab("home")}
@@ -229,7 +241,7 @@ export default function App() {
             <MoreScreen isAdmin={account?.isAdmin === true} />
           )}
 
-          <BottomNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+          <BottomNavigation activeTab={activeTab} onTabChange={changeTab} />
 
           <View style={styles.footer}>
             <AppFooter />

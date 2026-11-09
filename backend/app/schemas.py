@@ -153,6 +153,24 @@ class InventoryResponse(BaseModel):
     updated_at: datetime
 
 
+class InventoryPriceHistoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    inventory_id: int | None
+    product_name: str
+    category: Literal["eggs", "oil"]
+    oil_size: Literal["1.5L", "350ml"] | None
+    quantity: int
+    event_type: Literal["initial", "stock_added", "price_update"]
+    previous_purchase_cost: Decimal | None
+    new_purchase_cost: Decimal
+    price_difference: Decimal | None
+    percentage_change: Decimal | None
+    change_direction: Literal["initial", "increased", "decreased", "unchanged"]
+    purchase_date: datetime
+
+
 class SaleCreate(BaseModel):
     inventory_id: int = Field(gt=0, strict=True)
     quantity: int = Field(gt=0, strict=True)

@@ -61,6 +61,33 @@ export interface BusinessFundsRecord {
   updatedAt: string;
 }
 
+export type PriceHistoryEventType =
+  | "initial"
+  | "stock_added"
+  | "price_update";
+
+export type PriceChangeDirection =
+  | "initial"
+  | "increased"
+  | "decreased"
+  | "unchanged";
+
+export interface InventoryPriceHistoryRecord {
+  id: number;
+  inventoryId: number | null;
+  productName: string;
+  category: ProductCategory;
+  oilSize: OilSize | null;
+  quantity: number;
+  eventType: PriceHistoryEventType;
+  previousPurchaseCost: number | null;
+  newPurchaseCost: number;
+  priceDifference: number | null;
+  percentageChange: number | null;
+  changeDirection: PriceChangeDirection;
+  purchaseDate: string;
+}
+
 export type FundTransactionType = "opening_balance" | "income" | "expense";
 
 export interface FundTransactionRecord {
@@ -120,6 +147,21 @@ export async function getInventoryItems(
   }
 
   return responseBody.map(parseInventoryItem);
+}
+
+export async function getInventoryPriceHistory(
+  signal?: AbortSignal,
+): Promise<InventoryPriceHistoryRecord[]> {
+  const responseBody = await getApiResponse(
+    "/api/v1/inventory/price-history",
+    signal,
+    "Price history could not be loaded.",
+  );
+  if (!Array.isArray(responseBody)) {
+    throw new Error("The price history API returned an invalid response.");
+  }
+
+  return responseBody.map(parseInventoryPriceHistory);
 }
 
 export async function createInventoryItem(
@@ -459,6 +501,63 @@ function parseInventoryItem(value: unknown): InventoryRecord {
   };
 }
 
+function parseInventoryPriceHistory(
+  value: unknown,
+): InventoryPriceHistoryRecord {
+  if (!isRecord(value)) {
+    throw new Error("The price history API returned an invalid record.");
+  }
+
+  const previousPurchaseCost =
+    value.previous_purchase_cost === null
+      ? null
+      : parseSignedPrice(value.previous_purchase_cost);
+  const newPurchaseCost = parsePrice(value.new_purchase_cost);
+  const priceDifference =
+    value.price_difference === null
+      ? null
+      : parseSignedPrice(value.price_difference);
+  const percentageChange =
+    value.percentage_change === null
+      ? null
+      : parseSignedPrice(value.percentage_change);
+
+  if (
+    !isPositiveInteger(value.id) ||
+    (value.inventory_id !== null && !isPositiveInteger(value.inventory_id)) ||
+    typeof value.product_name !== "string" ||
+    !value.product_name.trim() ||
+    !isProductCategory(value.category) ||
+    !isValidOilSize(value.category, value.oil_size) ||
+    !isNonNegativeInteger(value.quantity) ||
+    !isPriceHistoryEventType(value.event_type) ||
+    (previousPurchaseCost !== null && previousPurchaseCost < 0) ||
+    newPurchaseCost === null ||
+    (priceDifference !== null && !Number.isFinite(priceDifference)) ||
+    (percentageChange !== null && !Number.isFinite(percentageChange)) ||
+    !isPriceChangeDirection(value.change_direction) ||
+    !isValidDate(value.purchase_date)
+  ) {
+    throw new Error("The price history API returned an invalid record.");
+  }
+
+  return {
+    id: value.id,
+    inventoryId: value.inventory_id,
+    productName: value.product_name,
+    category: value.category,
+    oilSize: value.oil_size,
+    quantity: value.quantity,
+    eventType: value.event_type,
+    previousPurchaseCost,
+    newPurchaseCost,
+    priceDifference,
+    percentageChange,
+    changeDirection: value.change_direction,
+    purchaseDate: value.purchase_date,
+  };
+}
+
 function parseBusinessFunds(value: unknown): BusinessFundsRecord {
   if (!isRecord(value)) throw new Error("Invalid business funds response.");
   const currentTotal = parseSignedPrice(value.current_total);
@@ -661,6 +760,27 @@ function isInventoryStatus(value: unknown): value is InventoryStatus {
 
 function isProductCategory(value: unknown): value is ProductCategory {
   return value === "eggs" || value === "oil";
+}
+
+function isPriceHistoryEventType(
+  value: unknown,
+): value is PriceHistoryEventType {
+  return (
+    value === "initial" ||
+    value === "stock_added" ||
+    value === "price_update"
+  );
+}
+
+function isPriceChangeDirection(
+  value: unknown,
+): value is PriceChangeDirection {
+  return (
+    value === "initial" ||
+    value === "increased" ||
+    value === "decreased" ||
+    value === "unchanged"
+  );
 }
 
 function isActivityLogAction(value: unknown): value is ActivityLogAction {

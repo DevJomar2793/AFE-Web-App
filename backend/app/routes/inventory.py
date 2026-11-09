@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -11,12 +12,18 @@ from app.funds import record_fund_transaction
 from app.models import (
     ActivityLog,
     Inventory,
+    InventoryPriceHistory,
     InventoryStatus,
     Return,
     SaleItem,
     User,
 )
-from app.schemas import InventoryCreate, InventoryResponse, InventoryUpdate
+from app.schemas import (
+    InventoryCreate,
+    InventoryPriceHistoryResponse,
+    InventoryResponse,
+    InventoryUpdate,
+)
 from app.security import get_current_admin, get_current_user
 
 
@@ -29,6 +36,47 @@ router = APIRouter(
 DatabaseSession = Annotated[AsyncSession, Depends(get_database_session)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
 CurrentAdmin = Annotated[User, Depends(get_current_admin)]
+
+
+def add_price_history_record(
+    session: AsyncSession,
+    inventory: Inventory,
+    previous_purchase_cost: Decimal | None,
+    event_type: str,
+) -> None:
+    price_difference: Decimal | None = None
+    percentage_change: Decimal | None = None
+    change_direction = "initial"
+
+    if previous_purchase_cost is not None:
+        price_difference = inventory.purchase_cost - previous_purchase_cost
+        if price_difference > 0:
+            change_direction = "increased"
+        elif price_difference < 0:
+            change_direction = "decreased"
+        else:
+            change_direction = "unchanged"
+
+        if previous_purchase_cost > 0:
+            percentage_change = (
+                price_difference / previous_purchase_cost * Decimal("100")
+            ).quantize(Decimal("0.01"))
+
+    session.add(
+        InventoryPriceHistory(
+            inventory_id=inventory.id,
+            product_name=inventory.item,
+            category=inventory.category,
+            oil_size=inventory.oil_size,
+            quantity=inventory.quantity,
+            event_type=event_type,
+            previous_purchase_cost=previous_purchase_cost,
+            new_purchase_cost=inventory.purchase_cost,
+            price_difference=price_difference,
+            percentage_change=percentage_change,
+            change_direction=change_direction,
+        ),
+    )
 
 
 @router.get(
@@ -46,6 +94,36 @@ async def get_inventory_items(session: DatabaseSession) -> list[Inventory]:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to get inventory items",
+        ) from error
+
+
+@router.get(
+    "/price-history",
+    response_model=list[InventoryPriceHistoryResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get inventory purchase price history",
+    description=(
+        "Returns immutable inventory purchase-price snapshots ordered newest first. "
+        "Percentage change is null for initial records and when the previous "
+        "price is zero."
+    ),
+)
+async def get_inventory_price_history(
+    session: DatabaseSession,
+) -> list[InventoryPriceHistory]:
+    try:
+        result = await session.scalars(
+            select(InventoryPriceHistory).order_by(
+                InventoryPriceHistory.purchase_date.desc(),
+                InventoryPriceHistory.id.desc(),
+            ),
+        )
+        return list(result.all())
+    except SQLAlchemyError as error:
+        logger.exception("Failed to get inventory price history")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to get inventory price history",
         ) from error
 
 
@@ -80,6 +158,7 @@ async def create_inventory_item(
 
     try:
         await session.flush()
+        add_price_history_record(session, inventory, None, "initial")
         purchase_total = inventory.purchase_cost * inventory.quantity
         if purchase_total > 0:
             await record_fund_transaction(
@@ -142,7 +221,9 @@ async def update_inventory_item(
                 detail="Inventory item not found",
             )
 
-        previous_purchase_total = inventory.purchase_cost * inventory.quantity
+        previous_quantity = inventory.quantity
+        previous_purchase_cost = inventory.purchase_cost
+        previous_purchase_total = previous_purchase_cost * previous_quantity
         inventory.quantity = item_data.quantity
         inventory.price = item_data.price
         if "wholesale_price" in item_data.model_fields_set:
@@ -184,6 +265,16 @@ async def update_inventory_item(
                     "in stock value)"
                 ),
                 related_inventory_id=inventory.id,
+            )
+
+        quantity_increased = inventory.quantity > previous_quantity
+        purchase_cost_changed = inventory.purchase_cost != previous_purchase_cost
+        if quantity_increased or purchase_cost_changed:
+            add_price_history_record(
+                session,
+                inventory,
+                previous_purchase_cost,
+                "stock_added" if quantity_increased else "price_update",
             )
 
         session.add(

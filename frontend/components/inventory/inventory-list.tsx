@@ -1,6 +1,13 @@
 "use client";
 
-import { PackagePlus, Pencil, RotateCcw, Search, Trash2 } from "lucide-react";
+import {
+  History,
+  PackagePlus,
+  Pencil,
+  RotateCcw,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import { ProductPriceCards } from "@/components/inventory/product-price-cards";
 import { BusinessFundsPanel } from "@/components/inventory/business-funds-panel";
@@ -14,6 +21,7 @@ type InventoryListProps = {
   onAddItem: () => void;
   onEditItem: (item: InventoryItem) => void;
   onDeleteItem: (item: InventoryItem) => void;
+  onOpenPriceHistory: () => void;
   onOpenReturns: () => void;
   onQueryChange: (query: string) => void;
   onRetry: () => void;
@@ -57,6 +65,7 @@ export function InventoryList({
   onAddItem,
   onEditItem,
   onDeleteItem,
+  onOpenPriceHistory,
   onOpenReturns,
   onQueryChange,
   onRetry,
@@ -90,7 +99,14 @@ export function InventoryList({
             Live inventory records from the database.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onOpenPriceHistory}
+            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-[#cfd8cd] bg-white px-4 text-sm font-black text-[#173b24] hover:bg-[#f8faf7] sm:flex-none"
+          >
+            <History size={18} aria-hidden="true" /> Price History
+          </button>
           <button
             type="button"
             onClick={onAddItem}
