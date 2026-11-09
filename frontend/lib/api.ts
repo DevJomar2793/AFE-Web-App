@@ -27,6 +27,33 @@ export type InventoryItem = {
   updatedAt: string;
 };
 
+export type PriceHistoryEventType =
+  | "initial"
+  | "stock_added"
+  | "price_update";
+
+export type PriceChangeDirection =
+  | "initial"
+  | "increased"
+  | "decreased"
+  | "unchanged";
+
+export type InventoryPriceHistory = {
+  id: number;
+  inventoryId: number | null;
+  productName: string;
+  category: ProductCategory;
+  oilSize: OilSize | null;
+  quantity: number;
+  eventType: PriceHistoryEventType;
+  previousPurchaseCost: number | null;
+  newPurchaseCost: number;
+  priceDifference: number | null;
+  percentageChange: number | null;
+  changeDirection: PriceChangeDirection;
+  purchaseDate: string;
+};
+
 export type Sale = {
   id: number;
   customerName: string;
@@ -291,6 +318,20 @@ export async function getInventoryItems(
   );
   if (!Array.isArray(response)) throw new Error("Invalid inventory response");
   return response.map(parseInventoryItem);
+}
+
+export async function getInventoryPriceHistory(
+  signal?: AbortSignal,
+): Promise<InventoryPriceHistory[]> {
+  const response = await apiRequest(
+    "/api/v1/inventory/price-history",
+    { signal },
+    "Unable to load price history.",
+  );
+  if (!Array.isArray(response)) {
+    throw new Error("Invalid price history response");
+  }
+  return response.map(parseInventoryPriceHistory);
 }
 
 export async function createInventoryItem(
@@ -570,6 +611,54 @@ function parseInventoryItem(value: unknown): InventoryItem {
   };
 }
 
+function parseInventoryPriceHistory(value: unknown): InventoryPriceHistory {
+  if (!isRecord(value)) throw new Error("Invalid price history record");
+
+  const previousPurchaseCost = parseNullablePrice(
+    value.previous_purchase_cost,
+  );
+  const newPurchaseCost = parsePrice(value.new_purchase_cost);
+  const priceDifference = parseNullablePrice(value.price_difference);
+  const percentageChange = parseNullablePrice(value.percentage_change);
+
+  if (
+    !isPositiveInteger(value.id) ||
+    (value.inventory_id !== null && !isPositiveInteger(value.inventory_id)) ||
+    typeof value.product_name !== "string" ||
+    !value.product_name.trim() ||
+    !isProductCategory(value.category) ||
+    !isValidOilSize(value.category, value.oil_size) ||
+    !isNonNegativeInteger(value.quantity) ||
+    !isPriceHistoryEventType(value.event_type) ||
+    (previousPurchaseCost !== null &&
+      (!Number.isFinite(previousPurchaseCost) || previousPurchaseCost < 0)) ||
+    !Number.isFinite(newPurchaseCost) ||
+    newPurchaseCost < 0 ||
+    (priceDifference !== null && !Number.isFinite(priceDifference)) ||
+    (percentageChange !== null && !Number.isFinite(percentageChange)) ||
+    !isPriceChangeDirection(value.change_direction) ||
+    !isValidDate(value.purchase_date)
+  ) {
+    throw new Error("Invalid price history record");
+  }
+
+  return {
+    id: value.id,
+    inventoryId: value.inventory_id,
+    productName: value.product_name,
+    category: value.category,
+    oilSize: value.oil_size,
+    quantity: value.quantity,
+    eventType: value.event_type,
+    previousPurchaseCost,
+    newPurchaseCost,
+    priceDifference,
+    percentageChange,
+    changeDirection: value.change_direction,
+    purchaseDate: value.purchase_date,
+  };
+}
+
 function parseBusinessFunds(value: unknown): BusinessFunds {
   if (!isRecord(value)) throw new Error("Invalid business funds response");
   const currentTotal = parsePrice(value.current_total);
@@ -775,6 +864,27 @@ function isInventoryStatus(value: unknown): value is InventoryStatus {
 
 function isProductCategory(value: unknown): value is ProductCategory {
   return value === "eggs" || value === "oil";
+}
+
+function isPriceHistoryEventType(
+  value: unknown,
+): value is PriceHistoryEventType {
+  return (
+    value === "initial" ||
+    value === "stock_added" ||
+    value === "price_update"
+  );
+}
+
+function isPriceChangeDirection(
+  value: unknown,
+): value is PriceChangeDirection {
+  return (
+    value === "initial" ||
+    value === "increased" ||
+    value === "decreased" ||
+    value === "unchanged"
+  );
 }
 
 function isValidOilSize(

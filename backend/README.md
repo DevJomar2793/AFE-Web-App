@@ -56,6 +56,7 @@ POST /api/v1/auth/register
 POST /api/v1/auth/login
 GET  /api/v1/auth/me
 GET  /api/v1/inventory/get-item
+GET  /api/v1/inventory/price-history
 POST /api/v1/inventory/add-stock
 PATCH /api/v1/inventory/{inventory_id}
 GET  /api/v1/sales/get-sales
@@ -126,6 +127,19 @@ curl -X PATCH http://127.0.0.1:8000/api/v1/inventory/1 \
 The update marks zero quantity as `out_of_stock` and restores an out-of-stock
 item to `in_stock` when its quantity becomes positive. Existing `low_stock`
 status is preserved while quantity remains positive.
+
+Inventory creation saves an initial purchase-price baseline. Increasing an
+item's quantity or changing its purchase cost saves an immutable price-history
+record in the same database transaction. List those records newest first with:
+
+```bash
+curl http://127.0.0.1:8000/api/v1/inventory/price-history \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+Each record includes the product snapshot, previous and new unit costs, signed
+difference, percentage change, quantity, and purchase date. Percentage change
+is `null` for an initial record or when the previous cost was zero.
 
 Create a sale with the related inventory ID, a positive whole quantity, and a
 customer name:

@@ -44,6 +44,9 @@ reason while incrementing the related inventory `returns_count` atomically;
 the inventory quantity is unchanged.
 
 The Overview, Inventory, Activity, and Returns views use database records.
+The Inventory view also includes Price History. Initial stock, stock increases,
+and purchase-cost changes are stored as immutable database snapshots and shown
+in both the web and mobile apps.
 
 This split preserves the current application behavior, but it is not suitable
 for multi-user production use. Authentication and database-backed transaction

@@ -6,7 +6,7 @@ from httpx import AsyncClient
 from sqlalchemy import delete
 
 from app.database import async_session_factory
-from app.models import ActivityLog, Inventory, Return, Sale
+from app.models import ActivityLog, Inventory, InventoryPriceHistory, Return, Sale
 
 
 @pytest.fixture
@@ -28,6 +28,11 @@ async def activity_log_marker() -> AsyncIterator[str]:
         if stored_inventory_ids:
             await session.execute(
                 delete(Return).where(Return.inventory_id.in_(stored_inventory_ids)),
+            )
+            await session.execute(
+                delete(InventoryPriceHistory).where(
+                    InventoryPriceHistory.inventory_id.in_(stored_inventory_ids),
+                ),
             )
             await session.execute(
                 delete(Inventory).where(Inventory.id.in_(stored_inventory_ids)),

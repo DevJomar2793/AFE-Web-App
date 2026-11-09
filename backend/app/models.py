@@ -177,6 +177,83 @@ class Inventory(Base):
         back_populates="item",
     )
     returns: Mapped[list["Return"]] = relationship(back_populates="item")
+    price_history: Mapped[list["InventoryPriceHistory"]] = relationship(
+        back_populates="inventory",
+        passive_deletes=True,
+    )
+
+
+class InventoryPriceHistory(Base):
+    __tablename__ = "inventory_price_history"
+    __table_args__ = (
+        CheckConstraint(
+            "char_length(trim(product_name)) > 0",
+            name="ck_inventory_price_history_product_not_blank",
+        ),
+        CheckConstraint("quantity >= 0", name="ck_inventory_price_history_quantity"),
+        CheckConstraint(
+            "category IN ('eggs', 'oil')",
+            name="ck_inventory_price_history_category",
+        ),
+        CheckConstraint(
+            "(category = 'eggs' AND oil_size IS NULL) OR "
+            "(category = 'oil' AND oil_size IN ('1.5L', '350ml'))",
+            name="ck_inventory_price_history_category_size",
+        ),
+        CheckConstraint(
+            "event_type IN ('initial', 'stock_added', 'price_update')",
+            name="ck_inventory_price_history_event_type",
+        ),
+        CheckConstraint(
+            "change_direction IN ('initial', 'increased', 'decreased', 'unchanged')",
+            name="ck_inventory_price_history_direction",
+        ),
+        CheckConstraint(
+            "previous_purchase_cost IS NULL OR previous_purchase_cost >= 0",
+            name="ck_inventory_price_history_previous_cost",
+        ),
+        CheckConstraint(
+            "new_purchase_cost >= 0",
+            name="ck_inventory_price_history_new_cost",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    inventory_id: Mapped[int | None] = mapped_column(
+        ForeignKey("inventory.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    product_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    category: Mapped[str] = mapped_column(String(10), nullable=False)
+    oil_size: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    event_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    previous_purchase_cost: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2),
+        nullable=True,
+    )
+    new_purchase_cost: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2),
+        nullable=False,
+    )
+    price_difference: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2),
+        nullable=True,
+    )
+    percentage_change: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2),
+        nullable=True,
+    )
+    change_direction: Mapped[str] = mapped_column(String(20), nullable=False)
+    purchase_date: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        index=True,
+    )
+
+    inventory: Mapped[Inventory | None] = relationship(back_populates="price_history")
 
 
 class Sale(Base):

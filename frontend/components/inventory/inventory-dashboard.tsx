@@ -11,6 +11,7 @@ import { EditSaleModal } from "@/components/inventory/edit-sale-modal";
 import { useActivityLogs } from "@/components/inventory/use-activity-logs";
 import { useInventoryItems } from "@/components/inventory/use-inventory-items";
 import { usePendingAccounts } from "@/components/inventory/use-pending-accounts";
+import { usePriceHistory } from "@/components/inventory/use-price-history";
 import { useReturns } from "@/components/inventory/use-returns";
 import { useSales } from "@/components/inventory/use-sales";
 import {
@@ -24,6 +25,7 @@ import { InventoryList } from "@/components/inventory/inventory-list";
 import { NewReturnModal } from "@/components/inventory/new-return-modal";
 import { NewSaleModal } from "@/components/inventory/new-sale-modal";
 import { InventoryOverview } from "@/components/inventory/overview";
+import { PriceHistory } from "@/components/inventory/price-history";
 import { ReturnsList } from "@/components/inventory/returns-list";
 import { SalesActivity } from "@/components/inventory/sales-activity";
 import {
@@ -114,6 +116,12 @@ export function InventoryDashboard() {
     retry: retryPendingAccounts,
     removePendingAccount,
   } = usePendingAccounts(currentView === "accounts");
+  const {
+    records: priceHistory,
+    isLoading: isPriceHistoryLoading,
+    error: priceHistoryError,
+    retry: retryPriceHistory,
+  } = usePriceHistory(currentView === "price_history");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -349,8 +357,19 @@ export function InventoryDashboard() {
               }}
               onEditItem={setEditingInventoryItem}
               onQueryChange={setSearchQuery}
+              onOpenPriceHistory={() => selectView("price_history")}
               onOpenReturns={() => selectView("returns")}
               onRetry={retryInventory}
+            />
+          )}
+
+          {currentView === "price_history" && (
+            <PriceHistory
+              records={priceHistory}
+              error={priceHistoryError}
+              isLoading={isPriceHistoryLoading}
+              onBack={() => selectView("inventory")}
+              onRetry={retryPriceHistory}
             />
           )}
 

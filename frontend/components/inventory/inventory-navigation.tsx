@@ -28,6 +28,7 @@ import {
 export type InventoryViewName =
   | "overview"
   | "inventory"
+  | "price_history"
   | "activity"
   | "returns"
   | "logs"
@@ -274,6 +275,7 @@ export function InventoryHeader({
   const titles: Record<InventoryViewName, string> = {
     overview: "Operations overview",
     inventory: "Inventory",
+    price_history: "Price History",
     activity: "Transaction activity",
     returns: "Returns",
     logs: "Activity logs",
@@ -365,7 +367,7 @@ export function InventoryBottomNavigation({
         onClick={() => onSelectView("overview")}
       />
       <BottomNavButton
-        active={currentView === "inventory"}
+        active={currentView === "inventory" || currentView === "price_history"}
         icon={<Boxes size={20} />}
         label="Inventory"
         onClick={() => onSelectView("inventory")}
@@ -438,7 +440,7 @@ function InventoryNav({
         onClick={() => onSelectView("overview")}
       />
       <NavButton
-        active={currentView === "inventory"}
+        active={currentView === "inventory" || currentView === "price_history"}
         icon={<Boxes size={isMobile ? 19 : 20} />}
         label="Inventory"
         isMobile={isMobile}

@@ -7,8 +7,27 @@ from httpx import AsyncClient
 from sqlalchemy import delete, func, select
 
 from app.database import async_session_factory
-from app.models import BusinessFunds, FundTransaction, Inventory, User
+from app.models import (
+    BusinessFunds,
+    FundTransaction,
+    Inventory,
+    InventoryPriceHistory,
+    User,
+)
 from app.security import create_access_token, hash_password
+
+
+async def remove_test_inventory(inventory_id: int) -> None:
+    async with async_session_factory() as session:
+        await session.execute(
+            delete(InventoryPriceHistory).where(
+                InventoryPriceHistory.inventory_id == inventory_id,
+            ),
+        )
+        inventory = await session.get(Inventory, inventory_id)
+        if inventory is not None:
+            await session.delete(inventory)
+        await session.commit()
 
 
 @pytest.fixture
@@ -154,11 +173,7 @@ async def test_sales_and_stock_update_business_funds(
         assert "sale_adjustment" in sources
         assert "sale_reversal" in sources
     finally:
-        async with async_session_factory() as session:
-            inventory = await session.get(Inventory, inventory_id)
-            if inventory is not None:
-                await session.delete(inventory)
-                await session.commit()
+        await remove_test_inventory(inventory_id)
 
 
 @pytest.mark.asyncio
@@ -227,11 +242,7 @@ async def test_stock_edits_adjust_funds_by_purchase_value_difference(
             "200.00",
         ]
     finally:
-        async with async_session_factory() as session:
-            inventory = await session.get(Inventory, inventory_id)
-            if inventory is not None:
-                await session.delete(inventory)
-                await session.commit()
+        await remove_test_inventory(inventory_id)
 
 
 @pytest.mark.asyncio
@@ -278,11 +289,7 @@ async def test_reducing_stock_value_can_restore_a_positive_fund_balance(
         assert history_response.json()[0]["amount"] == "180.00"
         assert history_response.json()[0]["source"] == "inventory_purchase"
     finally:
-        async with async_session_factory() as session:
-            inventory = await session.get(Inventory, inventory_id)
-            if inventory is not None:
-                await session.delete(inventory)
-                await session.commit()
+        await remove_test_inventory(inventory_id)
 
 
 @pytest.mark.asyncio
