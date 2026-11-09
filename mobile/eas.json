@@ -24,6 +24,9 @@
     "production": {
       "autoIncrement": true,
       "environment": "production",
+      "android": {
+        "buildType": "apk"
+      },
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production",
         "EXPO_PUBLIC_BACKEND_API_URL": "https://atbackend-web-app-afe.onrender.com"
