@@ -25,32 +25,8 @@ interface Customer {
   landmark: string;
 }
 
-const INITIAL_CUSTOMERS: Customer[] = [
-  {
-    id: 1,
-    name: "Juan Dela Cruz",
-    number: "0917 123 4567",
-    address: "Gordon Heights, Olongapo City",
-    landmark: "Near Gordon Heights Elem. School",
-  },
-  {
-    id: 2,
-    name: "Maria Santos",
-    number: "0928 987 6543",
-    address: "New Cabalan, Olongapo City",
-    landmark: "Beside 7-Eleven",
-  },
-  {
-    id: 3,
-    name: "Carlos Reyes",
-    number: "0906 555 7890",
-    address: "Barretto, Olongapo City",
-    landmark: "In front of Barretto Church",
-  },
-];
-
 export function CustomerInformation() {
-  const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [query, setQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
@@ -104,7 +80,6 @@ export function CustomerInformation() {
   }
 
   function refreshCustomers() {
-    setCustomers(INITIAL_CUSTOMERS);
     setQuery("");
   }
 
@@ -426,8 +401,8 @@ function DeleteCustomerModal({
           id="delete-customer-description"
           className="mt-2 text-sm leading-6 text-[#6d776f]"
         >
-          This removes the customer from the temporary list. Refreshing the
-          page will restore the original sample data.
+          This removes the customer from the current list. This action cannot
+          be undone.
         </p>
 
         <div className="mt-7 grid grid-cols-2 gap-3">

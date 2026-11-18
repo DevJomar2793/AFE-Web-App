@@ -23,32 +23,8 @@ interface Customer {
   landmark: string;
 }
 
-const INITIAL_CUSTOMERS: Customer[] = [
-  {
-    id: 1,
-    name: "Juan Dela Cruz",
-    number: "0917 123 4567",
-    address: "Gordon Heights, Olongapo City",
-    landmark: "Near Gordon Heights Elem. School",
-  },
-  {
-    id: 2,
-    name: "Maria Santos",
-    number: "0928 987 6543",
-    address: "New Cabalan, Olongapo City",
-    landmark: "Beside 7-Eleven",
-  },
-  {
-    id: 3,
-    name: "Carlos Reyes",
-    number: "0906 555 7890",
-    address: "Barretto, Olongapo City",
-    landmark: "In front of Barretto Church",
-  },
-];
-
 export function CustomerInformationScreen({ onBack }: { onBack: () => void }) {
-  const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [query, setQuery] = useState("");
   const [customerInForm, setCustomerInForm] = useState<
     Customer | null | undefined
@@ -92,7 +68,7 @@ export function CustomerInformationScreen({ onBack }: { onBack: () => void }) {
   function confirmDelete(customer: Customer) {
     Alert.alert(
       "Delete customer?",
-      `Remove ${customer.name} from the temporary customer list?`,
+      `Remove ${customer.name} from the current customer list?`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -108,7 +84,6 @@ export function CustomerInformationScreen({ onBack }: { onBack: () => void }) {
   }
 
   function refreshCustomers() {
-    setCustomers(INITIAL_CUSTOMERS);
     setQuery("");
   }
 
