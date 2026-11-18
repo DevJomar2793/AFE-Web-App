@@ -68,6 +68,8 @@ POST /api/v1/returns/add-returns
 GET  /api/v1/activity-logs
 POST /api/v1/customer-details/add-customer-details
 GET  /api/v1/customer-details/get-all-customer-details
+PATCH /api/v1/customer-details/{customer_id}
+DELETE /api/v1/customer-details/{customer_id}
 ```
 
 ## Authentication
@@ -224,15 +226,28 @@ Create customer contact and delivery details with:
 curl -X POST http://127.0.0.1:8000/api/v1/customer-details/add-customer-details \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Maria Santos","number":"0928 987 6543","address":"New Cabalan, Olongapo City","landmark":"Beside 7-Eleven"}'
+  -d '{"name":"Maria Santos","number":"09289876543","address":"New Cabalan, Olongapo City","landmark":"Beside 7-Eleven"}'
 ```
 
-All four fields are required. The API trims surrounding whitespace and returns
-the generated customer ID with the saved details. List customers in ID order
-with:
+All four fields are required. The number must contain exactly 11 digits and
+must be unique. The API trims surrounding whitespace, stores the name in Title
+Case, and returns the generated customer ID with the saved details. List
+customers in ID order with:
 
 ```bash
 curl http://127.0.0.1:8000/api/v1/customer-details/get-all-customer-details \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+Update or delete a customer using the returned customer ID:
+
+```bash
+curl -X PATCH http://127.0.0.1:8000/api/v1/customer-details/1 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Juan Dela Cruz","number":"09171234567","address":"Olongapo City","landmark":"Near the public market"}'
+
+curl -X DELETE http://127.0.0.1:8000/api/v1/customer-details/1 \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 

@@ -86,8 +86,8 @@ class Customer(Base):
             name="ck_customers_name_not_blank",
         ),
         CheckConstraint(
-            "char_length(trim(number)) > 0",
-            name="ck_customers_number_not_blank",
+            "number ~ '^[0-9]{11}$'",
+            name="ck_customers_number_format",
         ),
         CheckConstraint(
             "char_length(trim(address)) > 0",
@@ -97,13 +97,14 @@ class Customer(Base):
             "char_length(trim(landmark)) > 0",
             name="ck_customers_landmark_not_blank",
         ),
+        UniqueConstraint("number", name="uq_customers_number"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    number: Mapped[str] = mapped_column(String(50), nullable=False)
+    number: Mapped[str] = mapped_column(String(11), nullable=False)
     address: Mapped[str] = mapped_column(String(500), nullable=False)
-    landmark: Mapped[str] = mapped_column(String(255), nullable=False)
+    landmark: Mapped[str] = mapped_column(String(500), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

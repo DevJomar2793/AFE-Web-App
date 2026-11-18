@@ -76,14 +76,22 @@ class CustomerCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(min_length=1, max_length=255)
-    number: str = Field(min_length=1, max_length=50)
+    number: str = Field(min_length=11, max_length=11, pattern=r"^[0-9]{11}$")
     address: str = Field(min_length=1, max_length=500)
-    landmark: str = Field(min_length=1, max_length=255)
+    landmark: str = Field(min_length=1, max_length=500)
 
     @field_validator("name", "number", "address", "landmark", mode="before")
     @classmethod
     def strip_text_fields(cls, value: object) -> object:
         return value.strip() if isinstance(value, str) else value
+
+    @field_validator("name", mode="after")
+    @classmethod
+    def format_customer_name(cls, value: str) -> str:
+        return " ".join(
+            word[:1].upper() + word[1:].lower()
+            for word in value.split()
+        )
 
 
 class CustomerResponse(BaseModel):

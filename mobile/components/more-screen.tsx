@@ -21,7 +21,13 @@ import { CustomerInformationScreen } from "./customer-information-screen";
 
 type MoreView = "menu" | "logs" | "accounts" | "customers";
 
-export function MoreScreen({ isAdmin }: { isAdmin: boolean }) {
+export function MoreScreen({
+  isAdmin,
+  onShowSuccess,
+}: {
+  isAdmin: boolean;
+  onShowSuccess: (title: string, message: string) => void;
+}) {
   const [view, setView] = useState<MoreView>("menu");
 
   if (view === "logs") {
@@ -31,7 +37,12 @@ export function MoreScreen({ isAdmin }: { isAdmin: boolean }) {
     return <AccountApprovalScreen onBack={() => setView("menu")} />;
   }
   if (view === "customers") {
-    return <CustomerInformationScreen onBack={() => setView("menu")} />;
+    return (
+      <CustomerInformationScreen
+        onBack={() => setView("menu")}
+        onShowSuccess={onShowSuccess}
+      />
+    );
   }
 
   return (

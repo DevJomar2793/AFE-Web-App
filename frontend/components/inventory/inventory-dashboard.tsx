@@ -425,7 +425,13 @@ export function InventoryDashboard() {
             />
           )}
 
-          {currentView === "customers" && <CustomerInformation />}
+          {currentView === "customers" && (
+            <CustomerInformation
+              onShowSuccess={(message) =>
+                setNotice({ message, tone: "success" })
+              }
+            />
+          )}
 
           <footer className="hidden border-t border-[#d9dfd7] py-2 text-center text-xs text-[#667364] lg:block">
             © {currentYear} Adamos Fresh Eggs. Built by{" "}

@@ -2,6 +2,10 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { X } from "lucide-react";
+import {
+  formatCustomerName,
+  sanitizeCustomerNumber,
+} from "@/lib/customer-format";
 
 export interface CustomerFormValues {
   name: string;
@@ -13,7 +17,7 @@ export interface CustomerFormValues {
 interface AddCustomerModalProps {
   customer?: CustomerFormValues;
   onCancel: () => void;
-  onSave: (values: CustomerFormValues) => void;
+  onSave: (values: CustomerFormValues) => Promise<void> | void;
 }
 
 export function AddCustomerModal({
@@ -21,26 +25,27 @@ export function AddCustomerModal({
   onCancel,
   onSave,
 }: AddCustomerModalProps) {
-  const [name, setName] = useState(customer?.name ?? "");
+  const [name, setName] = useState(customer?.name.toUpperCase() ?? "");
   const [number, setNumber] = useState(customer?.number ?? "");
   const [address, setAddress] = useState(customer?.address ?? "");
   const [landmark, setLandmark] = useState(customer?.landmark ?? "");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") onCancel();
+      if (event.key === "Escape" && !isSubmitting) onCancel();
     }
 
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [onCancel]);
+  }, [isSubmitting, onCancel]);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const values: CustomerFormValues = {
-      name: name.trim(),
+      name: formatCustomerName(name),
       number: number.trim(),
       address: address.trim(),
       landmark: landmark.trim(),
@@ -51,7 +56,22 @@ export function AddCustomerModal({
       return;
     }
 
-    onSave(values);
+    if (!/^\d{11}$/.test(values.number)) {
+      setError("Enter a complete 11-digit customer number.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await onSave(values);
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "The customer could not be saved.",
+      );
+      setIsSubmitting(false);
+    }
   }
 
   const isEditing = customer !== undefined;
@@ -60,7 +80,9 @@ export function AddCustomerModal({
     <div
       className="fixed inset-0 z-70 flex items-end justify-center bg-[#0d2417]/55 p-0 backdrop-blur-sm sm:items-center sm:p-6"
       role="presentation"
-      onMouseDown={onCancel}
+      onMouseDown={() => {
+        if (!isSubmitting) onCancel();
+      }}
     >
       <section
         role="dialog"
@@ -89,6 +111,7 @@ export function AddCustomerModal({
           <button
             type="button"
             onClick={onCancel}
+            disabled={isSubmitting}
             aria-label="Close customer form"
             className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#dfe4dd] text-[#566159] hover:bg-[#f3f5f1]"
           >
@@ -103,17 +126,19 @@ export function AddCustomerModal({
             placeholder="Customer name"
             value={name}
             onChange={(value) => {
-              setName(value);
+              setName(value.toUpperCase());
               setError("");
             }}
           />
           <CustomerInput
             label="Number"
-            placeholder="09XX XXX XXXX"
+            inputMode="numeric"
+            maxLength={11}
+            placeholder="09XXXXXXXXX"
             type="tel"
             value={number}
             onChange={(value) => {
-              setNumber(value);
+              setNumber(sanitizeCustomerNumber(value));
               setError("");
             }}
           />
@@ -126,15 +151,21 @@ export function AddCustomerModal({
               setError("");
             }}
           />
-          <CustomerInput
-            label="Landmark"
-            placeholder="Nearby landmark"
-            value={landmark}
-            onChange={(value) => {
-              setLandmark(value);
-              setError("");
-            }}
-          />
+          <label className="block text-sm font-extrabold text-[#283b2c]">
+            Landmark
+            <textarea
+              className="inventory-field mt-2 min-h-24 resize-y py-3"
+              maxLength={500}
+              onChange={(event) => {
+                setLandmark(event.target.value);
+                setError("");
+              }}
+              placeholder="Nearby landmark"
+              required
+              rows={3}
+              value={landmark}
+            />
+          </label>
 
           {error && (
             <p
@@ -149,15 +180,17 @@ export function AddCustomerModal({
             <button
               type="button"
               onClick={onCancel}
+              disabled={isSubmitting}
               className="h-12 rounded-xl border border-[#cfd8cd] bg-white px-4 text-sm font-black text-[#173b24] hover:bg-[#f8faf7]"
             >
               Cancel
             </button>
             <button
               type="submit"
+              disabled={isSubmitting}
               className="h-12 rounded-xl bg-[#173b24] px-4 text-sm font-black text-white hover:bg-[#245334]"
             >
-              Save
+              {isSubmitting ? "Saving..." : "Save"}
             </button>
           </div>
         </form>
@@ -169,6 +202,8 @@ export function AddCustomerModal({
 function CustomerInput({
   autoFocus = false,
   label,
+  inputMode,
+  maxLength = 255,
   onChange,
   placeholder,
   type = "text",
@@ -176,6 +211,8 @@ function CustomerInput({
 }: {
   autoFocus?: boolean;
   label: string;
+  inputMode?: "numeric";
+  maxLength?: number;
   onChange: (value: string) => void;
   placeholder: string;
   type?: "text" | "tel";
@@ -187,7 +224,8 @@ function CustomerInput({
       <input
         autoFocus={autoFocus}
         className="inventory-field mt-2"
-        maxLength={255}
+        inputMode={inputMode}
+        maxLength={maxLength}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         required

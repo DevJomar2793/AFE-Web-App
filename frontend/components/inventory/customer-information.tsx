@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   MapPin,
   Pencil,
@@ -16,23 +16,67 @@ import {
   AddCustomerModal,
   type CustomerFormValues,
 } from "@/components/inventory/add-customer-modal";
+import {
+  createCustomerDetails,
+  deleteCustomerDetails,
+  getCustomerDetails,
+  updateCustomerDetails,
+  type CustomerDetails as Customer,
+} from "@/lib/api";
 
-interface Customer {
-  id: number;
-  name: string;
-  number: string;
-  address: string;
-  landmark: string;
-}
-
-export function CustomerInformation() {
+export function CustomerInformation({
+  onShowSuccess,
+}: {
+  onShowSuccess: (message: string) => void;
+}) {
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(
     null,
   );
+
+  const loadCustomers = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const customerData = await getCustomerDetails(signal);
+      setCustomers(customerData);
+      setLoadError("");
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setLoadError(
+        error instanceof Error ? error.message : "Unable to load customers.",
+      );
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadInitialCustomers = async () => {
+      try {
+        const customerData = await getCustomerDetails(controller.signal);
+        setCustomers(customerData);
+        setLoadError("");
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setLoadError(
+          error instanceof Error ? error.message : "Unable to load customers.",
+        );
+      } finally {
+        if (!controller.signal.aborted) setIsLoading(false);
+      }
+    };
+
+    void loadInitialCustomers();
+    return () => controller.abort();
+  }, []);
 
   const normalizedQuery = query.trim().toLowerCase();
   const visibleCustomers = customers.filter((customer) => {
@@ -46,41 +90,31 @@ export function CustomerInformation() {
     ].some((value) => value.toLowerCase().includes(normalizedQuery));
   });
 
-  function addCustomer(values: CustomerFormValues) {
-    const nextId = Math.max(0, ...customers.map((customer) => customer.id)) + 1;
-    setCustomers((currentCustomers) => [
-      ...currentCustomers,
-      { id: nextId, ...values },
-    ]);
+  async function addCustomer(values: CustomerFormValues) {
+    await createCustomerDetails(values);
     setIsAddModalOpen(false);
+    await loadCustomers();
+    onShowSuccess("Customer successfully added!");
   }
 
-  function updateCustomer(values: CustomerFormValues) {
+  async function updateCustomer(values: CustomerFormValues) {
     if (!customerToEdit) return;
-
-    setCustomers((currentCustomers) =>
-      currentCustomers.map((customer) =>
-        customer.id === customerToEdit.id
-          ? { ...customer, ...values }
-          : customer,
-      ),
-    );
+    await updateCustomerDetails(customerToEdit.id, values);
     setCustomerToEdit(null);
+    await loadCustomers();
   }
 
-  function deleteCustomer() {
+  async function deleteCustomer() {
     if (!customerToDelete) return;
-
-    setCustomers((currentCustomers) =>
-      currentCustomers.filter(
-        (customer) => customer.id !== customerToDelete.id,
-      ),
-    );
+    await deleteCustomerDetails(customerToDelete.id);
     setCustomerToDelete(null);
+    await loadCustomers();
   }
 
   function refreshCustomers() {
     setQuery("");
+    setIsRefreshing(true);
+    void loadCustomers();
   }
 
   return (
@@ -131,10 +165,11 @@ export function CustomerInformation() {
         <button
           type="button"
           onClick={refreshCustomers}
+          disabled={isRefreshing}
           className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#cfd8cd] bg-white px-5 text-sm font-black text-[#273b2c] transition hover:bg-[#f5f8f4]"
         >
           <RotateCcw size={18} aria-hidden="true" />
-          Refresh
+          {isRefreshing ? "Refreshing..." : "Refresh"}
         </button>
       </div>
 
@@ -150,7 +185,7 @@ export function CustomerInformation() {
             </tr>
           </thead>
           <tbody>
-            {visibleCustomers.map((customer) => (
+            {!isLoading && visibleCustomers.map((customer) => (
               <CustomerTableRow
                 key={customer.id}
                 customer={customer}
@@ -161,11 +196,17 @@ export function CustomerInformation() {
           </tbody>
         </table>
 
-        {!visibleCustomers.length && <EmptyCustomers query={query} />}
+        {loadError ? (
+          <CustomerLoadError message={loadError} onRetry={refreshCustomers} />
+        ) : isLoading ? (
+          <CustomerLoading />
+        ) : !visibleCustomers.length ? (
+          <EmptyCustomers query={query} />
+        ) : null}
       </div>
 
       <div className="space-y-3 p-4 md:hidden">
-        {visibleCustomers.map((customer) => (
+        {!isLoading && visibleCustomers.map((customer) => (
           <CustomerCard
             key={customer.id}
             customer={customer}
@@ -174,7 +215,13 @@ export function CustomerInformation() {
           />
         ))}
 
-        {!visibleCustomers.length && <EmptyCustomers query={query} />}
+        {loadError ? (
+          <CustomerLoadError message={loadError} onRetry={refreshCustomers} />
+        ) : isLoading ? (
+          <CustomerLoading />
+        ) : !visibleCustomers.length ? (
+          <EmptyCustomers query={query} />
+        ) : null}
       </div>
 
       {isAddModalOpen && (
@@ -356,6 +403,35 @@ function EmptyCustomers({ query }: { query: string }) {
   );
 }
 
+function CustomerLoading() {
+  return (
+    <div className="p-10 text-center text-sm font-semibold text-[#748078]">
+      Loading customer information...
+    </div>
+  );
+}
+
+function CustomerLoadError({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="p-8 text-center">
+      <p className="text-sm font-semibold text-[#a33d22]">{message}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-3 text-sm font-black text-[#173b24] underline"
+      >
+        Try again
+      </button>
+    </div>
+  );
+}
+
 function DeleteCustomerModal({
   customer,
   onCancel,
@@ -363,22 +439,42 @@ function DeleteCustomerModal({
 }: {
   customer: Customer;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: () => Promise<void>;
 }) {
+  const [error, setError] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  async function confirmDelete() {
+    setIsDeleting(true);
+    setError("");
+    try {
+      await onConfirm();
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "The customer could not be deleted.",
+      );
+      setIsDeleting(false);
+    }
+  }
+
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") onCancel();
+      if (event.key === "Escape" && !isDeleting) onCancel();
     }
 
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [onCancel]);
+  }, [isDeleting, onCancel]);
 
   return (
     <div
       className="fixed inset-0 z-70 flex items-end justify-center bg-[#0d2417]/55 p-0 backdrop-blur-sm sm:items-center sm:p-6"
       role="presentation"
-      onMouseDown={onCancel}
+      onMouseDown={() => {
+        if (!isDeleting) onCancel();
+      }}
     >
       <section
         role="alertdialog"
@@ -405,21 +501,29 @@ function DeleteCustomerModal({
           be undone.
         </p>
 
+        {error && (
+          <p className="mt-4 rounded-xl bg-[#fff0e8] px-4 py-3 text-sm font-bold text-[#9b431f]">
+            {error}
+          </p>
+        )}
+
         <div className="mt-7 grid grid-cols-2 gap-3">
           <button
             type="button"
             onClick={onCancel}
+            disabled={isDeleting}
             className="h-12 rounded-xl border border-[#cfd8cd] bg-white px-4 text-sm font-black text-[#173b24] hover:bg-[#f8faf7]"
           >
             Cancel
           </button>
           <button
             type="button"
-            onClick={onConfirm}
+            onClick={confirmDelete}
+            disabled={isDeleting}
             className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#a33d22] px-4 text-sm font-black text-white hover:bg-[#852f19]"
           >
             <Trash2 size={17} aria-hidden="true" />
-            Delete
+            {isDeleting ? "Deleting..." : "Delete"}
           </button>
         </div>
       </section>

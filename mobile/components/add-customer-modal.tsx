@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -12,6 +13,10 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import {
+  formatCustomerName,
+  sanitizeCustomerNumber,
+} from "../lib/customer-format";
 
 export interface CustomerFormValues {
   name: string;
@@ -23,7 +28,7 @@ export interface CustomerFormValues {
 interface AddCustomerModalProps {
   customer: CustomerFormValues | null;
   onCancel: () => void;
-  onSave: (values: CustomerFormValues) => void;
+  onSave: (values: CustomerFormValues) => Promise<void> | void;
 }
 
 export function AddCustomerModal({
@@ -33,15 +38,16 @@ export function AddCustomerModal({
 }: AddCustomerModalProps) {
   const { width } = useWindowDimensions();
   const isWideScreen = width >= 600;
-  const [name, setName] = useState(customer?.name ?? "");
+  const [name, setName] = useState(customer?.name.toUpperCase() ?? "");
   const [number, setNumber] = useState(customer?.number ?? "");
   const [address, setAddress] = useState(customer?.address ?? "");
   const [landmark, setLandmark] = useState(customer?.landmark ?? "");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function submitForm() {
+  async function submitForm() {
     const values: CustomerFormValues = {
-      name: name.trim(),
+      name: formatCustomerName(name),
       number: number.trim(),
       address: address.trim(),
       landmark: landmark.trim(),
@@ -52,13 +58,30 @@ export function AddCustomerModal({
       return;
     }
 
-    onSave(values);
+    if (!/^\d{11}$/.test(values.number)) {
+      setError("Enter a complete 11-digit customer number.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await onSave(values);
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "The customer could not be saved.",
+      );
+      setIsSubmitting(false);
+    }
   }
 
   return (
     <Modal
       animationType="slide"
-      onRequestClose={onCancel}
+      onRequestClose={() => {
+        if (!isSubmitting) onCancel();
+      }}
       transparent
       visible
     >
@@ -71,6 +94,7 @@ export function AddCustomerModal({
       >
         <Pressable
           accessibilityLabel="Close customer form"
+          disabled={isSubmitting}
           onPress={onCancel}
           style={styles.modalBackdrop}
         />
@@ -88,6 +112,7 @@ export function AddCustomerModal({
               accessibilityLabel="Close customer form"
               accessibilityRole="button"
               hitSlop={8}
+              disabled={isSubmitting}
               onPress={onCancel}
               style={styles.closeButton}
             >
@@ -105,7 +130,7 @@ export function AddCustomerModal({
               icon="person-outline"
               label="Name"
               onChange={(value) => {
-                setName(value);
+                setName(value.toUpperCase());
                 setError("");
               }}
               placeholder="Enter customer name"
@@ -113,10 +138,11 @@ export function AddCustomerModal({
             />
             <CustomerInput
               icon="call-outline"
-              keyboardType="phone-pad"
+              keyboardType="number-pad"
+              maxLength={11}
               label="Number"
               onChange={(value) => {
-                setNumber(value);
+                setNumber(sanitizeCustomerNumber(value));
                 setError("");
               }}
               placeholder="Enter mobile number"
@@ -135,6 +161,9 @@ export function AddCustomerModal({
             <CustomerInput
               icon="map-outline"
               label="Landmark"
+              maxLength={500}
+              multiline
+              numberOfLines={4}
               onChange={(value) => {
                 setLandmark(value);
                 setError("");
@@ -152,6 +181,7 @@ export function AddCustomerModal({
             <View style={styles.formActions}>
               <Pressable
                 accessibilityRole="button"
+                disabled={isSubmitting}
                 onPress={onCancel}
                 style={styles.cancelButton}
               >
@@ -159,10 +189,15 @@ export function AddCustomerModal({
               </Pressable>
               <Pressable
                 accessibilityRole="button"
+                disabled={isSubmitting}
                 onPress={submitForm}
                 style={styles.saveButton}
               >
-                <Text style={styles.saveButtonText}>Save</Text>
+                {isSubmitting ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Save</Text>
+                )}
               </Pressable>
             </View>
           </ScrollView>
@@ -177,14 +212,20 @@ function CustomerInput({
   icon,
   keyboardType = "default",
   label,
+  maxLength = 255,
+  multiline = false,
+  numberOfLines,
   onChange,
   placeholder,
   value,
 }: {
   autoFocus?: boolean;
   icon: keyof typeof Ionicons.glyphMap;
-  keyboardType?: "default" | "phone-pad";
+  keyboardType?: "default" | "number-pad";
   label: string;
+  maxLength?: number;
+  multiline?: boolean;
+  numberOfLines?: number;
   onChange: (value: string) => void;
   placeholder: string;
   value: string;
@@ -194,19 +235,22 @@ function CustomerInput({
       <Text style={styles.inputLabel}>
         {label} <Text style={styles.requiredMark}>*</Text>
       </Text>
-      <View style={styles.inputBox}>
+      <View style={[styles.inputBox, multiline && styles.textareaBox]}>
         <Ionicons name={icon} size={23} color="#173b24" />
         <TextInput
           autoCapitalize={label === "Number" ? "none" : "sentences"}
           autoCorrect={label !== "Number"}
           autoFocus={autoFocus}
           keyboardType={keyboardType}
-          maxLength={255}
+          maxLength={maxLength}
+          multiline={multiline}
+          numberOfLines={numberOfLines}
           onChangeText={onChange}
           placeholder={placeholder}
           placeholderTextColor="#6f7b73"
-          returnKeyType="next"
-          style={styles.formInput}
+          returnKeyType={multiline ? "default" : "next"}
+          style={[styles.formInput, multiline && styles.textareaInput]}
+          textAlignVertical={multiline ? "top" : "center"}
           value={value}
         />
       </View>
@@ -273,7 +317,9 @@ const styles = StyleSheet.create({
     marginTop: 7,
     paddingHorizontal: 14,
   },
+  textareaBox: { height: 112, alignItems: "flex-start", paddingVertical: 14 },
   formInput: { flex: 1, color: "#18251a", fontSize: 15, paddingVertical: 0 },
+  textareaInput: { height: "100%" },
   formError: {
     borderRadius: 10,
     backgroundColor: "#fff0e8",

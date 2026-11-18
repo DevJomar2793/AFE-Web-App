@@ -61,6 +61,16 @@ export interface BusinessFundsRecord {
   updatedAt: string;
 }
 
+export interface CustomerDetailsRecord {
+  id: number;
+  name: string;
+  number: string;
+  address: string;
+  landmark: string;
+}
+
+export type CustomerDetailsInput = Omit<CustomerDetailsRecord, "id">;
+
 export type PriceHistoryEventType =
   | "initial"
   | "stock_added"
@@ -369,6 +379,54 @@ export async function getPendingAccounts(
   return responseBody.map(parsePendingAccount);
 }
 
+export async function getCustomerDetails(
+  signal?: AbortSignal,
+): Promise<CustomerDetailsRecord[]> {
+  const responseBody = await getApiResponse(
+    "/api/v1/customer-details/get-all-customer-details",
+    signal,
+    "Customer information could not be loaded.",
+  );
+  if (!Array.isArray(responseBody)) {
+    throw new Error("The customer API returned an invalid response.");
+  }
+  return responseBody.map(parseCustomerDetails);
+}
+
+export async function createCustomerDetails(
+  input: CustomerDetailsInput,
+): Promise<CustomerDetailsRecord> {
+  return parseCustomerDetails(
+    await sendApiRequest(
+      "/api/v1/customer-details/add-customer-details",
+      "POST",
+      input,
+      "The customer could not be added.",
+    ),
+  );
+}
+
+export async function updateCustomerDetails(
+  customerId: number,
+  input: CustomerDetailsInput,
+): Promise<CustomerDetailsRecord> {
+  return parseCustomerDetails(
+    await sendApiRequest(
+      `/api/v1/customer-details/${customerId}`,
+      "PATCH",
+      input,
+      "The customer could not be updated.",
+    ),
+  );
+}
+
+export async function deleteCustomerDetails(customerId: number): Promise<void> {
+  await deleteApiResource(
+    `/api/v1/customer-details/${customerId}`,
+    "The customer could not be deleted.",
+  );
+}
+
 export async function approveAccount(userId: number): Promise<void> {
   const responseBody = await sendApiRequest(
     `/api/v1/users/${userId}/approve`,
@@ -498,6 +556,31 @@ function parseInventoryItem(value: unknown): InventoryRecord {
     status: value.status,
     createdAt: value.created_at,
     updatedAt: value.updated_at,
+  };
+}
+
+function parseCustomerDetails(value: unknown): CustomerDetailsRecord {
+  if (
+    !isRecord(value) ||
+    !isPositiveInteger(value.id) ||
+    typeof value.name !== "string" ||
+    !value.name.trim() ||
+    typeof value.number !== "string" ||
+    !/^\d{11}$/.test(value.number) ||
+    typeof value.address !== "string" ||
+    !value.address.trim() ||
+    typeof value.landmark !== "string" ||
+    !value.landmark.trim()
+  ) {
+    throw new Error("The customer API returned an invalid record.");
+  }
+
+  return {
+    id: value.id,
+    name: value.name,
+    number: value.number,
+    address: value.address,
+    landmark: value.landmark,
   };
 }
 

@@ -1,10 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Image,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -14,21 +16,54 @@ import {
   AddCustomerModal,
   type CustomerFormValues,
 } from "./add-customer-modal";
+import {
+  createCustomerDetails,
+  deleteCustomerDetails,
+  getCustomerDetails,
+  updateCustomerDetails,
+  type CustomerDetailsRecord as Customer,
+} from "../lib/api";
 
-interface Customer {
-  id: number;
-  name: string;
-  number: string;
-  address: string;
-  landmark: string;
+interface CustomerInformationScreenProps {
+  onBack: () => void;
+  onShowSuccess: (title: string, message: string) => void;
 }
 
-export function CustomerInformationScreen({ onBack }: { onBack: () => void }) {
+export function CustomerInformationScreen({
+  onBack,
+  onShowSuccess,
+}: CustomerInformationScreenProps) {
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
   const [customerInForm, setCustomerInForm] = useState<
     Customer | null | undefined
   >(undefined);
+
+  const loadCustomers = useCallback(async (signal?: AbortSignal) => {
+    try {
+      setCustomers(await getCustomerDetails(signal));
+      setLoadError("");
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
+      setLoadError(
+        error instanceof Error
+          ? error.message
+          : "Customer information could not be loaded.",
+      );
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadCustomers(controller.signal);
+    return () => controller.abort();
+  }, [loadCustomers]);
 
   const visibleCustomers = useMemo(() => {
     const search = query.trim().toLowerCase();
@@ -44,25 +79,22 @@ export function CustomerInformationScreen({ onBack }: { onBack: () => void }) {
     );
   }, [customers, query]);
 
-  function saveCustomer(values: CustomerFormValues) {
+  async function saveCustomer(values: CustomerFormValues) {
     if (customerInForm) {
-      setCustomers((currentCustomers) =>
-        currentCustomers.map((customer) =>
-          customer.id === customerInForm.id
-            ? { ...customer, ...values }
-            : customer,
-        ),
-      );
+      await updateCustomerDetails(customerInForm.id, values);
     } else {
-      const nextId =
-        Math.max(0, ...customers.map((customer) => customer.id)) + 1;
-      setCustomers((currentCustomers) => [
-        ...currentCustomers,
-        { id: nextId, ...values },
-      ]);
+      await createCustomerDetails(values);
     }
 
+    const customerWasAdded = customerInForm === null;
     setCustomerInForm(undefined);
+    await loadCustomers();
+    if (customerWasAdded) {
+      onShowSuccess(
+        "Customer successfully added!",
+        "The customer is now available in the customer list.",
+      );
+    }
   }
 
   function confirmDelete(customer: Customer) {
@@ -74,10 +106,19 @@ export function CustomerInformationScreen({ onBack }: { onBack: () => void }) {
         {
           text: "Delete",
           style: "destructive",
-          onPress: () =>
-            setCustomers((currentCustomers) =>
-              currentCustomers.filter((item) => item.id !== customer.id),
-            ),
+          onPress: async () => {
+            try {
+              await deleteCustomerDetails(customer.id);
+              await loadCustomers();
+            } catch (error) {
+              Alert.alert(
+                "Unable to delete customer",
+                error instanceof Error
+                  ? error.message
+                  : "Please try again.",
+              );
+            }
+          },
         },
       ],
     );
@@ -85,6 +126,8 @@ export function CustomerInformationScreen({ onBack }: { onBack: () => void }) {
 
   function refreshCustomers() {
     setQuery("");
+    setIsRefreshing(true);
+    void loadCustomers();
   }
 
   return (
@@ -93,6 +136,14 @@ export function CustomerInformationScreen({ onBack }: { onBack: () => void }) {
         data={visibleCustomers}
         keyExtractor={(customer) => customer.id.toString()}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            colors={["#125326"]}
+            onRefresh={refreshCustomers}
+            refreshing={isRefreshing}
+            tintColor="#125326"
+          />
+        }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
@@ -112,11 +163,22 @@ export function CustomerInformationScreen({ onBack }: { onBack: () => void }) {
           />
         )}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            {customers.length
-              ? `No customers match “${query.trim()}”.`
-              : "No customer information is available."}
-          </Text>
+          isLoading ? (
+            <ActivityIndicator color="#125326" size="large" style={styles.loader} />
+          ) : loadError ? (
+            <View style={styles.errorState}>
+              <Text style={styles.errorText}>{loadError}</Text>
+              <Pressable onPress={refreshCustomers} style={styles.retryButton}>
+                <Text style={styles.retryButtonText}>Try again</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Text style={styles.emptyText}>
+              {customers.length
+                ? `No customers match “${query.trim()}”.`
+                : "No customer information is available."}
+            </Text>
+          )
         }
       />
 
@@ -457,5 +519,20 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     padding: 40,
     textAlign: "center",
+  },
+  loader: { margin: 40 },
+  errorState: { alignItems: "center", padding: 32 },
+  errorText: {
+    color: "#a33d22",
+    fontSize: 14,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  retryButton: { marginTop: 14, padding: 8 },
+  retryButtonText: {
+    color: "#173b24",
+    fontSize: 14,
+    fontWeight: "800",
+    textDecorationLine: "underline",
   },
 });
