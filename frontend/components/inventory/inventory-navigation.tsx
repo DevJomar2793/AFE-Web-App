@@ -17,6 +17,7 @@ import {
   RotateCcw,
   UserCheck,
   UserRound,
+  UsersRound,
   X,
 } from "lucide-react";
 import { BrandMark } from "@/components/storefront/brand-mark";
@@ -32,7 +33,8 @@ export type InventoryViewName =
   | "activity"
   | "returns"
   | "logs"
-  | "accounts";
+  | "accounts"
+  | "customers";
 
 export type TransactionRange = "daily" | "weekly";
 
@@ -280,6 +282,7 @@ export function InventoryHeader({
     returns: "Returns",
     logs: "Activity logs",
     accounts: "Account approval",
+    customers: "Customer Information",
   };
 
   const isTransactionView = currentView === "activity";
@@ -476,6 +479,13 @@ function InventoryNav({
           onClick={() => onSelectView("accounts")}
         />
       )}
+      <NavButton
+        active={currentView === "customers"}
+        icon={<UsersRound size={isMobile ? 19 : 20} />}
+        label="Customers"
+        isMobile={isMobile}
+        onClick={() => onSelectView("customers")}
+      />
     </nav>
   );
 }

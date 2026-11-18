@@ -17,8 +17,9 @@ import {
   type ActivityLogRecord,
   type PendingAccountRecord,
 } from "../lib/api";
+import { CustomerInformationScreen } from "./customer-information-screen";
 
-type MoreView = "menu" | "logs" | "accounts";
+type MoreView = "menu" | "logs" | "accounts" | "customers";
 
 export function MoreScreen({ isAdmin }: { isAdmin: boolean }) {
   const [view, setView] = useState<MoreView>("menu");
@@ -29,12 +30,21 @@ export function MoreScreen({ isAdmin }: { isAdmin: boolean }) {
   if (view === "accounts" && isAdmin) {
     return <AccountApprovalScreen onBack={() => setView("menu")} />;
   }
+  if (view === "customers") {
+    return <CustomerInformationScreen onBack={() => setView("menu")} />;
+  }
 
   return (
     <View style={styles.screen}>
       <View style={styles.content}>
         <Text style={styles.title}>More</Text>
         <Text style={styles.subtitle}>Administrative records and tools.</Text>
+        <MenuButton
+          icon="people-outline"
+          title="Customers"
+          description="View and manage customer contact and delivery details."
+          onPress={() => setView("customers")}
+        />
         <MenuButton
           icon="time-outline"
           title="Activity Logs"

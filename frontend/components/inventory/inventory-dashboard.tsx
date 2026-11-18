@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { AccountApproval } from "@/components/inventory/account-approval";
 import { ActivityLogs } from "@/components/inventory/activity-logs";
 import { AddInventoryItemModal } from "@/components/inventory/add-inventory-item-modal";
+import { CustomerInformation } from "@/components/inventory/customer-information";
 import { EditInventoryItemModal } from "@/components/inventory/edit-inventory-item-modal";
 import { EditSaleModal } from "@/components/inventory/edit-sale-modal";
 import { useActivityLogs } from "@/components/inventory/use-activity-logs";
@@ -423,6 +424,8 @@ export function InventoryDashboard() {
               onRetry={retryPendingAccounts}
             />
           )}
+
+          {currentView === "customers" && <CustomerInformation />}
 
           <footer className="hidden border-t border-[#d9dfd7] py-2 text-center text-xs text-[#667364] lg:block">
             © {currentYear} Adamos Fresh Eggs. Built by{" "}
