@@ -9,6 +9,7 @@ from app.database import engine
 from app.routes.activity_logs import router as activity_logs_router
 from app.routes.auth import router as auth_router
 from app.routes.business_funds import router as business_funds_router
+from app.routes.customer_details import router as customer_details_router
 from app.routes.health import router as health_router
 from app.routes.inventory import router as inventory_router
 from app.routes.returns import router as returns_router
@@ -24,7 +25,10 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="AFE Inventory API",
-    description="Inventory, sales, and returns API for Adamos Fresh Eggs.",
+    description=(
+        "Inventory, sales, returns, and customer details API for "
+        "Adamos Fresh Eggs."
+    ),
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -44,5 +48,6 @@ for router in (
     activity_logs_router,
     users_router,
     business_funds_router,
+    customer_details_router,
 ):
     app.include_router(router, prefix="/api/v1")

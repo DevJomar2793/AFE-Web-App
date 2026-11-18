@@ -66,6 +66,8 @@ PATCH /api/v1/sales/{sale_id}
 GET  /api/v1/returns/get-returns
 POST /api/v1/returns/add-returns
 GET  /api/v1/activity-logs
+POST /api/v1/customer-details/add-customer-details
+GET  /api/v1/customer-details/get-all-customer-details
 ```
 
 ## Authentication
@@ -87,8 +89,8 @@ curl -X POST http://127.0.0.1:8000/api/v1/auth/login \
   -d '{"email":"owner@example.com","password":"my-password"}'
 ```
 
-Send the returned `access_token` with every inventory, sales, and returns
-request. For example:
+Send the returned `access_token` with every inventory, sales, returns, and
+customer-details request. For example:
 
 ```bash
 curl http://127.0.0.1:8000/api/v1/inventory/get-item \
@@ -215,6 +217,24 @@ curl http://127.0.0.1:8000/api/v1/activity-logs \
 Each entry contains `action`, `affected_record`, `admin_email`, and
 `created_at`. The `admin_email` value is a snapshot of the signed-in account
 that completed the change.
+
+Create customer contact and delivery details with:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/customer-details/add-customer-details \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Maria Santos","number":"0928 987 6543","address":"New Cabalan, Olongapo City","landmark":"Beside 7-Eleven"}'
+```
+
+All four fields are required. The API trims surrounding whitespace and returns
+the generated customer ID with the saved details. List customers in ID order
+with:
+
+```bash
+curl http://127.0.0.1:8000/api/v1/customer-details/get-all-customer-details \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
 
 ## Code organization
 

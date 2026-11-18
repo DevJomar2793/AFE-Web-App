@@ -78,6 +78,45 @@ class ActivityLog(Base):
     )
 
 
+class Customer(Base):
+    __tablename__ = "customers"
+    __table_args__ = (
+        CheckConstraint(
+            "char_length(trim(name)) > 0",
+            name="ck_customers_name_not_blank",
+        ),
+        CheckConstraint(
+            "char_length(trim(number)) > 0",
+            name="ck_customers_number_not_blank",
+        ),
+        CheckConstraint(
+            "char_length(trim(address)) > 0",
+            name="ck_customers_address_not_blank",
+        ),
+        CheckConstraint(
+            "char_length(trim(landmark)) > 0",
+            name="ck_customers_landmark_not_blank",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    number: Mapped[str] = mapped_column(String(50), nullable=False)
+    address: Mapped[str] = mapped_column(String(500), nullable=False)
+    landmark: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
 class Inventory(Base):
     __tablename__ = "inventory"
     __table_args__ = (
