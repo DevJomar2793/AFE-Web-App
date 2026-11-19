@@ -1,10 +1,28 @@
 "use client";
 
-import { type FormEvent, useRef, useState } from "react";
-import { LoaderCircle, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import {
+  type FormEvent,
+  type KeyboardEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import {
+  Info,
+  LoaderCircle,
+  Phone,
+  Plus,
+  ReceiptText,
+  RotateCcw,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import {
   createSaleBatch,
   getAutomaticUnitPrice,
+  getCustomerDetails,
+  type CustomerDetails,
   type InventoryItem,
 } from "@/lib/api";
 
@@ -31,6 +49,9 @@ const currency = new Intl.NumberFormat("en-PH", {
   maximumFractionDigits: 2,
 });
 
+const futureOrMessage =
+  "Official Receipt (OR) generation is for future development.";
+
 export function NewSaleModal({
   initialInventoryId,
   inventoryError,
@@ -45,6 +66,7 @@ export function NewSaleModal({
     availableItems.find((item) => item.id === initialInventoryId) ??
     availableItems[0];
   const nextSaleLineId = useRef(2);
+  const customerFieldRef = useRef<HTMLDivElement>(null);
   const [saleLines, setSaleLines] = useState<SaleLine[]>([
     {
       id: 1,
@@ -52,9 +74,56 @@ export function NewSaleModal({
       quantity: "1",
     },
   ]);
-  const [customerName, setCustomerName] = useState("");
+  const [customers, setCustomers] = useState<CustomerDetails[]>([]);
+  const [customerQuery, setCustomerQuery] = useState("");
+  const [selectedCustomer, setSelectedCustomer] =
+    useState<CustomerDetails | null>(null);
+  const [isCustomerListOpen, setIsCustomerListOpen] = useState(false);
+  const [activeCustomerIndex, setActiveCustomerIndex] = useState(0);
+  const [isCustomerLoading, setIsCustomerLoading] = useState(true);
+  const [customerError, setCustomerError] = useState("");
+  const [customerRequestVersion, setCustomerRequestVersion] = useState(0);
+  const [showOrNotice, setShowOrNotice] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadCustomers() {
+      setIsCustomerLoading(true);
+      setCustomerError("");
+      try {
+        const customerData = await getCustomerDetails(controller.signal);
+        setCustomers(customerData);
+      } catch (loadError) {
+        if (loadError instanceof DOMException && loadError.name === "AbortError") {
+          return;
+        }
+        setCustomerError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Customer information could not be loaded.",
+        );
+      } finally {
+        if (!controller.signal.aborted) setIsCustomerLoading(false);
+      }
+    }
+
+    void loadCustomers();
+    return () => controller.abort();
+  }, [customerRequestVersion]);
+
+  useEffect(() => {
+    if (!showOrNotice) return;
+    const timeout = window.setTimeout(() => setShowOrNotice(false), 4000);
+    return () => window.clearTimeout(timeout);
+  }, [showOrNotice]);
+
+  const normalizedCustomerQuery = customerQuery.trim().toLowerCase();
+  const matchingCustomers = customers.filter((customer) =>
+    customer.name.toLowerCase().includes(normalizedCustomerQuery),
+  );
 
   const saleLineDetails = saleLines.map((line, index) => {
     const selectedItem = availableItems.find(
@@ -123,10 +192,36 @@ export function NewSaleModal({
     setError("");
   };
 
+  const selectCustomer = (customer: CustomerDetails) => {
+    setSelectedCustomer(customer);
+    setCustomerQuery(customer.name);
+    setIsCustomerListOpen(false);
+    setActiveCustomerIndex(0);
+    setError("");
+  };
+
+  const handleCustomerKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (!isCustomerListOpen || matchingCustomers.length === 0) return;
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveCustomerIndex((index) =>
+        Math.min(index + 1, matchingCustomers.length - 1),
+      );
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveCustomerIndex((index) => Math.max(index - 1, 0));
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      selectCustomer(matchingCustomers[activeCustomerIndex]);
+    } else if (event.key === "Escape") {
+      setIsCustomerListOpen(false);
+    }
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const normalizedCustomerName = customerName.trim();
     const selectedIds = new Set<number>();
     const requestedItems: { inventoryId: number; quantity: number }[] = [];
 
@@ -160,8 +255,8 @@ export function NewSaleModal({
       });
     }
 
-    if (!normalizedCustomerName) {
-      setError("Enter a customer name.");
+    if (!selectedCustomer) {
+      setError("Select an existing customer from the suggestions.");
       return;
     }
 
@@ -170,7 +265,7 @@ export function NewSaleModal({
 
     try {
       await createSaleBatch({
-        customerName: normalizedCustomerName,
+        customerName: selectedCustomer.name,
         items: requestedItems,
       });
       onCreated();
@@ -186,7 +281,18 @@ export function NewSaleModal({
   };
 
   return (
-    <div
+    <>
+      {showOrNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed left-1/2 top-20 z-80 flex w-[min(90vw,30rem)] -translate-x-1/2 items-center justify-center gap-2 rounded-xl bg-[#285b69] px-4 py-3 text-center text-sm font-bold text-white shadow-xl"
+        >
+          <Info className="shrink-0" size={18} aria-hidden="true" />
+          <span>{futureOrMessage}</span>
+        </div>
+      )}
+      <div
       className="fixed inset-0 z-70 flex items-end justify-center bg-[#0d2417]/55 p-0 backdrop-blur-sm sm:items-center sm:p-6"
       role="presentation"
       onMouseDown={() => {
@@ -362,21 +468,130 @@ export function NewSaleModal({
               {canAddAnotherItem ? "Add another item" : "All items added"}
             </button>
 
+            <div
+              ref={customerFieldRef}
+              className="relative"
+              onBlurCapture={(event) => {
+                if (
+                  !event.currentTarget.contains(event.relatedTarget as Node)
+                ) {
+                  setIsCustomerListOpen(false);
+                }
+              }}
+            >
+              <label
+                htmlFor="sale-customer-search"
+                className="block text-sm font-extrabold text-[#283b2c]"
+              >
+                Customer
+              </label>
+              <div className="relative mt-2">
+                <Search
+                  size={18}
+                  aria-hidden="true"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-[#78837b]"
+                />
+                <input
+                  id="sale-customer-search"
+                  className="inventory-field pl-11"
+                  type="text"
+                  autoComplete="off"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-controls="sale-customer-suggestions"
+                  aria-expanded={isCustomerListOpen}
+                  aria-activedescendant={
+                    isCustomerListOpen && matchingCustomers.length
+                      ? `sale-customer-option-${matchingCustomers[activeCustomerIndex].id}`
+                      : undefined
+                  }
+                  disabled={isSubmitting || isCustomerLoading}
+                  value={customerQuery}
+                  onFocus={() => setIsCustomerListOpen(true)}
+                  onKeyDown={handleCustomerKeyDown}
+                  onChange={(event) => {
+                    setCustomerQuery(event.target.value);
+                    setSelectedCustomer(null);
+                    setActiveCustomerIndex(0);
+                    setIsCustomerListOpen(true);
+                    setError("");
+                  }}
+                  placeholder={
+                    isCustomerLoading
+                      ? "Loading customers..."
+                      : "Search customer name"
+                  }
+                />
+              </div>
+
+              {isCustomerListOpen && !isCustomerLoading && !customerError && (
+                <div
+                  id="sale-customer-suggestions"
+                  role="listbox"
+                  className="absolute z-20 mt-2 max-h-56 w-full overflow-y-auto rounded-xl border border-[#d7dfd5] bg-white p-1.5 shadow-xl"
+                >
+                  {matchingCustomers.length ? (
+                    matchingCustomers.map((customer, index) => (
+                      <button
+                        id={`sale-customer-option-${customer.id}`}
+                        key={customer.id}
+                        type="button"
+                        role="option"
+                        aria-selected={selectedCustomer?.id === customer.id}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => selectCustomer(customer)}
+                        className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition ${
+                          index === activeCustomerIndex
+                            ? "bg-[#eaf2e9] text-[#173b24]"
+                            : "text-[#283b2c] hover:bg-[#f3f6f1]"
+                        }`}
+                      >
+                        <span className="font-extrabold">{customer.name}</span>
+                        <span className="whitespace-nowrap text-xs font-semibold text-[#748078]">
+                          {customer.number}
+                        </span>
+                      </button>
+                    ))
+                  ) : (
+                    <p className="px-3 py-4 text-center text-sm font-semibold text-[#748078]">
+                      No matching customers found.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {customerError && (
+                <div className="mt-2 flex items-center justify-between gap-3 rounded-xl bg-[#fff0e8] px-3 py-2 text-sm text-[#8f421f]">
+                  <span className="font-semibold">{customerError}</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCustomerRequestVersion((version) => version + 1)
+                    }
+                    className="shrink-0 font-black underline"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+            </div>
+
             <label className="block text-sm font-extrabold text-[#283b2c]">
-              Customer
-              <input
-                className="inventory-field mt-2"
-                type="text"
-                maxLength={255}
-                required
-                disabled={isSubmitting}
-                value={customerName}
-                onChange={(event) => {
-                  setCustomerName(event.target.value);
-                  setError("");
-                }}
-                placeholder="Customer or business name"
-              />
+              Contact Number
+              <div className="relative mt-2">
+                <Phone
+                  size={18}
+                  aria-hidden="true"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-[#78837b]"
+                />
+                <input
+                  className="inventory-field bg-[#f3f6f1] pl-11 text-[#59655d]"
+                  type="text"
+                  readOnly
+                  value={selectedCustomer?.number ?? ""}
+                  placeholder="Select a customer first"
+                />
+              </div>
             </label>
 
             <div className="flex items-center justify-between gap-4 rounded-2xl bg-[#f3f6f1] px-4 py-3">
@@ -403,26 +618,38 @@ export function NewSaleModal({
               </p>
             )}
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              aria-busy={isSubmitting}
-              className="flex h-13 w-full items-center justify-center gap-2 rounded-xl bg-[#173b24] px-5 text-sm font-black text-white transition hover:bg-[#245334] disabled:cursor-wait disabled:opacity-70"
-            >
-              {isSubmitting ? (
-                <LoaderCircle
-                  size={18}
-                  className="animate-spin"
-                  aria-hidden="true"
-                />
-              ) : (
-                <Plus size={18} aria-hidden="true" />
-              )}
-              {isSubmitting ? "Saving sale..." : "Save sale"}
-            </button>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setShowOrNotice(true)}
+                disabled={isSubmitting}
+                className="flex h-13 items-center justify-center gap-2 rounded-xl border border-[#b9c8b8] bg-white px-4 text-sm font-black text-[#173b24] hover:bg-[#f3f6f1] disabled:opacity-50"
+              >
+                <ReceiptText size={18} aria-hidden="true" />
+                Generate OR
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                aria-busy={isSubmitting}
+                className="flex h-13 items-center justify-center gap-2 rounded-xl bg-[#173b24] px-4 text-sm font-black text-white transition hover:bg-[#245334] disabled:cursor-wait disabled:opacity-70"
+              >
+                {isSubmitting ? (
+                  <LoaderCircle
+                    size={18}
+                    className="animate-spin"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <Plus size={18} aria-hidden="true" />
+                )}
+                {isSubmitting ? "Saving..." : "Save sale"}
+              </button>
+            </div>
           </form>
         )}
       </section>
-    </div>
+      </div>
+    </>
   );
 }

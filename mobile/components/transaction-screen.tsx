@@ -16,10 +16,12 @@ import {
 import {
   createSaleBatch,
   deleteSale,
+  getCustomerDetails,
   getInventoryItems,
   getFundTransactions,
   getSales,
   updateSale,
+  type CustomerDetailsRecord,
   type SaleRecord,
   type FundTransactionRecord,
 } from "../lib/api";
@@ -38,6 +40,9 @@ type SaleLine = {
   inventoryId: number;
   quantity: string;
 };
+
+const futureOrMessage =
+  "Official Receipt (OR) generation is for future development.";
 
 const currency = new Intl.NumberFormat("en-PH", {
   style: "currency",
@@ -211,14 +216,24 @@ function SaleEditorModal({
   onSaved: () => void;
 }) {
   const isEdit = sale !== null;
-  const [customerName, setCustomerName] = useState("");
+  const [customers, setCustomers] = useState<CustomerDetailsRecord[]>([]);
+  const [customerQuery, setCustomerQuery] = useState("");
+  const [selectedCustomer, setSelectedCustomer] =
+    useState<CustomerDetailsRecord | null>(null);
+  const [showCustomerSuggestions, setShowCustomerSuggestions] =
+    useState(false);
+  const [customersLoading, setCustomersLoading] = useState(false);
+  const [customerError, setCustomerError] = useState("");
+  const [customerRequestVersion, setCustomerRequestVersion] = useState(0);
   const [lines, setLines] = useState<SaleLine[]>([]);
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
-    setCustomerName(sale?.customerName ?? "");
+    setCustomerQuery(sale?.customerName ?? "");
+    setSelectedCustomer(null);
+    setShowCustomerSuggestions(false);
     setLines(
       sale
         ? sale.items.map((item) => ({
@@ -237,6 +252,38 @@ function SaleEditorModal({
     );
     setError("");
   }, [visible, sale, inventory]);
+
+  useEffect(() => {
+    if (!visible || isEdit) return;
+    const controller = new AbortController();
+
+    async function loadCustomers() {
+      setCustomersLoading(true);
+      setCustomerError("");
+      try {
+        setCustomers(await getCustomerDetails(controller.signal));
+      } catch (loadError) {
+        if (loadError instanceof Error && loadError.name === "AbortError") {
+          return;
+        }
+        setCustomerError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Customer information could not be loaded.",
+        );
+      } finally {
+        if (!controller.signal.aborted) setCustomersLoading(false);
+      }
+    }
+
+    void loadCustomers();
+    return () => controller.abort();
+  }, [visible, isEdit, customerRequestVersion]);
+
+  const normalizedCustomerQuery = customerQuery.trim().toLowerCase();
+  const matchingCustomers = customers.filter((customer) =>
+    customer.name.toLowerCase().includes(normalizedCustomerQuery),
+  );
 
   const selectedIds = new Set(lines.map((line) => line.inventoryId));
   function updateLine(id: number, changes: Partial<SaleLine>) {
@@ -261,9 +308,8 @@ function SaleEditorModal({
   }
 
   async function save() {
-    const customer = customerName.trim();
-    if (!isEdit && !customer) {
-      setError("Enter a customer name.");
+    if (!isEdit && !selectedCustomer) {
+      setError("Select an existing customer from the suggestions.");
       return;
     }
     const normalized = [] as {
@@ -300,7 +346,7 @@ function SaleEditorModal({
         });
       else
         await createSaleBatch({
-          customerName: customer,
+          customerName: selectedCustomer!.name,
           items: normalized.map((line) => ({
             inventoryId: line.inventoryId,
             quantity: line.quantity,
@@ -350,16 +396,102 @@ function SaleEditorModal({
               </Pressable>
             </View>
             {!isEdit && (
-              <View style={styles.fieldGroup}>
-                <Text style={styles.label}>Customer</Text>
-                <TextInput
-                  value={customerName}
-                  onChangeText={setCustomerName}
-                  editable={!isSaving}
-                  placeholder="Customer or business name"
-                  style={styles.field}
-                />
-              </View>
+              <>
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.label}>Customer</Text>
+                  <View style={styles.customerSearchBox}>
+                    <Ionicons name="search-outline" size={20} color="#6f7b73" />
+                    <TextInput
+                      value={customerQuery}
+                      onChangeText={(value) => {
+                        setCustomerQuery(value);
+                        setSelectedCustomer(null);
+                        setShowCustomerSuggestions(true);
+                        setError("");
+                      }}
+                      onFocus={() => setShowCustomerSuggestions(true)}
+                      editable={!isSaving && !customersLoading}
+                      autoCapitalize="words"
+                      autoCorrect={false}
+                      placeholder={
+                        customersLoading
+                          ? "Loading customers..."
+                          : "Search customer name"
+                      }
+                      placeholderTextColor="#7a857d"
+                      style={styles.customerSearchInput}
+                    />
+                  </View>
+
+                  {showCustomerSuggestions &&
+                  !customersLoading &&
+                  !customerError ? (
+                    <View style={styles.customerSuggestions}>
+                      {matchingCustomers.length ? (
+                        <ScrollView
+                          keyboardShouldPersistTaps="handled"
+                          nestedScrollEnabled
+                          style={styles.customerSuggestionList}
+                        >
+                          {matchingCustomers.map((customer) => (
+                            <Pressable
+                              accessibilityRole="button"
+                              key={customer.id}
+                              onPress={() => {
+                                setSelectedCustomer(customer);
+                                setCustomerQuery(customer.name);
+                                setShowCustomerSuggestions(false);
+                                setError("");
+                              }}
+                              style={styles.customerSuggestion}
+                            >
+                              <Text style={styles.customerSuggestionName}>
+                                {customer.name}
+                              </Text>
+                              <Text style={styles.customerSuggestionNumber}>
+                                {customer.number}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </ScrollView>
+                      ) : (
+                        <Text style={styles.noCustomerText}>
+                          No matching customers found.
+                        </Text>
+                      )}
+                    </View>
+                  ) : null}
+
+                  {customerError ? (
+                    <View style={styles.customerErrorBox}>
+                      <Text style={styles.customerErrorText}>
+                        {customerError}
+                      </Text>
+                      <Pressable
+                        onPress={() =>
+                          setCustomerRequestVersion((version) => version + 1)
+                        }
+                      >
+                        <Text style={styles.customerRetryText}>Retry</Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
+                </View>
+
+                <View style={styles.fieldGroupCompact}>
+                  <Text style={styles.label}>Contact Number</Text>
+                  <View style={[styles.field, styles.readOnlyField]}>
+                    <Ionicons name="call-outline" size={19} color="#6f7b73" />
+                    <TextInput
+                      editable={false}
+                      value={selectedCustomer?.number ?? ""}
+                      placeholder="Select a customer first"
+                      placeholderTextColor="#7a857d"
+                      style={styles.readOnlyInput}
+                    />
+                  </View>
+                </View>
+              </>
             )}
             {lines.map((line, index) => {
               const item = inventory.find(
@@ -458,24 +590,36 @@ function SaleEditorModal({
               </Pressable>
             )}
             {error ? <Text style={styles.formError}>{error}</Text> : null}
-            <Pressable
-              disabled={isSaving || !lines.length}
-              onPress={() => void save()}
-              style={styles.saveButton}
-            >
-              {isSaving ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <Ionicons
-                  name={isEdit ? "save-outline" : "add"}
-                  size={19}
-                  color="#ffffff"
-                />
-              )}
-              <Text style={styles.saveButtonText}>
-                {isSaving ? "Saving..." : isEdit ? "Update sale" : "Save sale"}
-              </Text>
-            </Pressable>
+            <View style={styles.saleFormActions}>
+              {!isEdit ? (
+                <Pressable
+                  disabled={isSaving}
+                  onPress={() => Alert.alert("Generate OR", futureOrMessage)}
+                  style={styles.generateOrButton}
+                >
+                  <Ionicons name="receipt-outline" size={19} color="#173b24" />
+                  <Text style={styles.generateOrText}>Generate OR</Text>
+                </Pressable>
+              ) : null}
+              <Pressable
+                disabled={isSaving || !lines.length}
+                onPress={() => void save()}
+                style={[styles.saveButton, !isEdit && styles.halfActionButton]}
+              >
+                {isSaving ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <Ionicons
+                    name={isEdit ? "save-outline" : "add"}
+                    size={19}
+                    color="#ffffff"
+                  />
+                )}
+                <Text style={styles.saveButtonText}>
+                  {isSaving ? "Saving..." : isEdit ? "Update sale" : "Save sale"}
+                </Text>
+              </Pressable>
+            </View>
           </ScrollView>
         </View>
       </View>
@@ -1153,6 +1297,81 @@ const styles = StyleSheet.create({
   },
   dateOptionText: { color: "#173b24", fontSize: 16, fontWeight: "700" },
   fieldGroup: { gap: 7, marginTop: 20 },
+  fieldGroupCompact: { gap: 7, marginTop: 14 },
+  customerSearchBox: {
+    height: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    borderWidth: 1,
+    borderColor: "#d7ded5",
+    borderRadius: 10,
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 12,
+  },
+  customerSearchInput: {
+    flex: 1,
+    color: "#18251a",
+    fontSize: 15,
+    paddingVertical: 0,
+  },
+  customerSuggestions: {
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#d7ded5",
+    borderRadius: 11,
+    backgroundColor: "#ffffff",
+  },
+  customerSuggestionList: { maxHeight: 190 },
+  customerSuggestion: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#edf0eb",
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  customerSuggestionName: {
+    flex: 1,
+    color: "#173b24",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  customerSuggestionNumber: {
+    color: "#748078",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  noCustomerText: {
+    color: "#748078",
+    fontSize: 13,
+    fontWeight: "600",
+    padding: 16,
+    textAlign: "center",
+  },
+  customerErrorBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    borderRadius: 10,
+    backgroundColor: "#fff0e8",
+    padding: 11,
+  },
+  customerErrorText: {
+    flex: 1,
+    color: "#8f421f",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  customerRetryText: {
+    color: "#8f421f",
+    fontSize: 13,
+    fontWeight: "900",
+    textDecorationLine: "underline",
+  },
   lineCard: {
     borderWidth: 1,
     borderColor: "#dfe4dd",
@@ -1193,6 +1412,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   priceField: { justifyContent: "center" },
+  readOnlyField: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    backgroundColor: "#f3f6f1",
+  },
+  readOnlyInput: {
+    flex: 1,
+    color: "#59655d",
+    fontSize: 15,
+    paddingVertical: 0,
+  },
   priceFieldText: { color: "#173b24", fontSize: 14, fontWeight: "800" },
   addLineButton: {
     height: 44,
@@ -1215,16 +1446,31 @@ const styles = StyleSheet.create({
     marginTop: 14,
     textAlign: "center",
   },
+  saleFormActions: { flexDirection: "row", gap: 10, marginTop: 18 },
+  generateOrButton: {
+    height: 52,
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    borderWidth: 1,
+    borderColor: "#b9c8b8",
+    borderRadius: 12,
+    backgroundColor: "#ffffff",
+  },
+  generateOrText: { color: "#173b24", fontSize: 14, fontWeight: "800" },
   saveButton: {
     height: 52,
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     borderRadius: 12,
     backgroundColor: "#173b24",
-    marginTop: 18,
   },
+  halfActionButton: { minWidth: 0 },
   saveButtonText: { color: "#ffffff", fontSize: 15, fontWeight: "800" },
   fundCard: {
     overflow: "hidden",
