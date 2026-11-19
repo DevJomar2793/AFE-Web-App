@@ -116,6 +116,16 @@ export type FundTransaction = {
   createdAt: string;
 };
 
+export type CustomerDetails = {
+  id: number;
+  name: string;
+  number: string;
+  address: string;
+  landmark: string;
+};
+
+export type CustomerDetailsInput = Omit<CustomerDetails, "id">;
+
 export type CreateSaleInput = {
   inventoryId: number;
   quantity: number;
@@ -306,6 +316,49 @@ export async function getActivityLogs(
     throw new Error("Invalid activity logs response");
   }
   return response.map(parseActivityLog);
+}
+
+export async function getCustomerDetails(
+  signal?: AbortSignal,
+): Promise<CustomerDetails[]> {
+  const response = await apiRequest(
+    "/api/v1/customer-details/get-all-customer-details",
+    { signal },
+    "Unable to load customers.",
+  );
+  if (!Array.isArray(response)) throw new Error("Invalid customer response");
+  return response.map(parseCustomerDetails);
+}
+
+export async function createCustomerDetails(
+  input: CustomerDetailsInput,
+): Promise<CustomerDetails> {
+  const response = await apiRequest(
+    "/api/v1/customer-details/add-customer-details",
+    { method: "POST", body: JSON.stringify(input) },
+    "The customer could not be added.",
+  );
+  return parseCustomerDetails(response);
+}
+
+export async function updateCustomerDetails(
+  customerId: number,
+  input: CustomerDetailsInput,
+): Promise<CustomerDetails> {
+  const response = await apiRequest(
+    `/api/v1/customer-details/${customerId}`,
+    { method: "PATCH", body: JSON.stringify(input) },
+    "The customer could not be updated.",
+  );
+  return parseCustomerDetails(response);
+}
+
+export async function deleteCustomerDetails(customerId: number): Promise<void> {
+  await apiRequest(
+    `/api/v1/customer-details/${customerId}`,
+    { method: "DELETE" },
+    "The customer could not be deleted.",
+  );
 }
 
 export async function getInventoryItems(
@@ -608,6 +661,31 @@ function parseInventoryItem(value: unknown): InventoryItem {
     status: value.status,
     createdAt: value.created_at,
     updatedAt: value.updated_at,
+  };
+}
+
+function parseCustomerDetails(value: unknown): CustomerDetails {
+  if (
+    !isRecord(value) ||
+    !isPositiveInteger(value.id) ||
+    typeof value.name !== "string" ||
+    !value.name.trim() ||
+    typeof value.number !== "string" ||
+    !/^\d{11}$/.test(value.number) ||
+    typeof value.address !== "string" ||
+    !value.address.trim() ||
+    typeof value.landmark !== "string" ||
+    !value.landmark.trim()
+  ) {
+    throw new Error("Invalid customer response");
+  }
+
+  return {
+    id: value.id,
+    name: value.name,
+    number: value.number,
+    address: value.address,
+    landmark: value.landmark,
   };
 }
 

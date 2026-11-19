@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { AccountApproval } from "@/components/inventory/account-approval";
 import { ActivityLogs } from "@/components/inventory/activity-logs";
 import { AddInventoryItemModal } from "@/components/inventory/add-inventory-item-modal";
+import { CustomerInformation } from "@/components/inventory/customer-information";
 import { EditInventoryItemModal } from "@/components/inventory/edit-inventory-item-modal";
 import { EditSaleModal } from "@/components/inventory/edit-sale-modal";
 import { useActivityLogs } from "@/components/inventory/use-activity-logs";
@@ -421,6 +422,14 @@ export function InventoryDashboard() {
               isLoading={arePendingAccountsLoading}
               onApprove={(account) => void handleApproveAccount(account)}
               onRetry={retryPendingAccounts}
+            />
+          )}
+
+          {currentView === "customers" && (
+            <CustomerInformation
+              onShowSuccess={(message) =>
+                setNotice({ message, tone: "success" })
+              }
             />
           )}
 

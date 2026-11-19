@@ -238,7 +238,10 @@ export default function App() {
               onShowSuccess={showTransactionSuccess}
             />
           ) : (
-            <MoreScreen isAdmin={account?.isAdmin === true} />
+            <MoreScreen
+              isAdmin={account?.isAdmin === true}
+              onShowSuccess={showTransactionSuccess}
+            />
           )}
 
           <BottomNavigation activeTab={activeTab} onTabChange={changeTab} />
