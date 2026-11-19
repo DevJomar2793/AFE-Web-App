@@ -854,12 +854,12 @@ export function OfficialReceiptPreview({
                 <tbody>
                   {receipt.items.map((line) => (
                     <tr className="border-t border-[#78907d]" key={line.id}>
-                      <td className="break-words px-1.5 py-1.5 font-semibold sm:px-2">
+                      <td className="wrap-break-word px-1.5 py-1.5 font-semibold sm:px-2">
                         {line.itemCategory === "eggs"
                           ? "Fresh Eggs"
                           : "Palm Oil"}
                       </td>
-                      <td className="break-words px-1.5 py-1.5 sm:px-2">
+                      <td className="wrap-break-word px-1.5 py-1.5 sm:px-2">
                         {line.itemName}
                       </td>
                       <td className="px-1.5 py-1.5 sm:px-2">{line.quantity}</td>
