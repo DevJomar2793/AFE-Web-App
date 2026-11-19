@@ -207,6 +207,8 @@ class SaleCreate(BaseModel):
     inventory_id: int = Field(gt=0, strict=True)
     quantity: int = Field(gt=0, strict=True)
     customer_name: str = Field(min_length=1, max_length=255)
+    customer_id: int | None = Field(default=None, gt=0, strict=True)
+    generate_official_receipt: bool = False
 
     @field_validator("customer_name", mode="before")
     @classmethod
@@ -221,6 +223,8 @@ class SaleBatchItemCreate(BaseModel):
 
 class SaleBatchCreate(BaseModel):
     customer_name: str = Field(min_length=1, max_length=255)
+    customer_id: int | None = Field(default=None, gt=0, strict=True)
+    generate_official_receipt: bool = False
     items: list[SaleBatchItemCreate] = Field(min_length=1)
 
     @field_validator("customer_name", mode="before")
@@ -280,11 +284,39 @@ class SaleItemResponse(BaseModel):
     price: Decimal
 
 
+class OfficialReceiptItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    item_name: str
+    item_category: Literal["eggs", "oil"]
+    quantity: int
+    unit_price: Decimal
+    subtotal: Decimal
+
+
+class OfficialReceiptResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    sale_id: int
+    customer_name: str
+    customer_number: str | None
+    customer_address: str | None
+    customer_landmark: str | None
+    items: list[OfficialReceiptItemResponse]
+    total_amount: Decimal
+    generated_at: datetime
+    updated_at: datetime
+
+
 class SaleResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     customer_name: str
+    customer_number: str | None
+    has_official_receipt: bool
     items: list[SaleItemResponse]
     created_at: datetime
     updated_at: datetime

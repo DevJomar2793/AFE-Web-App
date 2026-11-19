@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { FundTransactionHistory } from "@/components/inventory/fund-transaction-history";
+import { SaleDetailsModal } from "@/components/inventory/sale-details-modal";
 import type { TransactionRange } from "@/components/inventory/inventory-navigation";
 import type { Sale } from "@/lib/api";
 
@@ -27,6 +28,7 @@ type SalesActivityProps = {
   onRemove: (sale: Sale) => void;
   onAddSale: () => void;
   onRetry: () => void;
+  onSalesChanged: () => void;
   removingSaleId: number | null;
   transactionRange: TransactionRange;
   onTransactionRangeChange: (range: TransactionRange) => void;
@@ -42,6 +44,7 @@ export function SalesActivity({
   onRemove,
   onAddSale,
   onRetry,
+  onSalesChanged,
   removingSaleId,
   transactionRange,
   onTransactionRangeChange,
@@ -52,6 +55,7 @@ export function SalesActivity({
   const [rangeEndDate, setRangeEndDate] = useState(todayKey);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSaleId, setSelectedSaleId] = useState<number | null>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
   const days = buildLastSevenDays(sales, rangeEndDate);
   const rangeEndDay = days[0];
@@ -84,6 +88,7 @@ export function SalesActivity({
         new Date(secondSale.createdAt).getTime() -
         new Date(firstSale.createdAt).getTime(),
     );
+  const selectedSale = sales.find((sale) => sale.id === selectedSaleId) ?? null;
 
   const openDatePicker = () => {
     const dateInput = dateInputRef.current;
@@ -317,6 +322,7 @@ export function SalesActivity({
               onRemove={onRemove}
               isRemoving={removingSaleId === sale.id}
               isRemoveDisabled={removingSaleId !== null}
+              onOpen={() => setSelectedSaleId(sale.id)}
             />
           ))
         ) : (
@@ -331,6 +337,14 @@ export function SalesActivity({
       </article>
 
       {isAdmin && <FundTransactionHistory refreshKey={fundsRefreshKey} />}
+
+      {selectedSale ? (
+        <SaleDetailsModal
+          onClose={() => setSelectedSaleId(null)}
+          onReceiptCreated={onSalesChanged}
+          sale={selectedSale}
+        />
+      ) : null}
     </section>
   );
 }
@@ -339,12 +353,14 @@ function SaleActivityRow({
   sale,
   onEdit,
   onRemove,
+  onOpen,
   isRemoving,
   isRemoveDisabled,
 }: {
   sale: Sale;
   onEdit: (sale: Sale) => void;
   onRemove: (sale: Sale) => void;
+  onOpen: () => void;
   isRemoving: boolean;
   isRemoveDisabled: boolean;
 }) {
@@ -358,7 +374,20 @@ function SaleActivityRow({
   );
 
   return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 border-b border-[#e8ede6] px-4 py-4 last:border-b-0 sm:flex sm:px-5">
+    <div
+      aria-label={`View sale ${sale.id} for ${sale.customerName}`}
+      className="grid cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 border-b border-[#e8ede6] px-4 py-4 transition last:border-b-0 hover:bg-[#f8faf7] focus-visible:bg-[#f8faf7] sm:flex sm:px-5"
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+    >
       <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#e7f2e6] text-[#2f7043]">
         <ArrowUpRight size={17} aria-hidden="true" />
       </span>
@@ -398,7 +427,10 @@ function SaleActivityRow({
         <button
           type="button"
           aria-label={`Edit sale ${sale.id} for ${sale.customerName}`}
-          onClick={() => onEdit(sale)}
+          onClick={(event) => {
+            event.stopPropagation();
+            onEdit(sale);
+          }}
           disabled={isRemoving}
           className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[#cfd8cd] bg-white px-3 text-xs font-black text-[#173b24] hover:bg-[#f8faf7] disabled:cursor-not-allowed disabled:opacity-50"
         >
@@ -408,7 +440,10 @@ function SaleActivityRow({
         <button
           type="button"
           aria-label={`Remove sale ${sale.id} for ${sale.customerName}`}
-          onClick={() => onRemove(sale)}
+          onClick={(event) => {
+            event.stopPropagation();
+            onRemove(sale);
+          }}
           disabled={isRemoveDisabled}
           className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-[#e8c7bc] bg-white px-3 text-xs font-black text-[#9b431f] hover:bg-[#fff0e8] disabled:cursor-not-allowed disabled:opacity-50"
         >

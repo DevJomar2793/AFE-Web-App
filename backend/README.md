@@ -63,6 +63,8 @@ GET  /api/v1/sales/get-sales
 POST /api/v1/sales/add-sales
 POST /api/v1/sales/add-sales-batch
 PATCH /api/v1/sales/{sale_id}
+GET  /api/v1/sales/{sale_id}/official-receipt
+POST /api/v1/sales/{sale_id}/official-receipt
 GET  /api/v1/returns/get-returns
 POST /api/v1/returns/add-returns
 GET  /api/v1/activity-logs
@@ -170,6 +172,10 @@ curl -X POST http://127.0.0.1:8000/api/v1/sales/add-sales-batch \
 The batch endpoint creates one sale transaction with multiple item rows. If any
 item is missing or does not have enough stock, neither the sale nor any
 inventory deductions are saved. Each inventory item may appear only once.
+Web clients may also send `customer_id` and set
+`generate_official_receipt` to `true`. The API snapshots the saved customer and
+creates one receipt in the same transaction as the sale. Older clients may
+continue sending only `customer_name`.
 
 List sales, newest first, with:
 
@@ -189,6 +195,11 @@ Products cannot be added, removed, or replaced while editing. Quantity changes
 adjust each linked inventory item by the difference, and price changes update
 that inventory item's current regular price. The API returns `409` if an
 additional quantity is unavailable and rolls back every change.
+
+Retrieve an existing receipt with `GET /api/v1/sales/{sale_id}/official-receipt`.
+Use `POST` on the same URL to create one for a sale that does not have one yet.
+The operation is idempotent: repeated requests return the same receipt instead
+of creating duplicates. Editing a sale updates its saved receipt items.
 
 Create a return with the related inventory ID, a positive whole quantity, a
 customer name, and a reason:

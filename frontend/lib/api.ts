@@ -57,9 +57,33 @@ export type InventoryPriceHistory = {
 export type Sale = {
   id: number;
   customerName: string;
+  customerNumber: string | null;
+  hasOfficialReceipt: boolean;
   items: SaleItem[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type OfficialReceipt = {
+  id: number;
+  saleId: number;
+  customerName: string;
+  customerNumber: string | null;
+  customerAddress: string | null;
+  customerLandmark: string | null;
+  items: OfficialReceiptItem[];
+  totalAmount: number;
+  generatedAt: string;
+  updatedAt: string;
+};
+
+export type OfficialReceiptItem = {
+  id: number;
+  itemName: string;
+  itemCategory: ProductCategory;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
 };
 
 export type SaleItem = {
@@ -130,10 +154,14 @@ export type CreateSaleInput = {
   inventoryId: number;
   quantity: number;
   customerName: string;
+  customerId?: number;
+  generateOfficialReceipt?: boolean;
 };
 
 export type CreateSaleBatchInput = {
   customerName: string;
+  customerId?: number;
+  generateOfficialReceipt?: boolean;
   items: {
     inventoryId: number;
     quantity: number;
@@ -458,6 +486,8 @@ export async function createSale(input: CreateSaleInput): Promise<Sale> {
         inventory_id: input.inventoryId,
         quantity: input.quantity,
         customer_name: input.customerName,
+        customer_id: input.customerId,
+        generate_official_receipt: input.generateOfficialReceipt ?? false,
       }),
     },
     "The sale could not be saved.",
@@ -474,6 +504,8 @@ export async function createSaleBatch(
       method: "POST",
       body: JSON.stringify({
         customer_name: input.customerName,
+        customer_id: input.customerId,
+        generate_official_receipt: input.generateOfficialReceipt ?? false,
         items: input.items.map((item) => ({
           inventory_id: item.inventoryId,
           quantity: item.quantity,
@@ -503,6 +535,28 @@ export async function deleteSale(saleId: number): Promise<void> {
     { method: "DELETE" },
     "The sale could not be removed.",
   );
+}
+
+export async function getOfficialReceipt(
+  saleId: number,
+): Promise<OfficialReceipt> {
+  const response = await apiRequest(
+    `/api/v1/sales/${saleId}/official-receipt`,
+    {},
+    "The official receipt could not be loaded.",
+  );
+  return parseOfficialReceipt(response);
+}
+
+export async function createOfficialReceipt(
+  saleId: number,
+): Promise<OfficialReceipt> {
+  const response = await apiRequest(
+    `/api/v1/sales/${saleId}/official-receipt`,
+    { method: "POST" },
+    "The official receipt could not be generated.",
+  );
+  return parseOfficialReceipt(response);
 }
 
 export async function getReturns(
@@ -839,9 +893,80 @@ function parseSale(value: unknown): Sale {
   return {
     id: value.id,
     customerName: value.customer_name,
+    customerNumber:
+      typeof value.customer_number === "string" ? value.customer_number : null,
+    hasOfficialReceipt: value.has_official_receipt === true,
     items: value.items.map(parseSaleItem),
     createdAt: value.created_at,
     updatedAt: value.updated_at,
+  };
+}
+
+function parseOfficialReceipt(value: unknown): OfficialReceipt {
+  if (!isRecord(value) || !Array.isArray(value.items)) {
+    throw new Error("Invalid official receipt");
+  }
+  const totalAmount = parsePrice(value.total_amount);
+
+  if (
+    !isPositiveInteger(value.id) ||
+    !isPositiveInteger(value.sale_id) ||
+    typeof value.customer_name !== "string" ||
+    !value.customer_name.trim() ||
+    (value.customer_number !== null &&
+      typeof value.customer_number !== "string") ||
+    (value.customer_address !== null &&
+      typeof value.customer_address !== "string") ||
+    (value.customer_landmark !== null &&
+      typeof value.customer_landmark !== "string") ||
+    !Number.isFinite(totalAmount) ||
+    totalAmount < 0 ||
+    !isValidDate(value.generated_at) ||
+    !isValidDate(value.updated_at)
+  ) {
+    throw new Error("Invalid official receipt");
+  }
+
+  return {
+    id: value.id,
+    saleId: value.sale_id,
+    customerName: value.customer_name,
+    customerNumber: value.customer_number,
+    customerAddress: value.customer_address,
+    customerLandmark: value.customer_landmark,
+    items: value.items.map(parseOfficialReceiptItem),
+    totalAmount,
+    generatedAt: value.generated_at,
+    updatedAt: value.updated_at,
+  };
+}
+
+function parseOfficialReceiptItem(value: unknown): OfficialReceiptItem {
+  if (!isRecord(value)) throw new Error("Invalid official receipt item");
+  const unitPrice = parsePrice(value.unit_price);
+  const subtotal = parsePrice(value.subtotal);
+
+  if (
+    !isPositiveInteger(value.id) ||
+    typeof value.item_name !== "string" ||
+    !value.item_name.trim() ||
+    !isProductCategory(value.item_category) ||
+    !isPositiveInteger(value.quantity) ||
+    !Number.isFinite(unitPrice) ||
+    unitPrice < 0 ||
+    !Number.isFinite(subtotal) ||
+    subtotal < 0
+  ) {
+    throw new Error("Invalid official receipt item");
+  }
+
+  return {
+    id: value.id,
+    itemName: value.item_name,
+    itemCategory: value.item_category,
+    quantity: value.quantity,
+    unitPrice,
+    subtotal,
   };
 }
 

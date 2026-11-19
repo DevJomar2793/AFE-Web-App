@@ -12,6 +12,8 @@ from app.models import (  # noqa: F401
     BusinessFunds,
     FundTransaction,
     Inventory,
+    OfficialReceipt,
+    OfficialReceiptItem,
     Return,
     Sale,
     User,

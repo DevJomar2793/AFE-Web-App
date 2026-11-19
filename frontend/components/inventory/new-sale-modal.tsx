@@ -45,11 +45,23 @@ type SaleLine = {
   quantity: string;
 };
 
-type ReceiptLine = {
-  item: InventoryItem;
+type ReceiptPreviewItem = {
+  id: number;
+  itemName: string;
+  itemCategory: "eggs" | "oil";
   quantity: number;
-  total: number;
   unitPrice: number;
+};
+
+export type OfficialReceiptPreviewData = {
+  transactionId: number | null;
+  orderDate: Date;
+  customerName: string;
+  customerNumber: string | null;
+  customerAddress: string | null;
+  customerLandmark: string | null;
+  items: ReceiptPreviewItem[];
+  status: "PREVIEW" | "SAVED";
 };
 
 const currency = new Intl.NumberFormat("en-PH", {
@@ -305,7 +317,9 @@ export function NewSaleModal({
 
     try {
       await createSaleBatch({
+        customerId: selectedCustomer.id,
         customerName: selectedCustomer.name,
+        generateOfficialReceipt: receiptGeneratedAt !== null,
         items: requestedItems,
       });
       onCreated();
@@ -324,22 +338,29 @@ export function NewSaleModal({
     <>
       {isReceiptOpen && selectedCustomer && receiptGeneratedAt && (
         <OfficialReceiptPreview
-          customer={selectedCustomer}
-          generatedAt={receiptGeneratedAt}
-          lines={saleLineDetails.flatMap((line) =>
-            line.item
-              ? [
-                  {
-                    item: line.item,
-                    quantity: line.quantity,
-                    total: line.total,
-                    unitPrice: line.unitPrice,
-                  },
-                ]
-              : [],
-          )}
           onClose={() => setIsReceiptOpen(false)}
-          total={saleTotal}
+          receipt={{
+            transactionId: null,
+            orderDate: receiptGeneratedAt,
+            customerName: selectedCustomer.name,
+            customerNumber: selectedCustomer.number,
+            customerAddress: selectedCustomer.address,
+            customerLandmark: selectedCustomer.landmark,
+            items: saleLineDetails.flatMap((line) =>
+              line.item
+                ? [
+                    {
+                      id: line.item.id,
+                      itemName: line.item.item,
+                      itemCategory: line.item.category,
+                      quantity: line.quantity,
+                      unitPrice: line.unitPrice,
+                    },
+                  ]
+                : [],
+            ),
+            status: "PREVIEW",
+          }}
         />
       )}
       <div
@@ -709,20 +730,14 @@ export function NewSaleModal({
   );
 }
 
-function OfficialReceiptPreview({
-  customer,
-  generatedAt,
-  lines,
+export function OfficialReceiptPreview({
   onClose,
-  total,
+  receipt,
 }: {
-  customer: CustomerDetails;
-  generatedAt: Date;
-  lines: ReceiptLine[];
   onClose: () => void;
-  total: number;
+  receipt: OfficialReceiptPreviewData;
 }) {
-  const formattedDate = generatedAt.toLocaleString("en-PH", {
+  const formattedDate = receipt.orderDate.toLocaleString("en-PH", {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -730,9 +745,17 @@ function OfficialReceiptPreview({
     hour: "numeric",
     minute: "2-digit",
   });
-  const customerAddress = customer.landmark
-    ? `${customer.address} (Landmark: ${customer.landmark})`
-    : customer.address;
+  const customerAddress = receipt.customerAddress
+    ? `${receipt.customerAddress}${
+        receipt.customerLandmark
+          ? ` (Landmark: ${receipt.customerLandmark})`
+          : ""
+      }`
+    : "Not available";
+  const total = receipt.items.reduce(
+    (sum, item) => sum + item.unitPrice * item.quantity,
+    0,
+  );
 
   return (
     <div
@@ -780,7 +803,9 @@ function OfficialReceiptPreview({
               OFFICIAL RECEIPT
             </h2>
             <div className="text-xs font-semibold leading-5 sm:text-right">
-              <p>Order/Transaction ID: Pending</p>
+              <p>
+                Order/Transaction ID: {receipt.transactionId ?? "Pending"}
+              </p>
               <p>{formattedDate}</p>
             </div>
           </div>
@@ -794,9 +819,9 @@ function OfficialReceiptPreview({
             </div>
             <dl className="grid gap-x-3 gap-y-0.5 text-xs sm:grid-cols-[4.5rem_1fr] sm:text-sm">
               <dt className="font-bold">Name:</dt>
-              <dd>{customer.name}</dd>
+              <dd>{receipt.customerName}</dd>
               <dt className="font-bold">Phone:</dt>
-              <dd>{customer.number}</dd>
+              <dd>{receipt.customerNumber ?? "Not available"}</dd>
               <dt className="font-bold">Address:</dt>
               <dd>{customerAddress}</dd>
             </dl>
@@ -818,23 +843,23 @@ function OfficialReceiptPreview({
                   </tr>
                 </thead>
                 <tbody>
-                  {lines.map((line) => (
+                  {receipt.items.map((line) => (
                     <tr
                       className="border-t border-[#78907d]"
-                      key={line.item.id}
+                      key={line.id}
                     >
                       <td className="break-words px-1.5 py-1.5 font-semibold sm:px-2">
-                        {line.item.category === "eggs"
+                        {line.itemCategory === "eggs"
                           ? "Fresh Eggs"
                           : "Palm Oil"}
                       </td>
-                      <td className="break-words px-1.5 py-1.5 sm:px-2">{line.item.item}</td>
+                      <td className="break-words px-1.5 py-1.5 sm:px-2">{line.itemName}</td>
                       <td className="px-1.5 py-1.5 sm:px-2">{line.quantity}</td>
                       <td className="px-1.5 py-1.5 text-right font-semibold sm:px-2">
                         {currency.format(line.unitPrice)}
                       </td>
                       <td className="px-1.5 py-1.5 text-right font-semibold sm:px-2">
-                        {currency.format(line.total)}
+                        {currency.format(line.unitPrice * line.quantity)}
                       </td>
                     </tr>
                   ))}
@@ -854,7 +879,7 @@ function OfficialReceiptPreview({
               </div>
               <div className="flex justify-between gap-6">
                 <dt>Delivery Fee</dt>
-                <dd>{currency.format(0)}</dd>
+                <dd>Not recorded</dd>
               </div>
               <div className="my-1.5 flex justify-between gap-6 rounded-lg bg-[#dcebd8] px-3 py-1.5 text-base font-black">
                 <dt>Total Amount:</dt>
@@ -867,7 +892,7 @@ function OfficialReceiptPreview({
               <div className="flex items-center justify-between gap-6">
                 <dt>Status</dt>
                 <dd className="rounded-full bg-[#e4eddf] px-2.5 py-0.5 text-[10px] font-black text-[#173b24]">
-                  PREVIEW
+                  {receipt.status}
                 </dd>
               </div>
             </dl>
@@ -877,7 +902,7 @@ function OfficialReceiptPreview({
             <div className="text-xs">
               <p>Thank you for purchasing at Adamos Fresh Eggs!</p>
               <p className="font-semibold">
-                *This is a preview generated by Adamos Inventory System.
+                *This receipt was generated by Adamos Inventory System.
               </p>
             </div>
             <div className="official-receipt-print-actions flex gap-2">
