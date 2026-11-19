@@ -8,16 +8,19 @@ import {
   useState,
 } from "react";
 import {
-  Info,
+  Download,
   LoaderCircle,
   Phone,
   Plus,
+  Printer,
   ReceiptText,
   RotateCcw,
   Search,
   Trash2,
+  UserRound,
   X,
 } from "lucide-react";
+import { BrandMark } from "@/components/storefront/brand-mark";
 import {
   createSaleBatch,
   getAutomaticUnitPrice,
@@ -42,15 +45,19 @@ type SaleLine = {
   quantity: string;
 };
 
+type ReceiptLine = {
+  item: InventoryItem;
+  quantity: number;
+  total: number;
+  unitPrice: number;
+};
+
 const currency = new Intl.NumberFormat("en-PH", {
   style: "currency",
   currency: "PHP",
   minimumFractionDigits: 0,
   maximumFractionDigits: 2,
 });
-
-const futureOrMessage =
-  "Official Receipt (OR) generation is for future development.";
 
 export function NewSaleModal({
   initialInventoryId,
@@ -84,7 +91,10 @@ export function NewSaleModal({
   const [isCustomerLoading, setIsCustomerLoading] = useState(true);
   const [customerError, setCustomerError] = useState("");
   const [customerRequestVersion, setCustomerRequestVersion] = useState(0);
-  const [showOrNotice, setShowOrNotice] = useState(false);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const [receiptGeneratedAt, setReceiptGeneratedAt] = useState<Date | null>(
+    null,
+  );
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -114,12 +124,6 @@ export function NewSaleModal({
     void loadCustomers();
     return () => controller.abort();
   }, [customerRequestVersion]);
-
-  useEffect(() => {
-    if (!showOrNotice) return;
-    const timeout = window.setTimeout(() => setShowOrNotice(false), 4000);
-    return () => window.clearTimeout(timeout);
-  }, [showOrNotice]);
 
   const normalizedCustomerQuery = customerQuery.trim().toLowerCase();
   const matchingCustomers = customers.filter((customer) =>
@@ -231,6 +235,30 @@ export function NewSaleModal({
     }
   };
 
+  const openReceiptPreview = () => {
+    if (!selectedCustomer) {
+      setError("Select an existing customer before generating the receipt.");
+      return;
+    }
+
+    const hasInvalidLine = saleLineDetails.some(
+      (line) =>
+        !line.item ||
+        !Number.isInteger(line.quantity) ||
+        line.quantity < 1 ||
+        line.quantity > line.item.quantity,
+    );
+    if (hasInvalidLine) {
+      setError("Complete the sale items before generating the receipt.");
+      return;
+    }
+
+    setError("");
+    setIsCustomerListOpen(false);
+    setReceiptGeneratedAt(new Date());
+    setIsReceiptOpen(true);
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -294,30 +322,40 @@ export function NewSaleModal({
 
   return (
     <>
-      {showOrNotice && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed left-1/2 top-20 z-80 flex w-[min(90vw,30rem)] -translate-x-1/2 items-center justify-center gap-2 rounded-xl bg-[#285b69] px-4 py-3 text-center text-sm font-bold text-white shadow-xl"
-        >
-          <Info className="shrink-0" size={18} aria-hidden="true" />
-          <span>{futureOrMessage}</span>
-        </div>
+      {isReceiptOpen && selectedCustomer && receiptGeneratedAt && (
+        <OfficialReceiptPreview
+          customer={selectedCustomer}
+          generatedAt={receiptGeneratedAt}
+          lines={saleLineDetails.flatMap((line) =>
+            line.item
+              ? [
+                  {
+                    item: line.item,
+                    quantity: line.quantity,
+                    total: line.total,
+                    unitPrice: line.unitPrice,
+                  },
+                ]
+              : [],
+          )}
+          onClose={() => setIsReceiptOpen(false)}
+          total={saleTotal}
+        />
       )}
       <div
-      className="fixed inset-0 z-70 flex items-end justify-center bg-[#0d2417]/55 p-0 backdrop-blur-sm sm:items-center sm:p-6"
-      role="presentation"
-      onMouseDown={() => {
-        if (!isSubmitting) onClose();
-      }}
-    >
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="new-sale-title"
-        className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl sm:p-7"
-        onMouseDown={(event) => event.stopPropagation()}
+        className="fixed inset-0 z-70 flex items-end justify-center bg-[#0d2417]/55 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+        role="presentation"
+        onMouseDown={() => {
+          if (!isSubmitting) onClose();
+        }}
       >
+        <section
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="new-sale-title"
+          className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl sm:p-7"
+          onMouseDown={(event) => event.stopPropagation()}
+        >
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.16em] text-[#a85620]">
@@ -505,7 +543,8 @@ export function NewSaleModal({
                 />
                 <input
                   id="sale-customer-search"
-                  className="inventory-field pl-11"
+                  className="inventory-field"
+                  style={{ paddingLeft: "3rem" }}
                   type="text"
                   autoComplete="off"
                   role="combobox"
@@ -600,7 +639,8 @@ export function NewSaleModal({
                   className="absolute left-4 top-1/2 -translate-y-1/2 text-[#78837b]"
                 />
                 <input
-                  className="inventory-field bg-[#f3f6f1] pl-11 text-[#59655d]"
+                  className="inventory-field bg-[#f3f6f1] text-[#59655d]"
+                  style={{ paddingLeft: "3rem" }}
                   type="text"
                   readOnly
                   value={selectedCustomer?.number ?? ""}
@@ -636,7 +676,7 @@ export function NewSaleModal({
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setShowOrNotice(true)}
+                onClick={openReceiptPreview}
                 disabled={isSubmitting}
                 className="flex h-13 items-center justify-center gap-2 rounded-xl border border-[#b9c8b8] bg-white px-4 text-sm font-black text-[#173b24] hover:bg-[#f3f6f1] disabled:opacity-50"
               >
@@ -663,8 +703,205 @@ export function NewSaleModal({
             </div>
           </form>
         )}
-      </section>
+        </section>
       </div>
     </>
+  );
+}
+
+function OfficialReceiptPreview({
+  customer,
+  generatedAt,
+  lines,
+  onClose,
+  total,
+}: {
+  customer: CustomerDetails;
+  generatedAt: Date;
+  lines: ReceiptLine[];
+  onClose: () => void;
+  total: number;
+}) {
+  const formattedDate = generatedAt.toLocaleString("en-PH", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const customerAddress = customer.landmark
+    ? `${customer.address} (Landmark: ${customer.landmark})`
+    : customer.address;
+
+  return (
+    <div
+      className="official-receipt-print-root fixed inset-0 z-90 flex items-center justify-center overflow-hidden bg-[#0d2417]/60 p-2 backdrop-blur-sm"
+      role="presentation"
+      onMouseDown={onClose}
+    >
+      <section
+        aria-labelledby="official-receipt-title"
+        aria-modal="true"
+        className="official-receipt-sheet relative w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl"
+        onMouseDown={(event) => event.stopPropagation()}
+        role="dialog"
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close official receipt preview"
+          className="official-receipt-print-actions absolute right-3 top-3 z-10 grid size-9 place-items-center rounded-xl border border-[#d7dfd5] bg-white text-[#173b24] hover:bg-[#f3f6f1]"
+        >
+          <X size={18} aria-hidden="true" />
+        </button>
+
+        <div className="p-4 text-[#111a14] sm:p-5">
+          <header className="border-b border-[#d8dfd5] pb-3 pr-10">
+            <div className="flex items-center gap-3">
+              <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-xl border border-[#dce2da] bg-white p-1">
+                <BrandMark />
+              </span>
+              <div>
+                <p className="text-xl font-black">Adamos Fresh Eggs</p>
+                <p className="mt-0.5 text-xs leading-4">
+                  Address: Olongapo City | Contact: 0917 123 4567 | Email:
+                  adamosfresheggs@gmail.com
+                </p>
+              </div>
+            </div>
+          </header>
+
+          <div className="flex flex-col gap-1 border-b border-[#d8dfd5] py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+            <h2
+              id="official-receipt-title"
+              className="text-2xl font-black tracking-tight text-[#173b24] sm:text-3xl"
+            >
+              OFFICIAL RECEIPT
+            </h2>
+            <div className="text-xs font-semibold leading-5 sm:text-right">
+              <p>Order/Transaction ID: Pending</p>
+              <p>{formattedDate}</p>
+            </div>
+          </div>
+
+          <section className="border-b border-[#d8dfd5] py-3">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="grid size-8 place-items-center rounded-lg bg-[#e1eedc] text-[#173b24]">
+                <UserRound size={18} aria-hidden="true" />
+              </span>
+              <h3 className="text-base font-black">CUSTOMER DETAILS</h3>
+            </div>
+            <dl className="grid gap-x-3 gap-y-0.5 text-xs sm:grid-cols-[4.5rem_1fr] sm:text-sm">
+              <dt className="font-bold">Name:</dt>
+              <dd>{customer.name}</dd>
+              <dt className="font-bold">Phone:</dt>
+              <dd>{customer.number}</dd>
+              <dt className="font-bold">Address:</dt>
+              <dd>{customerAddress}</dd>
+            </dl>
+          </section>
+
+          <section className="py-3">
+            <h3 className="mb-1 text-base font-black">ITEMS PURCHASED</h3>
+            <div className="overflow-hidden rounded-lg border border-[#173b24]">
+              <table className="w-full table-fixed border-collapse text-left text-[10px] sm:text-xs">
+                <thead className="bg-[#dcebd8]">
+                  <tr>
+                    <th className="w-[18%] px-1.5 py-1.5 font-black sm:px-2">ITEM</th>
+                    <th className="w-[30%] px-1.5 py-1.5 font-black sm:px-2">ITEM (TYPE/SIZE)</th>
+                    <th className="w-[10%] px-1.5 py-1.5 font-black sm:px-2">QTY</th>
+                    <th className="w-[20%] px-1.5 py-1.5 text-right font-black sm:px-2">PRICE</th>
+                    <th className="w-[22%] px-1.5 py-1.5 text-right font-black sm:px-2">
+                      SUBTOTAL
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lines.map((line) => (
+                    <tr
+                      className="border-t border-[#78907d]"
+                      key={line.item.id}
+                    >
+                      <td className="break-words px-1.5 py-1.5 font-semibold sm:px-2">
+                        {line.item.category === "eggs"
+                          ? "Fresh Eggs"
+                          : "Palm Oil"}
+                      </td>
+                      <td className="break-words px-1.5 py-1.5 sm:px-2">{line.item.item}</td>
+                      <td className="px-1.5 py-1.5 sm:px-2">{line.quantity}</td>
+                      <td className="px-1.5 py-1.5 text-right font-semibold sm:px-2">
+                        {currency.format(line.unitPrice)}
+                      </td>
+                      <td className="px-1.5 py-1.5 text-right font-semibold sm:px-2">
+                        {currency.format(line.total)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="ml-auto w-full max-w-xs pb-3 text-xs sm:text-sm">
+            <h3 className="mb-1 text-right text-base font-black">
+              TRANSACTION SUMMARY
+            </h3>
+            <dl className="space-y-1">
+              <div className="flex justify-between gap-6">
+                <dt>Subtotal</dt>
+                <dd>{currency.format(total)}</dd>
+              </div>
+              <div className="flex justify-between gap-6">
+                <dt>Delivery Fee</dt>
+                <dd>{currency.format(0)}</dd>
+              </div>
+              <div className="my-1.5 flex justify-between gap-6 rounded-lg bg-[#dcebd8] px-3 py-1.5 text-base font-black">
+                <dt>Total Amount:</dt>
+                <dd>{currency.format(total)}</dd>
+              </div>
+              <div className="flex justify-between gap-6">
+                <dt>Payment Method:</dt>
+                <dd>Not specified</dd>
+              </div>
+              <div className="flex items-center justify-between gap-6">
+                <dt>Status</dt>
+                <dd className="rounded-full bg-[#e4eddf] px-2.5 py-0.5 text-[10px] font-black text-[#173b24]">
+                  PREVIEW
+                </dd>
+              </div>
+            </dl>
+          </section>
+
+          <footer className="flex flex-col gap-3 border-t border-[#d8dfd5] pt-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="text-xs">
+              <p>Thank you for purchasing at Adamos Fresh Eggs!</p>
+              <p className="font-semibold">
+                *This is a preview generated by Adamos Inventory System.
+              </p>
+            </div>
+            <div className="official-receipt-print-actions flex gap-2">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-[#173b24] px-4 text-xs font-black text-white hover:bg-[#245334]"
+              >
+                <Printer size={17} aria-hidden="true" />
+                Print
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                title="Choose Save as PDF in the print dialog"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-[#173b24] bg-white px-4 text-xs font-black text-[#173b24] hover:bg-[#f3f6f1]"
+              >
+                <Download size={17} aria-hidden="true" />
+                Download
+              </button>
+            </div>
+          </footer>
+        </div>
+      </section>
+    </div>
   );
 }

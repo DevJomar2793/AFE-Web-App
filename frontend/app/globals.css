@@ -194,6 +194,48 @@ html {
   color: #fffaf0;
 }
 
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .official-receipt-print-root,
+  .official-receipt-print-root * {
+    visibility: visible;
+  }
+
+  .official-receipt-print-root {
+    background: white;
+    display: block;
+    inset: 0;
+    padding: 0;
+    position: absolute;
+  }
+
+  .official-receipt-print-root section {
+    box-shadow: none;
+    max-height: none;
+    max-width: none;
+    overflow: visible;
+  }
+
+  .official-receipt-print-actions {
+    display: none;
+  }
+}
+
+@media screen and (max-height: 680px) {
+  .official-receipt-sheet {
+    zoom: 0.84;
+  }
+}
+
+@media screen and (max-height: 560px) {
+  .official-receipt-sheet {
+    zoom: 0.7;
+  }
+}
+
 .fade-in {
   opacity: 0;
   transform: translateY(24px);
