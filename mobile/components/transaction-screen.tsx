@@ -431,6 +431,9 @@ function SaleEditorModal({
                         <ScrollView
                           keyboardShouldPersistTaps="handled"
                           nestedScrollEnabled
+                          showsVerticalScrollIndicator={
+                            matchingCustomers.length > 3
+                          }
                           style={styles.customerSuggestionList}
                         >
                           {matchingCustomers.map((customer) => (
@@ -445,10 +448,16 @@ function SaleEditorModal({
                               }}
                               style={styles.customerSuggestion}
                             >
-                              <Text style={styles.customerSuggestionName}>
+                              <Text
+                                numberOfLines={1}
+                                style={styles.customerSuggestionName}
+                              >
                                 {customer.name}
                               </Text>
-                              <Text style={styles.customerSuggestionNumber}>
+                              <Text
+                                numberOfLines={1}
+                                style={styles.customerSuggestionNumber}
+                              >
                                 {customer.number}
                               </Text>
                             </Pressable>
@@ -1322,8 +1331,9 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     backgroundColor: "#ffffff",
   },
-  customerSuggestionList: { maxHeight: 190 },
+  customerSuggestionList: { maxHeight: 132 },
   customerSuggestion: {
+    height: 44,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -1331,7 +1341,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#edf0eb",
     paddingHorizontal: 12,
-    paddingVertical: 12,
   },
   customerSuggestionName: {
     flex: 1,

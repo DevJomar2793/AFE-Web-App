@@ -67,6 +67,7 @@ export function NewSaleModal({
     availableItems[0];
   const nextSaleLineId = useRef(2);
   const customerFieldRef = useRef<HTMLDivElement>(null);
+  const customerListRef = useRef<HTMLDivElement>(null);
   const [saleLines, setSaleLines] = useState<SaleLine[]>([
     {
       id: 1,
@@ -124,6 +125,17 @@ export function NewSaleModal({
   const matchingCustomers = customers.filter((customer) =>
     customer.name.toLowerCase().includes(normalizedCustomerQuery),
   );
+
+  useEffect(() => {
+    if (!isCustomerListOpen) return;
+
+    const activeOption = customerListRef.current?.children[
+      activeCustomerIndex
+    ];
+    if (activeOption instanceof HTMLElement) {
+      activeOption.scrollIntoView({ block: "nearest" });
+    }
+  }, [activeCustomerIndex, customerQuery, isCustomerListOpen]);
 
   const saleLineDetails = saleLines.map((line, index) => {
     const selectedItem = availableItems.find(
@@ -527,8 +539,9 @@ export function NewSaleModal({
               {isCustomerListOpen && !isCustomerLoading && !customerError && (
                 <div
                   id="sale-customer-suggestions"
+                  ref={customerListRef}
                   role="listbox"
-                  className="absolute z-20 mt-2 max-h-56 w-full overflow-y-auto rounded-xl border border-[#d7dfd5] bg-white p-1.5 shadow-xl"
+                  className="absolute z-20 mt-2 max-h-[146px] w-full overflow-y-auto rounded-xl border border-[#d7dfd5] bg-white p-1.5 shadow-xl"
                 >
                   {matchingCustomers.length ? (
                     matchingCustomers.map((customer, index) => (
@@ -540,14 +553,16 @@ export function NewSaleModal({
                         aria-selected={selectedCustomer?.id === customer.id}
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => selectCustomer(customer)}
-                        className={`flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition ${
+                        className={`flex h-11 w-full items-center justify-between gap-3 rounded-lg px-3 text-left text-sm transition ${
                           index === activeCustomerIndex
                             ? "bg-[#eaf2e9] text-[#173b24]"
                             : "text-[#283b2c] hover:bg-[#f3f6f1]"
                         }`}
                       >
-                        <span className="font-extrabold">{customer.name}</span>
-                        <span className="whitespace-nowrap text-xs font-semibold text-[#748078]">
+                        <span className="min-w-0 flex-1 truncate font-extrabold">
+                          {customer.name}
+                        </span>
+                        <span className="shrink-0 whitespace-nowrap text-xs font-semibold text-[#748078]">
                           {customer.number}
                         </span>
                       </button>
