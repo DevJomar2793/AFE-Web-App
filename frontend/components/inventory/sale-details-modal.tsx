@@ -7,7 +7,6 @@ import {
   type OfficialReceiptPreviewData,
 } from "@/components/inventory/new-sale-modal";
 import {
-  createOfficialReceipt,
   getOfficialReceipt,
   type OfficialReceipt,
   type Sale,
@@ -16,7 +15,6 @@ import {
 type SaleDetailsModalProps = {
   sale: Sale;
   onClose: () => void;
-  onReceiptCreated: () => void;
 };
 
 const currency = new Intl.NumberFormat("en-PH", {
@@ -29,7 +27,6 @@ const currency = new Intl.NumberFormat("en-PH", {
 export function SaleDetailsModal({
   sale,
   onClose,
-  onReceiptCreated,
 }: SaleDetailsModalProps) {
   const [receipt, setReceipt] = useState<OfficialReceipt | null>(null);
   const [isReceiptLoading, setIsReceiptLoading] = useState(false);
@@ -40,16 +37,13 @@ export function SaleDetailsModal({
   );
 
   async function openReceipt() {
-    if (isReceiptLoading) return;
+    if (isReceiptLoading || !sale.hasOfficialReceipt) return;
 
     setIsReceiptLoading(true);
     setReceiptError("");
     try {
-      const savedReceipt = sale.hasOfficialReceipt
-        ? await getOfficialReceipt(sale.id)
-        : await createOfficialReceipt(sale.id);
+      const savedReceipt = await getOfficialReceipt(sale.id);
       setReceipt(savedReceipt);
-      if (!sale.hasOfficialReceipt) onReceiptCreated();
     } catch (error) {
       setReceiptError(
         error instanceof Error
@@ -64,7 +58,7 @@ export function SaleDetailsModal({
   const receiptPreview: OfficialReceiptPreviewData | null = receipt
     ? {
         transactionId: receipt.saleId,
-        orderDate: new Date(sale.createdAt),
+        orderDate: new Date(receipt.generatedAt),
         customerName: receipt.customerName,
         customerNumber: receipt.customerNumber,
         customerAddress: receipt.customerAddress,
@@ -179,9 +173,15 @@ export function SaleDetailsModal({
             </p>
           ) : null}
 
+          {!sale.hasOfficialReceipt ? (
+            <p className="mt-4 rounded-xl bg-[#fff6df] px-4 py-3 text-sm font-bold text-[#8a5a16]">
+              No saved official receipt is available for this transaction.
+            </p>
+          ) : null}
+
           <button
             className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#173b24] px-5 text-sm font-black text-white hover:bg-[#245334] disabled:cursor-wait disabled:opacity-70"
-            disabled={isReceiptLoading}
+            disabled={isReceiptLoading || !sale.hasOfficialReceipt}
             onClick={() => void openReceipt()}
             type="button"
           >
@@ -190,11 +190,7 @@ export function SaleDetailsModal({
             ) : (
               <ReceiptText aria-hidden="true" size={18} />
             )}
-            {isReceiptLoading
-              ? "Opening receipt..."
-              : sale.hasOfficialReceipt
-                ? "View Official Receipt (OR)"
-                : "Generate Official Receipt (OR)"}
+            {isReceiptLoading ? "Opening receipt..." : "View Official Receipt"}
           </button>
         </section>
       </div>

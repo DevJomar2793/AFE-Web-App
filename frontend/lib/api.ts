@@ -548,17 +548,6 @@ export async function getOfficialReceipt(
   return parseOfficialReceipt(response);
 }
 
-export async function createOfficialReceipt(
-  saleId: number,
-): Promise<OfficialReceipt> {
-  const response = await apiRequest(
-    `/api/v1/sales/${saleId}/official-receipt`,
-    { method: "POST" },
-    "The official receipt could not be generated.",
-  );
-  return parseOfficialReceipt(response);
-}
-
 export async function getReturns(
   signal?: AbortSignal,
 ): Promise<InventoryReturn[]> {

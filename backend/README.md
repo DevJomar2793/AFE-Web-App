@@ -64,7 +64,6 @@ POST /api/v1/sales/add-sales
 POST /api/v1/sales/add-sales-batch
 PATCH /api/v1/sales/{sale_id}
 GET  /api/v1/sales/{sale_id}/official-receipt
-POST /api/v1/sales/{sale_id}/official-receipt
 GET  /api/v1/returns/get-returns
 POST /api/v1/returns/add-returns
 GET  /api/v1/activity-logs
@@ -197,9 +196,9 @@ that inventory item's current regular price. The API returns `409` if an
 additional quantity is unavailable and rolls back every change.
 
 Retrieve an existing receipt with `GET /api/v1/sales/{sale_id}/official-receipt`.
-Use `POST` on the same URL to create one for a sale that does not have one yet.
-The operation is idempotent: repeated requests return the same receipt instead
-of creating duplicates. Editing a sale updates its saved receipt items.
+Receipts are created only with their original sale. Editing a sale updates that
+sale's existing receipt without creating a duplicate. A sale without a saved
+receipt returns `404` rather than generating a replacement.
 
 Create a return with the related inventory ID, a positive whole quantity, a
 customer name, and a reason:

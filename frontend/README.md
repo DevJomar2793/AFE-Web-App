@@ -65,8 +65,8 @@ The New Sale form stores one multi-item transaction through
 those records from `GET /api/v1/sales/get-sales`. Editing a transaction through
 `PATCH /api/v1/sales/{sale_id}` updates all of its item quantities and prices.
 Sales are not duplicated in browser storage. Sales rows open a details modal,
-and saved official receipts are loaded or created through
-`/api/v1/sales/{sale_id}/official-receipt`.
+and saved official receipts are loaded through the GET-only
+`/api/v1/sales/{sale_id}/official-receipt` endpoint.
 
 The Returns page loads database return history from
 `GET /api/v1/returns/get-returns` and submits new returns directly to

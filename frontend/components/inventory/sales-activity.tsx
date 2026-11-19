@@ -28,7 +28,6 @@ type SalesActivityProps = {
   onRemove: (sale: Sale) => void;
   onAddSale: () => void;
   onRetry: () => void;
-  onSalesChanged: () => void;
   removingSaleId: number | null;
   transactionRange: TransactionRange;
   onTransactionRangeChange: (range: TransactionRange) => void;
@@ -44,7 +43,6 @@ export function SalesActivity({
   onRemove,
   onAddSale,
   onRetry,
-  onSalesChanged,
   removingSaleId,
   transactionRange,
   onTransactionRangeChange,
@@ -341,7 +339,6 @@ export function SalesActivity({
       {selectedSale ? (
         <SaleDetailsModal
           onClose={() => setSelectedSaleId(null)}
-          onReceiptCreated={onSalesChanged}
           sale={selectedSale}
         />
       ) : null}

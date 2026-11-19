@@ -123,12 +123,6 @@ async def test_create_sale_with_official_receipt_saves_one_report(
     assert Decimal(receipt_data["items"][0]["subtotal"]) == Decimal("500.00")
     assert Decimal(receipt_data["total_amount"]) == Decimal("500.00")
 
-    repeated_response = await client.post(
-        f"/api/v1/sales/{sale_data['id']}/official-receipt",
-    )
-    assert repeated_response.status_code == 200
-    assert repeated_response.json()["id"] == receipt_data["id"]
-
     async with async_session_factory() as session:
         receipts = list(
             (
@@ -143,7 +137,7 @@ async def test_create_sale_with_official_receipt_saves_one_report(
 
 
 @pytest.mark.asyncio
-async def test_edit_sale_updates_saved_official_receipt(
+async def test_edit_sale_updates_existing_official_receipt_without_duplicate(
     client: AsyncClient,
     inventory_item: Inventory,
     sale_customer: Customer,
@@ -159,6 +153,11 @@ async def test_edit_sale_updates_saved_official_receipt(
     )
     assert create_response.status_code == 201
     sale_data = create_response.json()
+    original_receipt_response = await client.get(
+        f"/api/v1/sales/{sale_data['id']}/official-receipt",
+    )
+    assert original_receipt_response.status_code == 200
+    original_receipt_id = original_receipt_response.json()["id"]
 
     update_response = await client.patch(
         f"/api/v1/sales/{sale_data['id']}",
@@ -171,12 +170,25 @@ async def test_edit_sale_updates_saved_official_receipt(
     )
     assert receipt_response.status_code == 200
     receipt_data = receipt_response.json()
+    assert receipt_data["id"] == original_receipt_id
     assert receipt_data["items"][0]["quantity"] == 3
     assert Decimal(receipt_data["items"][0]["unit_price"]) == Decimal("250.00")
 
+    async with async_session_factory() as session:
+        receipts = list(
+            (
+                await session.scalars(
+                    select(OfficialReceipt).where(
+                        OfficialReceipt.sale_id == sale_data["id"],
+                    ),
+                )
+            ).all(),
+        )
+    assert len(receipts) == 1
+
 
 @pytest.mark.asyncio
-async def test_generate_receipt_for_existing_sale_is_idempotent(
+async def test_sale_without_saved_receipt_returns_not_found(
     client: AsyncClient,
     inventory_item: Inventory,
 ) -> None:
@@ -192,17 +204,11 @@ async def test_generate_receipt_for_existing_sale_is_idempotent(
     sale_data = create_response.json()
     assert sale_data["has_official_receipt"] is False
 
-    first_response = await client.post(
+    receipt_response = await client.get(
         f"/api/v1/sales/{sale_data['id']}/official-receipt",
     )
-    second_response = await client.post(
-        f"/api/v1/sales/{sale_data['id']}/official-receipt",
-    )
-
-    assert first_response.status_code == 200
-    assert second_response.status_code == 200
-    assert first_response.json()["id"] == second_response.json()["id"]
-    assert first_response.json()["customer_number"] is None
+    assert receipt_response.status_code == 404
+    assert receipt_response.json() == {"detail": "Official receipt not found"}
 
 
 @pytest.mark.asyncio

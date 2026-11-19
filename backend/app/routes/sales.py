@@ -512,52 +512,6 @@ async def get_official_receipt(
     return await load_official_receipt(sale_id, session)
 
 
-@router.post(
-    "/{sale_id}/official-receipt",
-    response_model=OfficialReceiptResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Create or return a sale's official receipt",
-)
-async def create_official_receipt(
-    sale_id: int,
-    session: DatabaseSession,
-) -> OfficialReceipt:
-    try:
-        sale = await session.scalar(
-            select(Sale)
-            .where(Sale.id == sale_id)
-            .options(
-                selectinload(Sale.items).selectinload(SaleItem.item),
-                selectinload(Sale.official_receipt).selectinload(
-                    OfficialReceipt.items,
-                ),
-            )
-            .with_for_update(),
-        )
-        if sale is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Sale not found",
-            )
-
-        if sale.official_receipt is None:
-            inventory_by_id = {item.inventory_id: item.item for item in sale.items}
-            sync_official_receipt(sale, sale.items, inventory_by_id)
-            await session.commit()
-
-        return await load_official_receipt(sale_id, session)
-    except HTTPException:
-        await session.rollback()
-        raise
-    except SQLAlchemyError as error:
-        await session.rollback()
-        logger.exception("Failed to create official receipt")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unable to create official receipt",
-        ) from error
-
-
 async def load_official_receipt(
     sale_id: int,
     session: AsyncSession,
@@ -583,7 +537,6 @@ def sync_official_receipt(
     receipt = sale.official_receipt
     if receipt is None:
         receipt = OfficialReceipt(
-            sale=sale,
             customer_name=sale.customer_name,
             customer_number=sale.customer_number,
             customer_address=sale.customer_address,

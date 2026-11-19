@@ -388,7 +388,6 @@ export function InventoryDashboard() {
                 setRemoveSaleError("");
               }}
               onRetry={retrySales}
-              onSalesChanged={retrySales}
               removingSaleId={removingSaleId}
               transactionRange={transactionRange}
               onTransactionRangeChange={setTransactionRange}
