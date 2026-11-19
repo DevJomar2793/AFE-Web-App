@@ -48,6 +48,7 @@ export default function App() {
     "login" | "register" | "dashboard"
   >("login");
   const [activeTab, setActiveTab] = useState<MobileTab>("home");
+  const [moreScreenResetKey, setMoreScreenResetKey] = useState(0);
   const [isPriceHistoryOpen, setIsPriceHistoryOpen] = useState(false);
   const [isAddStockModalVisible, setIsAddStockModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryRecord | null>(null);
@@ -153,6 +154,10 @@ export default function App() {
   }
 
   function changeTab(tab: MobileTab) {
+    if (tab === "more") {
+      setMoreScreenResetKey((currentKey) => currentKey + 1);
+    }
+
     setActiveTab(tab);
     setIsPriceHistoryOpen(false);
   }
@@ -239,6 +244,7 @@ export default function App() {
             />
           ) : (
             <MoreScreen
+              key={moreScreenResetKey}
               isAdmin={account?.isAdmin === true}
               onShowSuccess={showTransactionSuccess}
             />
