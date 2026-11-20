@@ -165,16 +165,18 @@ Create one sale containing multiple inventory items:
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/sales/add-sales-batch \
   -H "Content-Type: application/json" \
-  -d '{"customer_name":"Maria Santos","items":[{"inventory_id":1,"quantity":2},{"inventory_id":2,"quantity":3}]}'
+  -d '{"customer_name":"Maria Santos","payment_method":"gcash","items":[{"inventory_id":1,"quantity":2},{"inventory_id":2,"quantity":3}]}'
 ```
 
 The batch endpoint creates one sale transaction with multiple item rows. If any
 item is missing or does not have enough stock, neither the sale nor any
 inventory deductions are saved. Each inventory item may appear only once.
-Web clients may also send `customer_id` and set
+Clients may send `payment_method` as `gcash` or `cod`. Web and Mobile require a
+selection for new sales, while the API keeps the field optional for older clients
+and records. Clients may also send `customer_id` and set
 `generate_official_receipt` to `true`. The API snapshots the saved customer and
-creates one receipt in the same transaction as the sale. Older clients may
-continue sending only `customer_name`.
+payment method, then creates one receipt in the same transaction as the sale.
+Older clients may continue sending only `customer_name`.
 
 List sales, newest first, with:
 

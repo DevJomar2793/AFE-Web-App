@@ -26,18 +26,6 @@ export function AuthenticatedScreenHeader({
   return (
     <>
       <View style={styles.brandHeader}>
-        {onBack ? (
-          <Pressable
-            accessibilityLabel={backAccessibilityLabel}
-            accessibilityRole="button"
-            hitSlop={8}
-            onPress={onBack}
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={23} color={mobileTheme.colors.primaryDark} />
-          </Pressable>
-        ) : null}
-
         <View style={styles.logoFrame}>
           <Image
             accessibilityLabel="Adamos Fresh Eggs logo"

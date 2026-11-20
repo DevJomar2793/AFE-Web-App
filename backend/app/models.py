@@ -303,6 +303,10 @@ class Sale(Base):
             "char_length(trim(customer_name)) > 0",
             name="ck_sales_customer_name_not_blank",
         ),
+        CheckConstraint(
+            "payment_method IS NULL OR payment_method IN ('gcash', 'cod')",
+            name="ck_sales_payment_method",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -315,6 +319,7 @@ class Sale(Base):
     customer_number: Mapped[str | None] = mapped_column(String(11), nullable=True)
     customer_address: Mapped[str | None] = mapped_column(String(500), nullable=True)
     customer_landmark: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    payment_method: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -377,6 +382,12 @@ class SaleItem(Base):
 
 class OfficialReceipt(Base):
     __tablename__ = "official_receipts"
+    __table_args__ = (
+        CheckConstraint(
+            "payment_method IS NULL OR payment_method IN ('gcash', 'cod')",
+            name="ck_official_receipts_payment_method",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     sale_id: Mapped[int] = mapped_column(
@@ -389,6 +400,7 @@ class OfficialReceipt(Base):
     customer_number: Mapped[str | None] = mapped_column(String(11), nullable=True)
     customer_address: Mapped[str | None] = mapped_column(String(500), nullable=True)
     customer_landmark: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    payment_method: Mapped[str | None] = mapped_column(String(20), nullable=True)
     generated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

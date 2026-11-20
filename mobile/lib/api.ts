@@ -16,6 +16,7 @@ export interface SaleRecord {
   id: number;
   customerName: string;
   customerNumber: string | null;
+  paymentMethod: PaymentMethod | null;
   hasOfficialReceipt: boolean;
   items: SaleItemRecord[];
   createdAt: string;
@@ -29,6 +30,7 @@ export interface OfficialReceiptRecord {
   customerNumber: string | null;
   customerAddress: string | null;
   customerLandmark: string | null;
+  paymentMethod: PaymentMethod | null;
   items: OfficialReceiptItemRecord[];
   totalAmount: number;
   generatedAt: string;
@@ -42,6 +44,23 @@ export interface OfficialReceiptItemRecord {
   quantity: number;
   unitPrice: number;
   subtotal: number;
+}
+
+export type PaymentMethod = "gcash" | "cod";
+
+export const paymentMethodOptions: {
+  value: PaymentMethod;
+  label: string;
+}[] = [
+  { value: "gcash", label: "GCash Payment" },
+  { value: "cod", label: "Cash on Delivery (COD)" },
+];
+
+export function formatPaymentMethod(paymentMethod: PaymentMethod | null) {
+  return (
+    paymentMethodOptions.find((option) => option.value === paymentMethod)
+      ?.label ?? "Not recorded"
+  );
 }
 
 export interface SaleItemRecord {
@@ -155,6 +174,7 @@ export interface UpdateInventoryItemInput {
 export interface CreateSaleBatchInput {
   customerName: string;
   customerId: number;
+  paymentMethod: PaymentMethod;
   generateOfficialReceipt: boolean;
   items: { inventoryId: number; quantity: number }[];
 }
@@ -271,6 +291,7 @@ export async function createSaleBatch(
     {
       customer_name: input.customerName,
       customer_id: input.customerId,
+      payment_method: input.paymentMethod,
       generate_official_receipt: input.generateOfficialReceipt,
       items: input.items.map((item) => ({
         inventory_id: item.inventoryId,
@@ -775,6 +796,7 @@ function parseSale(value: unknown): SaleRecord {
     customerName: value.customer_name,
     customerNumber:
       typeof value.customer_number === "string" ? value.customer_number : null,
+    paymentMethod: parsePaymentMethod(value.payment_method),
     hasOfficialReceipt: value.has_official_receipt === true,
     items: value.items.map(parseSaleItem),
     createdAt: value.created_at,
@@ -813,11 +835,18 @@ function parseOfficialReceipt(value: unknown): OfficialReceiptRecord {
     customerNumber: value.customer_number,
     customerAddress: value.customer_address,
     customerLandmark: value.customer_landmark,
+    paymentMethod: parsePaymentMethod(value.payment_method),
     items: value.items.map(parseOfficialReceiptItem),
     totalAmount,
     generatedAt: value.generated_at,
     updatedAt: value.updated_at,
   };
+}
+
+function parsePaymentMethod(value: unknown): PaymentMethod | null {
+  if (value === null || value === undefined) return null;
+  if (value === "gcash" || value === "cod") return value;
+  throw new Error("The API returned an invalid payment method.");
 }
 
 function parseOfficialReceiptItem(value: unknown): OfficialReceiptItemRecord {

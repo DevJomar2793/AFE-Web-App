@@ -101,6 +101,7 @@ async def create_sale(
         session,
         current_user.email,
         customer_id=sale_data.customer_id,
+        payment_method=sale_data.payment_method,
         generate_official_receipt=sale_data.generate_official_receipt,
     )
 
@@ -133,6 +134,7 @@ async def create_sale_batch(
         session,
         current_user.email,
         customer_id=sale_data.customer_id,
+        payment_method=sale_data.payment_method,
         generate_official_receipt=sale_data.generate_official_receipt,
     )
 
@@ -143,6 +145,7 @@ async def create_sale_transaction(
     session: AsyncSession,
     admin_email: str,
     customer_id: int | None = None,
+    payment_method: str | None = None,
     generate_official_receipt: bool = False,
 ) -> Sale:
     try:
@@ -188,6 +191,7 @@ async def create_sale_transaction(
             customer_number=customer.number if customer else None,
             customer_address=customer.address if customer else None,
             customer_landmark=customer.landmark if customer else None,
+            payment_method=payment_method,
             items=[],
             official_receipt=None,
         )
@@ -541,6 +545,7 @@ def sync_official_receipt(
             customer_number=sale.customer_number,
             customer_address=sale.customer_address,
             customer_landmark=sale.customer_landmark,
+            payment_method=sale.payment_method,
             items=[],
         )
         sale.official_receipt = receipt
@@ -549,6 +554,7 @@ def sync_official_receipt(
         receipt.customer_number = sale.customer_number
         receipt.customer_address = sale.customer_address
         receipt.customer_landmark = sale.customer_landmark
+        receipt.payment_method = sale.payment_method
         receipt.updated_at = datetime.now(timezone.utc)
         receipt.items.clear()
 

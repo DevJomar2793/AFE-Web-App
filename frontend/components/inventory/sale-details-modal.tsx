@@ -8,6 +8,7 @@ import {
 } from "@/components/inventory/new-sale-modal";
 import {
   getOfficialReceipt,
+  formatPaymentMethod,
   type OfficialReceipt,
   type Sale,
 } from "@/lib/api";
@@ -63,6 +64,7 @@ export function SaleDetailsModal({
         customerNumber: receipt.customerNumber,
         customerAddress: receipt.customerAddress,
         customerLandmark: receipt.customerLandmark,
+        paymentMethod: receipt.paymentMethod,
         items: receipt.items.map((item) => ({
           id: item.id,
           itemName: item.itemName,
@@ -128,7 +130,10 @@ export function SaleDetailsModal({
             />
             <Detail label="Order Date" value={formatOrderDate(sale.createdAt)} />
             <Detail label="Transaction ID / Sales ID" value={`#${sale.id}`} />
-            <Detail label="Payment Details" value="Not available" />
+            <Detail
+              label="Payment Method"
+              value={formatPaymentMethod(sale.paymentMethod)}
+            />
           </dl>
 
           <div className="mt-5 overflow-hidden rounded-2xl border border-[#dfe4dd]">

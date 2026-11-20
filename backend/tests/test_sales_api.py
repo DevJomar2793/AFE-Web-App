@@ -99,6 +99,7 @@ async def test_create_sale_with_official_receipt_saves_one_report(
         json={
             "customer_id": sale_customer.id,
             "customer_name": "Client value is replaced by the saved customer",
+            "payment_method": "gcash",
             "generate_official_receipt": True,
             "items": [{"inventory_id": inventory_item.id, "quantity": 2}],
         },
@@ -108,6 +109,7 @@ async def test_create_sale_with_official_receipt_saves_one_report(
     sale_data = response.json()
     assert sale_data["customer_name"] == sale_customer.name
     assert sale_data["customer_number"] == sale_customer.number
+    assert sale_data["payment_method"] == "gcash"
     assert sale_data["has_official_receipt"] is True
 
     receipt_response = await client.get(
@@ -118,6 +120,7 @@ async def test_create_sale_with_official_receipt_saves_one_report(
     assert receipt_data["sale_id"] == sale_data["id"]
     assert receipt_data["customer_number"] == sale_customer.number
     assert receipt_data["customer_address"] == sale_customer.address
+    assert receipt_data["payment_method"] == "gcash"
     assert receipt_data["items"][0]["item_name"] == inventory_item.item
     assert receipt_data["items"][0]["quantity"] == 2
     assert Decimal(receipt_data["items"][0]["subtotal"]) == Decimal("500.00")
@@ -147,6 +150,7 @@ async def test_edit_sale_updates_existing_official_receipt_without_duplicate(
         json={
             "customer_id": sale_customer.id,
             "customer_name": sale_customer.name,
+            "payment_method": "cod",
             "generate_official_receipt": True,
             "items": [{"inventory_id": inventory_item.id, "quantity": 1}],
         },
@@ -171,6 +175,7 @@ async def test_edit_sale_updates_existing_official_receipt_without_duplicate(
     assert receipt_response.status_code == 200
     receipt_data = receipt_response.json()
     assert receipt_data["id"] == original_receipt_id
+    assert receipt_data["payment_method"] == "cod"
     assert receipt_data["items"][0]["quantity"] == 3
     assert Decimal(receipt_data["items"][0]["unit_price"]) == Decimal("250.00")
 
@@ -188,6 +193,24 @@ async def test_edit_sale_updates_existing_official_receipt_without_duplicate(
 
 
 @pytest.mark.asyncio
+async def test_create_sale_rejects_invalid_payment_method(
+    client: AsyncClient,
+    inventory_item: Inventory,
+) -> None:
+    response = await client.post(
+        "/api/v1/sales/add-sales",
+        json={
+            "inventory_id": inventory_item.id,
+            "quantity": 1,
+            "customer_name": "Invalid Payment Customer",
+            "payment_method": "bank_transfer",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_sale_without_saved_receipt_returns_not_found(
     client: AsyncClient,
     inventory_item: Inventory,
@@ -202,6 +225,7 @@ async def test_sale_without_saved_receipt_returns_not_found(
     )
     assert create_response.status_code == 201
     sale_data = create_response.json()
+    assert sale_data["payment_method"] is None
     assert sale_data["has_official_receipt"] is False
 
     receipt_response = await client.get(

@@ -11,12 +11,13 @@ import {
 } from "react-native";
 
 import {
+  formatPaymentMethod,
   getOfficialReceipt,
   type OfficialReceiptRecord,
   type SaleRecord,
 } from "../lib/api";
 import {
-  OfficialReceiptModal,
+  OfficialReceiptView,
   type OfficialReceiptDisplayData,
 } from "./official-receipt-modal";
 
@@ -51,6 +52,8 @@ export function SaleDetailsModal({ sale, onClose }: SaleDetailsModalProps) {
         customerNumber: receipt.customerNumber,
         customerAddress: receipt.customerAddress,
         customerLandmark: receipt.customerLandmark,
+        paymentMethod: receipt.paymentMethod,
+        totalAmount: receipt.totalAmount,
         items: receipt.items.map((item) => ({
           id: item.id,
           itemName: item.itemName,
@@ -81,13 +84,21 @@ export function SaleDetailsModal({ sale, onClose }: SaleDetailsModalProps) {
   }
 
   return (
-    <>
-      <Modal
-        animationType="fade"
-        onRequestClose={onClose}
-        transparent
-        visible={sale !== null}
-      >
+    <Modal
+      animationType="fade"
+      onRequestClose={() => {
+        if (receipt) setReceipt(null);
+        else onClose();
+      }}
+      transparent
+      visible={sale !== null}
+    >
+      {receiptDisplay ? (
+        <OfficialReceiptView
+          onClose={() => setReceipt(null)}
+          receipt={receiptDisplay}
+        />
+      ) : (
         <View style={styles.overlay}>
           <View style={styles.modalCard}>
             <ScrollView contentContainerStyle={styles.content}>
@@ -127,7 +138,10 @@ export function SaleDetailsModal({ sale, onClose }: SaleDetailsModalProps) {
                   })}
                 />
                 <Detail label="Transaction / Sales ID" value={`#${sale.id}`} />
-                <Detail label="Payment Details" value="Not available" />
+                <Detail
+                  label="Payment Method"
+                  value={formatPaymentMethod(sale.paymentMethod)}
+                />
               </View>
 
               <View style={styles.itemsBox}>
@@ -201,14 +215,8 @@ export function SaleDetailsModal({ sale, onClose }: SaleDetailsModalProps) {
             </ScrollView>
           </View>
         </View>
-      </Modal>
-
-      <OfficialReceiptModal
-        onClose={() => setReceipt(null)}
-        receipt={receiptDisplay}
-        visible={receipt !== null}
-      />
-    </>
+      )}
+    </Modal>
   );
 }
 

@@ -58,6 +58,7 @@ export type Sale = {
   id: number;
   customerName: string;
   customerNumber: string | null;
+  paymentMethod: PaymentMethod | null;
   hasOfficialReceipt: boolean;
   items: SaleItem[];
   createdAt: string;
@@ -71,11 +72,29 @@ export type OfficialReceipt = {
   customerNumber: string | null;
   customerAddress: string | null;
   customerLandmark: string | null;
+  paymentMethod: PaymentMethod | null;
   items: OfficialReceiptItem[];
   totalAmount: number;
   generatedAt: string;
   updatedAt: string;
 };
+
+export type PaymentMethod = "gcash" | "cod";
+
+export const paymentMethodOptions: {
+  value: PaymentMethod;
+  label: string;
+}[] = [
+  { value: "gcash", label: "GCash Payment" },
+  { value: "cod", label: "Cash on Delivery (COD)" },
+];
+
+export function formatPaymentMethod(paymentMethod: PaymentMethod | null) {
+  return (
+    paymentMethodOptions.find((option) => option.value === paymentMethod)
+      ?.label ?? "Not recorded"
+  );
+}
 
 export type OfficialReceiptItem = {
   id: number;
@@ -155,12 +174,14 @@ export type CreateSaleInput = {
   quantity: number;
   customerName: string;
   customerId?: number;
+  paymentMethod?: PaymentMethod;
   generateOfficialReceipt?: boolean;
 };
 
 export type CreateSaleBatchInput = {
   customerName: string;
   customerId?: number;
+  paymentMethod?: PaymentMethod;
   generateOfficialReceipt?: boolean;
   items: {
     inventoryId: number;
@@ -487,6 +508,7 @@ export async function createSale(input: CreateSaleInput): Promise<Sale> {
         quantity: input.quantity,
         customer_name: input.customerName,
         customer_id: input.customerId,
+        payment_method: input.paymentMethod,
         generate_official_receipt: input.generateOfficialReceipt ?? false,
       }),
     },
@@ -505,6 +527,7 @@ export async function createSaleBatch(
       body: JSON.stringify({
         customer_name: input.customerName,
         customer_id: input.customerId,
+        payment_method: input.paymentMethod,
         generate_official_receipt: input.generateOfficialReceipt ?? false,
         items: input.items.map((item) => ({
           inventory_id: item.inventoryId,
@@ -884,6 +907,7 @@ function parseSale(value: unknown): Sale {
     customerName: value.customer_name,
     customerNumber:
       typeof value.customer_number === "string" ? value.customer_number : null,
+    paymentMethod: parsePaymentMethod(value.payment_method),
     hasOfficialReceipt: value.has_official_receipt === true,
     items: value.items.map(parseSaleItem),
     createdAt: value.created_at,
@@ -923,11 +947,18 @@ function parseOfficialReceipt(value: unknown): OfficialReceipt {
     customerNumber: value.customer_number,
     customerAddress: value.customer_address,
     customerLandmark: value.customer_landmark,
+    paymentMethod: parsePaymentMethod(value.payment_method),
     items: value.items.map(parseOfficialReceiptItem),
     totalAmount,
     generatedAt: value.generated_at,
     updatedAt: value.updated_at,
   };
+}
+
+function parsePaymentMethod(value: unknown): PaymentMethod | null {
+  if (value === null || value === undefined) return null;
+  if (value === "gcash" || value === "cod") return value;
+  throw new Error("Invalid payment method");
 }
 
 function parseOfficialReceiptItem(value: unknown): OfficialReceiptItem {

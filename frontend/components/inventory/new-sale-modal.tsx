@@ -23,10 +23,13 @@ import {
 import { BrandMark } from "@/components/storefront/brand-mark";
 import {
   createSaleBatch,
+  formatPaymentMethod,
   getAutomaticUnitPrice,
   getCustomerDetails,
+  paymentMethodOptions,
   type CustomerDetails,
   type InventoryItem,
+  type PaymentMethod,
 } from "@/lib/api";
 
 type NewSaleModalProps = {
@@ -60,6 +63,7 @@ export type OfficialReceiptPreviewData = {
   customerNumber: string | null;
   customerAddress: string | null;
   customerLandmark: string | null;
+  paymentMethod: PaymentMethod | null;
   items: ReceiptPreviewItem[];
   status: "PREVIEW" | "SAVED";
 };
@@ -98,6 +102,7 @@ export function NewSaleModal({
   const [customerQuery, setCustomerQuery] = useState("");
   const [selectedCustomer, setSelectedCustomer] =
     useState<CustomerDetails | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
   const [isCustomerListOpen, setIsCustomerListOpen] = useState(false);
   const [activeCustomerIndex, setActiveCustomerIndex] = useState(0);
   const [isCustomerLoading, setIsCustomerLoading] = useState(true);
@@ -265,6 +270,10 @@ export function NewSaleModal({
       setError("Complete the sale items before viewing the receipt.");
       return;
     }
+    if (!paymentMethod) {
+      setError("Select a payment method before viewing the receipt.");
+      return;
+    }
 
     setError("");
     setIsCustomerListOpen(false);
@@ -312,6 +321,10 @@ export function NewSaleModal({
       setError("Select an existing customer from the suggestions.");
       return;
     }
+    if (!paymentMethod) {
+      setError("Select a payment method before saving the sale.");
+      return;
+    }
 
     setIsSubmitting(true);
     setError("");
@@ -320,6 +333,7 @@ export function NewSaleModal({
       await createSaleBatch({
         customerId: selectedCustomer.id,
         customerName: selectedCustomer.name,
+        paymentMethod,
         generateOfficialReceipt: true,
         items: requestedItems,
       });
@@ -347,6 +361,7 @@ export function NewSaleModal({
             customerNumber: selectedCustomer.number,
             customerAddress: selectedCustomer.address,
             customerLandmark: selectedCustomer.landmark,
+            paymentMethod: paymentMethod || null,
             items: saleLineDetails.flatMap((line) =>
               line.item
                 ? [
@@ -672,6 +687,27 @@ export function NewSaleModal({
                 </div>
               </label>
 
+              <label className="block text-sm font-extrabold text-[#283b2c]">
+                Payment Method
+                <select
+                  className="inventory-field mt-2"
+                  disabled={isSubmitting}
+                  onChange={(event) => {
+                    setPaymentMethod(event.target.value as PaymentMethod | "");
+                    setError("");
+                  }}
+                  required
+                  value={paymentMethod}
+                >
+                  <option value="">Select payment method</option>
+                  {paymentMethodOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
               <div className="flex items-center justify-between gap-4 rounded-2xl bg-[#f3f6f1] px-4 py-3">
                 <div>
                   <p className="text-sm font-semibold text-[#68736b]">
@@ -895,7 +931,7 @@ export function OfficialReceiptPreview({
               </div>
               <div className="flex justify-between gap-6">
                 <dt>Payment Method:</dt>
-                <dd>Not specified</dd>
+                <dd>{formatPaymentMethod(receipt.paymentMethod)}</dd>
               </div>
               <div className="flex items-center justify-between gap-6">
                 <dt>Status</dt>

@@ -208,6 +208,7 @@ class SaleCreate(BaseModel):
     quantity: int = Field(gt=0, strict=True)
     customer_name: str = Field(min_length=1, max_length=255)
     customer_id: int | None = Field(default=None, gt=0, strict=True)
+    payment_method: Literal["gcash", "cod"] | None = None
     generate_official_receipt: bool = False
 
     @field_validator("customer_name", mode="before")
@@ -224,6 +225,7 @@ class SaleBatchItemCreate(BaseModel):
 class SaleBatchCreate(BaseModel):
     customer_name: str = Field(min_length=1, max_length=255)
     customer_id: int | None = Field(default=None, gt=0, strict=True)
+    payment_method: Literal["gcash", "cod"] | None = None
     generate_official_receipt: bool = False
     items: list[SaleBatchItemCreate] = Field(min_length=1)
 
@@ -304,6 +306,7 @@ class OfficialReceiptResponse(BaseModel):
     customer_number: str | None
     customer_address: str | None
     customer_landmark: str | None
+    payment_method: Literal["gcash", "cod"] | None
     items: list[OfficialReceiptItemResponse]
     total_amount: Decimal
     generated_at: datetime
@@ -316,6 +319,7 @@ class SaleResponse(BaseModel):
     id: int
     customer_name: str
     customer_number: str | None
+    payment_method: Literal["gcash", "cod"] | None
     has_official_receipt: bool
     items: list[SaleItemResponse]
     created_at: datetime
