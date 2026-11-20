@@ -27,6 +27,11 @@ import {
 } from "../lib/api";
 import type { InventoryRecord } from "../types/inventory";
 import { AuthenticatedScreenHeader } from "./authenticated-screen-header";
+import {
+  OfficialReceiptModal,
+  type OfficialReceiptDisplayData,
+} from "./official-receipt-modal";
+import { SaleDetailsModal } from "./sale-details-modal";
 
 interface TransactionScreenProps {
   onBack: () => void;
@@ -41,9 +46,6 @@ type SaleLine = {
   inventoryId: number;
   quantity: string;
 };
-
-const futureOrMessage =
-  "Official Receipt (OR) generation is for future development.";
 
 const currency = new Intl.NumberFormat("en-PH", {
   style: "currency",
@@ -104,16 +106,23 @@ function automaticUnitPrice(item: InventoryRecord, quantity: number) {
 
 function SaleRow({
   sale,
+  onView,
   onEdit,
   onRemove,
 }: {
   sale: SaleRecord;
+  onView: () => void;
   onEdit: () => void;
   onRemove: () => void;
 }) {
   const quantity = sale.items.reduce((total, item) => total + item.quantity, 0);
   return (
-    <View style={styles.saleRow}>
+    <Pressable
+      accessibilityHint="Opens the saved sale details"
+      accessibilityRole="button"
+      onPress={onView}
+      style={styles.saleRow}
+    >
       <View style={styles.saleIcon}>
         <Ionicons name="arrow-up-outline" size={19} color="#2f7043" />
       </View>
@@ -146,7 +155,10 @@ function SaleRow({
           <Pressable
             accessibilityLabel="Edit sale"
             accessibilityRole="button"
-            onPress={onEdit}
+            onPress={(event) => {
+              event.stopPropagation();
+              onEdit();
+            }}
             style={styles.iconAction}
           >
             <Ionicons name="pencil-outline" size={16} color="#173b24" />
@@ -154,14 +166,17 @@ function SaleRow({
           <Pressable
             accessibilityLabel="Remove sale"
             accessibilityRole="button"
-            onPress={onRemove}
+            onPress={(event) => {
+              event.stopPropagation();
+              onRemove();
+            }}
             style={styles.iconAction}
           >
             <Ionicons name="trash-outline" size={16} color="#9b431f" />
           </Pressable>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -239,6 +254,8 @@ function SaleEditorModal({
   const [lines, setLines] = useState<SaleLine[]>([]);
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [receiptPreview, setReceiptPreview] =
+    useState<OfficialReceiptDisplayData | null>(null);
 
   useEffect(() => {
     if (!visible) return;
@@ -262,6 +279,7 @@ function SaleEditorModal({
             })),
     );
     setError("");
+    setReceiptPreview(null);
   }, [visible, sale, inventory]);
 
   useEffect(() => {
@@ -318,6 +336,52 @@ function SaleEditorModal({
       setLines((current) => current.filter((line) => line.id !== id));
   }
 
+  function openReceiptPreview() {
+    if (!selectedCustomer) {
+      setError("Select an existing customer before viewing the receipt.");
+      return;
+    }
+
+    const previewItems: OfficialReceiptDisplayData["items"] = [];
+    for (const line of lines) {
+      const quantity = Number(line.quantity);
+      const item = inventory.find((entry) => entry.id === line.inventoryId);
+      if (!Number.isInteger(quantity) || quantity < 1) {
+        setError("Each quantity must be at least one.");
+        return;
+      }
+      if (!item || quantity > item.quantity) {
+        setError(`Not enough stock for ${item?.item ?? "the selected item"}.`);
+        return;
+      }
+
+      previewItems.push({
+        id: line.id,
+        itemName: item.item,
+        itemCategory: item.category,
+        quantity,
+        unitPrice: automaticUnitPrice(item, quantity),
+      });
+    }
+
+    if (!previewItems.length) {
+      setError("Add at least one item before viewing the receipt.");
+      return;
+    }
+
+    setError("");
+    setReceiptPreview({
+      transactionId: null,
+      orderDate: new Date(),
+      customerName: selectedCustomer.name,
+      customerNumber: selectedCustomer.number,
+      customerAddress: selectedCustomer.address,
+      customerLandmark: selectedCustomer.landmark,
+      items: previewItems,
+      status: "PREVIEW",
+    });
+  }
+
   async function save() {
     if (!isEdit && !selectedCustomer) {
       setError("Select an existing customer from the suggestions.");
@@ -358,6 +422,8 @@ function SaleEditorModal({
       else
         await createSaleBatch({
           customerName: selectedCustomer!.name,
+          customerId: selectedCustomer!.id,
+          generateOfficialReceipt: true,
           items: normalized.map((line) => ({
             inventoryId: line.inventoryId,
             quantity: line.quantity,
@@ -376,18 +442,19 @@ function SaleEditorModal({
   }
 
   return (
-    <Modal
-      transparent
-      animationType="fade"
-      visible={visible}
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.formModal}>
-          <ScrollView
-            contentContainerStyle={styles.formContent}
-            keyboardShouldPersistTaps="handled"
-          >
+    <>
+      <Modal
+        transparent
+        animationType="fade"
+        visible={visible}
+        onRequestClose={onClose}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.formModal}>
+            <ScrollView
+              contentContainerStyle={styles.formContent}
+              keyboardShouldPersistTaps="handled"
+            >
             <View style={styles.modalHeader}>
               <View>
                 <Text style={styles.modalEyebrow}>
@@ -614,11 +681,11 @@ function SaleEditorModal({
               {!isEdit ? (
                 <Pressable
                   disabled={isSaving}
-                  onPress={() => Alert.alert("Generate OR", futureOrMessage)}
+                  onPress={openReceiptPreview}
                   style={styles.generateOrButton}
                 >
                   <Ionicons name="receipt-outline" size={19} color="#173b24" />
-                  <Text style={styles.generateOrText}>Generate OR</Text>
+                  <Text style={styles.generateOrText}>View OR</Text>
                 </Pressable>
               ) : null}
               <Pressable
@@ -640,10 +707,17 @@ function SaleEditorModal({
                 </Text>
               </Pressable>
             </View>
-          </ScrollView>
+            </ScrollView>
+          </View>
         </View>
-      </View>
-    </Modal>
+      </Modal>
+
+      <OfficialReceiptModal
+        onClose={() => setReceiptPreview(null)}
+        receipt={receiptPreview}
+        visible={receiptPreview !== null}
+      />
+    </>
   );
 }
 
@@ -668,6 +742,7 @@ export function TransactionScreen({
   const [editingSale, setEditingSale] = useState<SaleRecord | null | undefined>(
     undefined,
   );
+  const [selectedSale, setSelectedSale] = useState<SaleRecord | null>(null);
   const loadData = useCallback(async (refresh = false) => {
     if (refresh) setRefreshing(true);
     else setLoading(true);
@@ -919,6 +994,7 @@ export function TransactionScreen({
                 <SaleRow
                   key={sale.id}
                   sale={sale}
+                  onView={() => setSelectedSale(sale)}
                   onEdit={() => setEditingSale(sale)}
                   onRemove={() => removeSale(sale)}
                 />
@@ -967,6 +1043,11 @@ export function TransactionScreen({
         inventory={inventory}
         onClose={() => setEditingSale(undefined)}
         onSaved={savedSale}
+      />
+      <SaleDetailsModal
+        key={selectedSale?.id ?? "closed"}
+        onClose={() => setSelectedSale(null)}
+        sale={selectedSale}
       />
     </View>
   );
