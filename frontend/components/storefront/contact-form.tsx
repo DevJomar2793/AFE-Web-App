@@ -52,9 +52,9 @@ export function ContactForm({ contactEmail }: ContactFormProps) {
         <span className="grid size-12 shrink-0 place-items-center bg-[#e3ebdc] text-[#173b24]">
           <Mail aria-hidden="true" size={21} />
         </span>
-        <div>
+        <div className="min-w-0">
           <p className="eyebrow">Email inquiry</p>
-          <h3 className="mt-2 text-2xl font-black text-[#18331f]">
+          <h3 className="mt-2 break-words text-2xl font-black text-[#18331f]">
             Tell us what you need.
           </h3>
           <p className="mt-2 text-sm leading-6 text-[#697066]">

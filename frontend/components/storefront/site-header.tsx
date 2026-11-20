@@ -64,7 +64,7 @@ function MobileNavigation({
       <div
         id="mobile-navigation"
         ref={menuRef}
-        className={`ml-auto flex h-[calc(100dvh-4.5rem)] w-[min(90vw,24rem)] flex-col overflow-hidden border-l border-[#ded9ca] bg-[#f9f7f0] px-5 py-6 shadow-[-18px_0_48px_rgba(16,40,25,0.18)] transition-transform duration-300 ease-out motion-reduce:transition-none sm:px-7 ${
+        className={`ml-auto flex h-[calc(100dvh-4.5rem)] w-[min(90vw,24rem)] flex-col overflow-y-auto border-l border-[#ded9ca] bg-[#f9f7f0] px-5 py-6 shadow-[-18px_0_48px_rgba(16,40,25,0.18)] transition-transform duration-300 ease-out motion-reduce:transition-none sm:px-7 ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
         aria-label="Mobile navigation"
@@ -198,7 +198,7 @@ export function SiteHeader({ navigationItems }: SiteHeaderProps) {
         />
 
         <a
-          className="button-secondary ml-3 hidden lg:inline-flex"
+          className="button-secondary ml-3 !hidden lg:!inline-flex"
           href="#contact"
         >
           <Mail aria-hidden="true" size={17} />

@@ -324,13 +324,15 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    backgroundColor: "#eef2f5",
+    backgroundColor: "#f4f6f1",
     paddingTop: Platform.OS === "android" ? NativeStatusBar.currentHeight : 0,
   },
   footer: {
     alignItems: "center",
     backgroundColor: "#ffffff",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#e1e7e0",
     paddingTop: 8,
-    paddingBottom: 2,
+    paddingBottom: 4,
   },
 });

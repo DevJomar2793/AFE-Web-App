@@ -20,6 +20,7 @@ import {
   type ReturnRecord,
 } from "../lib/api";
 import type { InventoryRecord } from "../types/inventory";
+import { AuthenticatedScreenHeader } from "./authenticated-screen-header";
 
 interface ReturnsScreenProps {
   onShowSuccess: (title: string, message: string) => void;
@@ -93,13 +94,11 @@ export function ReturnsScreen({ onShowSuccess }: ReturnsScreenProps) {
         }
         ListHeaderComponent={
           <>
+            <AuthenticatedScreenHeader
+              subtitle="Return records stored in the database."
+              title="Product Returns"
+            />
             <View style={styles.header}>
-              <View style={styles.headerText}>
-                <Text style={styles.title}>Product returns</Text>
-                <Text style={styles.subtitle}>
-                  Return records stored in the database.
-                </Text>
-              </View>
               <Pressable
                 onPress={() => setIsModalOpen(true)}
                 style={styles.returnButton}
@@ -368,15 +367,12 @@ function formatDate(value: string) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#f8faf8" },
-  content: { width: "100%", maxWidth: 720, alignSelf: "center", padding: 18, paddingBottom: 38 },
-  header: { flexDirection: "row", alignItems: "center", gap: 12 },
-  headerText: { flex: 1 },
-  title: { color: "#121a15", fontSize: 26, fontWeight: "800" },
-  subtitle: { color: "#74808a", fontSize: 14, marginTop: 4 },
-  returnButton: { height: 46, flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 12, backgroundColor: "#173f28", paddingHorizontal: 13 },
+  screen: { flex: 1, backgroundColor: "#f4f6f1" },
+  content: { width: "100%", maxWidth: 720, alignSelf: "center", padding: 16, paddingBottom: 38 },
+  header: { alignItems: "stretch", borderWidth: 1, borderColor: "#d8e0d6", borderRadius: 22, backgroundColor: "#ffffff", marginTop: 22, padding: 16 },
+  returnButton: { minHeight: 52, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 13, backgroundColor: "#125326", paddingHorizontal: 16 },
   returnButtonText: { color: "#ffffff", fontSize: 13, fontWeight: "800" },
-  searchBox: { height: 52, flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: "#d5deda", borderRadius: 13, backgroundColor: "#ffffff", marginTop: 20, paddingHorizontal: 14 },
+  searchBox: { height: 52, flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: "#cfd8cd", borderRadius: 13, backgroundColor: "#ffffff", marginTop: 14, paddingHorizontal: 14 },
   searchInput: { flex: 1, color: "#263044", fontSize: 15 },
   card: { borderWidth: 1, borderColor: "#dce3dd", borderRadius: 16, backgroundColor: "#ffffff", marginTop: 13, padding: 16 },
   cardHeader: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
@@ -393,8 +389,10 @@ const styles = StyleSheet.create({
   retryText: { color: "#173b24", fontWeight: "800" },
   overlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(13,36,23,0.55)" },
   backdrop: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
-  modalCard: { maxHeight: "92%", borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: "#ffffff", padding: 22 },
+  modalCard: { width: "100%", maxWidth: 600, maxHeight: "92%", alignSelf: "center", borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: "#ffffff", padding: 22, paddingBottom: 30 },
   modalHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  headerText: { flex: 1, minWidth: 0 },
+  subtitle: { color: "#74808a", fontSize: 14, lineHeight: 20, marginTop: 4 },
   modalTitle: { color: "#17281b", fontSize: 22, fontWeight: "800" },
   label: { color: "#283b2c", fontSize: 14, fontWeight: "800", marginTop: 18 },
   choices: { gap: 8, marginTop: 9 },

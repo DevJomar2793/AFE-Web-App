@@ -26,6 +26,7 @@ import {
   type FundTransactionRecord,
 } from "../lib/api";
 import type { InventoryRecord } from "../types/inventory";
+import { AuthenticatedScreenHeader } from "./authenticated-screen-header";
 
 interface TransactionScreenProps {
   onBack: () => void;
@@ -142,10 +143,20 @@ function SaleRow({
           })}
         </Text>
         <View style={styles.rowActions}>
-          <Pressable onPress={onEdit} style={styles.iconAction}>
+          <Pressable
+            accessibilityLabel="Edit sale"
+            accessibilityRole="button"
+            onPress={onEdit}
+            style={styles.iconAction}
+          >
             <Ionicons name="pencil-outline" size={16} color="#173b24" />
           </Pressable>
-          <Pressable onPress={onRemove} style={styles.iconAction}>
+          <Pressable
+            accessibilityLabel="Remove sale"
+            accessibilityRole="button"
+            onPress={onRemove}
+            style={styles.iconAction}
+          >
             <Ionicons name="trash-outline" size={16} color="#9b431f" />
           </Pressable>
         </View>
@@ -761,18 +772,12 @@ export function TransactionScreen({
           />
         }
       >
-        <Pressable onPress={onBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#111b14" />
-        </Pressable>
-        <Text style={styles.currentDate}>
-          {new Date().toLocaleDateString("en-PH", {
-            weekday: "long",
-            month: "long",
-            day: "numeric",
-          })}
-        </Text>
-        <Text style={styles.title}>Transaction activity</Text>
-        <Text style={styles.subtitle}>Sales recorded in the database.</Text>
+        <AuthenticatedScreenHeader
+          backAccessibilityLabel="Back to Overview"
+          onBack={onBack}
+          subtitle="Sales recorded in the database."
+          title="Transaction Activity"
+        />
         <View style={styles.rangeToggle}>
           {(["daily", "weekly"] as DateRange[]).map((value) => (
             <Pressable
@@ -799,6 +804,8 @@ export function TransactionScreen({
             <Text style={styles.sectionTitle}>Sales by Date (Last 7 Days)</Text>
             <View style={styles.weekButtons}>
               <Pressable
+                accessibilityLabel="Show previous week"
+                accessibilityRole="button"
                 onPress={() => {
                   setRangeEndDate((date) => shiftDate(date, -7));
                   setSelectedDate(null);
@@ -808,6 +815,8 @@ export function TransactionScreen({
                 <Ionicons name="arrow-back" size={19} color="#173b24" />
               </Pressable>
               <Pressable
+                accessibilityLabel="Show next week"
+                accessibilityRole="button"
                 onPress={() => {
                   setRangeEndDate((date) => shiftDate(date, 7));
                   setSelectedDate(null);
@@ -1026,17 +1035,8 @@ function FundHistory({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#f8faf7" },
-  content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 36 },
-  backButton: { width: 40, height: 40, justifyContent: "center" },
-  currentDate: {
-    color: "#69746d",
-    fontSize: 14,
-    fontWeight: "600",
-    marginTop: 4,
-  },
-  title: { color: "#101813", fontSize: 28, fontWeight: "800", marginTop: 3 },
-  subtitle: { color: "#66716a", fontSize: 16, marginTop: 5 },
+  screen: { flex: 1, backgroundColor: "#f4f6f1" },
+  content: { padding: 16, paddingBottom: 36 },
   rangeToggle: { flexDirection: "row", gap: 4, marginTop: 17 },
   rangeButton: {
     flex: 1,
@@ -1059,12 +1059,12 @@ const styles = StyleSheet.create({
     marginTop: 18,
     padding: 14,
   },
-  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  sectionHeader: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   sectionTitle: { flex: 1, color: "#111a14", fontSize: 18, fontWeight: "800" },
   weekButtons: { flexDirection: "row", gap: 8 },
   weekButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -1106,8 +1106,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   searchInput: { flex: 1, color: "#18231c", fontSize: 14 },
-  controlRow: { flexDirection: "row", gap: 10, marginTop: 14 },
+  controlRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 14 },
   dateButton: {
+    minWidth: 150,
     flex: 1.25,
     height: 52,
     flexDirection: "row",
@@ -1119,6 +1120,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   dateButtonText: {
+    minWidth: 120,
     flex: 1,
     color: "#173b24",
     fontSize: 13,
@@ -1209,10 +1211,10 @@ const styles = StyleSheet.create({
     marginTop: 3,
     textAlign: "right",
   },
-  rowActions: { flexDirection: "row", gap: 6, marginTop: 7 },
+  rowActions: { flexDirection: "row", gap: 8, marginTop: 7 },
   iconAction: {
-    width: 28,
-    height: 28,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -1243,7 +1245,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "#e1f1df",
   },
-  totalDetails: { flex: 1 },
+  totalDetails: { flex: 1, minWidth: 0 },
   totalLabel: { color: "#66736c", fontSize: 13 },
   totalValue: {
     color: "#17281b",
@@ -1251,7 +1253,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginTop: 2,
   },
-  totalCount: { color: "#566259", fontSize: 13 },
+  totalCount: { flexShrink: 1, color: "#566259", fontSize: 13, textAlign: "right" },
   modalOverlay: {
     flex: 1,
     alignItems: "center",
@@ -1260,6 +1262,7 @@ const styles = StyleSheet.create({
   },
   dateModal: {
     width: "100%",
+    maxWidth: 600,
     maxHeight: "70%",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -1268,6 +1271,7 @@ const styles = StyleSheet.create({
   },
   formModal: {
     width: "100%",
+    maxWidth: 600,
     maxHeight: "92%",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,

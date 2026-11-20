@@ -39,16 +39,16 @@ export default function RegisterPage() {
   return (
     <main className="flex min-h-dvh items-center justify-center bg-[#fdfdfc] px-4 py-8 sm:px-6">
       <section
-        className="w-full max-w-130 rounded-4xl border-[3px] border-[#579266] bg-white px-6 py-8 shadow-[0_18px_38px_rgba(16,40,25,0.10)] sm:px-13"
+        className="w-full max-w-130 rounded-3xl border-[3px] border-[#579266] bg-white px-5 py-7 shadow-[0_18px_38px_rgba(16,40,25,0.10)] sm:rounded-4xl sm:px-13 sm:py-8"
         aria-labelledby="register-title"
       >
         <h1
           id="register-title"
-          className="text-center text-3xl font-black tracking-tight text-[#062f1c] sm:text-[2.5rem]"
+          className="text-center text-2xl font-black tracking-tight text-[#062f1c] sm:text-[2.5rem]"
         >
           Create your account
         </h1>
-        <p className="mt-1 text-center text-lg text-[#68727a]">
+        <p className="mt-1 text-center text-base text-[#68727a] sm:text-lg">
           Register to access the inventory workspace.
         </p>
 
@@ -104,7 +104,7 @@ export default function RegisterPage() {
                 name="password"
                 autoComplete="new-password"
                 minLength={5}
-                placeholder="At least 5 characters"
+                placeholder="5+ characters"
                 className="h-14 w-full rounded-xl border-2 border-[#d0d6d8] bg-white pl-16 pr-14 text-lg text-[#213238] outline-none transition focus:border-[#579266] focus:ring-4 focus:ring-[#579266]/15 placeholder:text-[#8a96a7]"
               />
             </div>

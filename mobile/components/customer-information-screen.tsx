@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -23,6 +22,7 @@ import {
   updateCustomerDetails,
   type CustomerDetailsRecord as Customer,
 } from "../lib/api";
+import { AuthenticatedScreenHeader } from "./authenticated-screen-header";
 
 interface CustomerInformationScreenProps {
   onBack: () => void;
@@ -206,43 +206,13 @@ function CustomerScreenHeader({
   onRefresh: () => void;
   query: string;
 }) {
-  const currentDate = new Date().toLocaleDateString("en-PH", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    timeZone: "Asia/Manila",
-  });
-
   return (
     <>
-      <View style={styles.brandHeader}>
-        <Pressable
-          accessibilityLabel="Back to More"
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={onBack}
-          style={styles.backButton}
-        >
-          <Ionicons name="arrow-back" size={23} color="#173b24" />
-        </Pressable>
-        <View style={styles.logoFrame}>
-          <Image
-            accessibilityLabel="Adamos Fresh Eggs logo"
-            resizeMode="contain"
-            source={require("../assets/icon.png")}
-            style={styles.logo}
-          />
-        </View>
-        <View style={styles.brandText}>
-          <Text numberOfLines={1} style={styles.brandName}>
-            Adamos Fresh Eggs
-          </Text>
-          <Text style={styles.brandSubtitle}>Inventory Workspace</Text>
-        </View>
-      </View>
-
-      <Text style={styles.dateText}>{currentDate}</Text>
-      <Text style={styles.pageTitle}>Customer Information</Text>
+      <AuthenticatedScreenHeader
+        backAccessibilityLabel="Back to More"
+        onBack={onBack}
+        title="Customer Information"
+      />
 
       <View style={styles.controlsCard}>
         <View style={styles.sectionHeading}>
@@ -366,50 +336,6 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     padding: 16,
     paddingBottom: 36,
-  },
-  brandHeader: {
-    minHeight: 72,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 11,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e1e7e0",
-    marginHorizontal: -16,
-    marginTop: -16,
-    marginBottom: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: "#ffffff",
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#dce3da",
-    borderRadius: 12,
-    backgroundColor: "#ffffff",
-  },
-  logoFrame: {
-    width: 50,
-    height: 50,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#dce3da",
-    borderRadius: 13,
-    backgroundColor: "#fbfaf3",
-  },
-  logo: { width: "100%", height: "100%" },
-  brandText: { flex: 1, minWidth: 0 },
-  brandName: { color: "#123a20", fontSize: 17, fontWeight: "800" },
-  brandSubtitle: { color: "#66736c", fontSize: 12, marginTop: 2 },
-  dateText: { color: "#59655d", fontSize: 14, fontWeight: "700" },
-  pageTitle: {
-    color: "#142619",
-    fontSize: 28,
-    fontWeight: "900",
-    marginTop: 4,
   },
   controlsCard: {
     borderWidth: 1,

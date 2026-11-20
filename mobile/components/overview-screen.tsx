@@ -22,6 +22,7 @@ import {
 import { getCurrentUser } from "../lib/auth";
 import type { InventoryRecord } from "../types/inventory";
 import type { MobileTab } from "./bottom-navigation";
+import { AuthenticatedScreenHeader } from "./authenticated-screen-header";
 
 interface OverviewScreenProps {
   isAdmin: boolean;
@@ -439,6 +440,10 @@ export function OverviewScreen({
           />
         }
       >
+        <AuthenticatedScreenHeader
+          subtitle="Live sales, stock, and return activity."
+          title="Overview"
+        />
         <AccountHeader
           email={accountEmail}
           isAdmin={isAdmin}
@@ -677,17 +682,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#f4f6f1",
   },
   tabletScreen: { maxWidth: 1120 },
-  content: { padding: 18, paddingBottom: 28 },
+  content: { padding: 16, paddingBottom: 36 },
   tabletContent: { padding: 28, paddingBottom: 36 },
   accountCard: {
     minHeight: 96,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    borderRadius: 18,
-    backgroundColor: "#edf5ed",
+    borderWidth: 1,
+    borderColor: "#d8e0d6",
+    borderRadius: 22,
+    backgroundColor: "#ffffff",
+    marginTop: 22,
     marginBottom: 16,
-    padding: 14,
+    padding: 16,
   },
   accountAvatar: {
     width: 62,
@@ -732,6 +740,9 @@ const styles = StyleSheet.create({
     inset: 0,
   },
   logoutModalCard: {
+    width: "100%",
+    maxWidth: 480,
+    alignSelf: "center",
     borderRadius: 24,
     backgroundColor: "#ffffff",
     padding: 24,

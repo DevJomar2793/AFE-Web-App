@@ -10,14 +10,14 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <main className="flex h-dvh items-center justify-center overflow-hidden bg-[#fdfdfc] px-4 sm:px-6">
+    <main className="flex min-h-dvh items-center justify-center overflow-x-hidden bg-[#fdfdfc] px-4 py-6 sm:px-6 sm:py-8">
       <section
-        className="login-card w-full max-w-182 rounded-4xl border-[3px] border-[#579266] bg-white px-6 py-8 shadow-[0_18px_38px_rgba(16,40,25,0.10)] sm:px-13 sm:py-8"
+        className="w-full max-w-182 rounded-3xl border-[3px] border-[#579266] bg-white px-5 py-7 shadow-[0_18px_38px_rgba(16,40,25,0.10)] sm:rounded-4xl sm:px-13 sm:py-8"
         aria-labelledby="login-title"
       >
         <div className="mx-auto max-w-156">
           <div className="flex flex-col items-center text-center">
-            <div className="size-32 overflow-hidden rounded-[1.75rem] border border-[#8eb18d] bg-white p-1 sm:size-36">
+            <div className="size-24 overflow-hidden rounded-2xl border border-[#8eb18d] bg-white p-1 sm:size-36 sm:rounded-[1.75rem]">
               <Image
                 src="/adamos-fresh-eggs-logo.jpg"
                 alt="Adamos Fresh Eggs"
@@ -27,22 +27,22 @@ export default function LoginPage() {
                 priority
               />
             </div>
-            <h1 className="mt-3 text-3xl font-black tracking-tight text-[#062f1c] sm:text-[2.5rem]">
+            <h1 className="mt-3 text-2xl font-black tracking-tight text-[#062f1c] sm:text-[2.5rem]">
               Adamos Fresh Eggs
             </h1>
-            <p className="mt-1 text-xl text-[#68727a] sm:text-2xl">
+            <p className="mt-1 text-base text-[#68727a] sm:text-2xl">
               Inventory workspace
             </p>
           </div>
 
-          <div className="mt-8 sm:mt-9">
+          <div className="mt-6 sm:mt-9">
             <h2
               id="login-title"
-              className="text-center text-3xl font-black tracking-tight text-[#062f1c] sm:text-[2.5rem]"
+              className="text-center text-2xl font-black tracking-tight text-[#062f1c] sm:text-[2.5rem]"
             >
               Sign in to your account
             </h2>
-            <p className="mt-1 text-center text-lg text-[#68727a] sm:text-xl">
+            <p className="mt-1 text-center text-base text-[#68727a] sm:text-xl">
               Access your inventory, sales, and returns
             </p>
           </div>

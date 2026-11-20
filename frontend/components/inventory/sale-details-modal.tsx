@@ -132,7 +132,7 @@ export function SaleDetailsModal({
           </dl>
 
           <div className="mt-5 overflow-hidden rounded-2xl border border-[#dfe4dd]">
-            <div className="grid grid-cols-[minmax(0,1fr)_4rem_6rem_7rem] gap-2 bg-[#e7f2e6] px-4 py-3 text-xs font-black text-[#173b24]">
+            <div className="hidden grid-cols-[minmax(0,1fr)_4rem_6rem_7rem] gap-2 bg-[#e7f2e6] px-4 py-3 text-xs font-black text-[#173b24] sm:grid">
               <span>Item</span>
               <span className="text-center">Qty</span>
               <span className="text-right">Unit Price</span>
@@ -140,17 +140,22 @@ export function SaleDetailsModal({
             </div>
             {sale.items.map((item) => (
               <div
-                className="grid grid-cols-[minmax(0,1fr)_4rem_6rem_7rem] items-center gap-2 border-t border-[#e8ede6] px-4 py-3 text-sm"
+                className="grid grid-cols-2 gap-x-4 gap-y-2 border-t border-[#e8ede6] px-4 py-4 text-sm first:border-t-0 sm:grid-cols-[minmax(0,1fr)_4rem_6rem_7rem] sm:items-center sm:gap-2 sm:py-3"
                 key={item.id}
               >
-                <span className="min-w-0 font-bold text-[#283b2c]">
+                <span className="col-span-2 min-w-0 break-words font-bold text-[#283b2c] sm:col-span-1">
                   {item.item.name}
                 </span>
-                <span className="text-center">{item.quantity}</span>
-                <span className="text-right text-xs font-semibold text-[#68736b]">
+                <span className="flex items-center justify-between text-xs sm:block sm:text-center sm:text-sm">
+                  <span className="font-bold text-[#89928b] sm:hidden">Quantity</span>
+                  {item.quantity}
+                </span>
+                <span className="flex items-center justify-between text-xs font-semibold text-[#68736b] sm:block sm:text-right">
+                  <span className="font-bold text-[#89928b] sm:hidden">Unit price</span>
                   {currency.format(item.price)}
                 </span>
-                <span className="text-right text-xs font-black text-[#283b2c]">
+                <span className="col-span-2 flex items-center justify-between text-xs font-black text-[#283b2c] sm:col-span-1 sm:block sm:text-right">
+                  <span className="font-bold text-[#89928b] sm:hidden">Subtotal</span>
                   {currency.format(item.price * item.quantity)}
                 </span>
               </div>
@@ -204,7 +209,7 @@ function Detail({ label, value }: { label: string; value: string }) {
       <dt className="text-xs font-bold uppercase tracking-wide text-[#89928b]">
         {label}
       </dt>
-      <dd className="mt-1 font-extrabold text-[#283b2c]">{value}</dd>
+      <dd className="mt-1 break-words font-extrabold text-[#283b2c]">{value}</dd>
     </div>
   );
 }

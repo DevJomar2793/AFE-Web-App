@@ -60,7 +60,7 @@ export function LoginForm() {
               required
               disabled={isSubmitting}
               placeholder="you@example.com"
-              className="h-16 w-full rounded-xl border-2 border-[#d0d6d8] bg-white pl-18 pr-5 text-lg text-[#213238] outline-none transition focus:border-[#579266] focus:ring-4 focus:ring-[#579266]/15 placeholder:text-[#8a96a7] sm:text-xl"
+              className="h-14 w-full rounded-xl border-2 border-[#d0d6d8] bg-white pl-16 pr-4 text-base text-[#213238] outline-none transition focus:border-[#579266] focus:ring-4 focus:ring-[#579266]/15 placeholder:text-[#8a96a7] sm:h-16 sm:pl-18 sm:pr-5 sm:text-xl"
             />
           </div>
         </div>
@@ -76,14 +76,14 @@ export function LoginForm() {
             id="password"
             name="password"
             autoComplete="current-password"
-            placeholder="Enter your password"
+            placeholder="Password"
             disabled={isSubmitting}
-            className="h-16 w-full rounded-xl border-2 border-[#d0d6d8] bg-white px-18 text-lg text-[#213238] outline-none transition focus:border-[#579266] focus:ring-4 focus:ring-[#579266]/15 placeholder:text-[#8a96a7] sm:text-xl"
+            className="h-14 w-full rounded-xl border-2 border-[#d0d6d8] bg-white pl-16 pr-14 text-base text-[#213238] outline-none transition focus:border-[#579266] focus:ring-4 focus:ring-[#579266]/15 placeholder:text-[#8a96a7] sm:h-16 sm:pl-18 sm:pr-18 sm:text-xl"
           />
         </div>
       </div>
 
-      <p className="mt-4 text-right text-lg font-medium text-[#075d2b]">
+      <p className="mt-4 text-right text-sm font-medium text-[#075d2b] sm:text-lg">
         Forgot password?
       </p>
 
@@ -99,7 +99,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="mt-5 h-17 w-full rounded-xl bg-[#075c2d] text-2xl font-black text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-5 h-14 w-full rounded-xl bg-[#075c2d] text-lg font-black text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] disabled:cursor-not-allowed disabled:opacity-60 sm:h-17 sm:text-2xl"
       >
         {isSubmitting ? (
           <span className="flex items-center justify-center gap-2">

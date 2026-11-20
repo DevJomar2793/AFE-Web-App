@@ -140,7 +140,7 @@ export function InventorySidebar({
           onMouseDown={onCloseMenu}
         >
           <aside
-            className="h-full w-72 bg-white p-5 shadow-2xl"
+            className="h-full w-[min(86vw,18rem)] overflow-y-auto bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl"
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -542,10 +542,10 @@ function BottomNavButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex flex-col items-center gap-1 py-1 text-[11px] font-black ${active ? "text-[#173b24]" : "text-[#8a938c]"}`}
+      className={`min-w-0 flex flex-col items-center gap-1 py-1 text-[10px] font-black leading-tight ${active ? "text-[#173b24]" : "text-[#8a938c]"}`}
     >
       {icon}
-      {label}
+      <span className="max-w-full truncate">{label}</span>
     </button>
   );
 }
