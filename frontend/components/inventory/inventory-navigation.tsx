@@ -21,10 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { BrandMark } from "@/components/storefront/brand-mark";
-import {
-  clearAccessToken,
-  type UserAccount,
-} from "@/lib/api";
+import { logoutUser, type UserAccount } from "@/lib/api";
 
 export type InventoryViewName =
   | "overview"
@@ -67,14 +64,15 @@ export function InventorySidebar({
     setIsLogoutConfirmationOpen(true);
   }
 
-  function confirmLogout() {
+  async function confirmLogout() {
     if (isLoggingOut) return;
 
     setIsLoggingOut(true);
-    window.setTimeout(() => {
-      clearAccessToken();
+    try {
+      await logoutUser();
+    } finally {
       router.replace("/login");
-    }, 200);
+    }
   }
 
   return (
@@ -176,7 +174,7 @@ export function InventorySidebar({
           onClose={() => {
             if (!isLoggingOut) setIsLogoutConfirmationOpen(false);
           }}
-          onConfirm={confirmLogout}
+          onConfirm={() => void confirmLogout()}
         />
       )}
     </>

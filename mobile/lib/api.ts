@@ -4,8 +4,7 @@ import type {
   OilSize,
   ProductCategory,
 } from "../types/inventory";
-import { getAccessToken } from "./auth";
-import { API_BASE_URL } from "./config";
+import { authenticatedFetch } from "./auth";
 
 const INVENTORY_PATH = "/api/v1/inventory/get-item";
 const ADD_INVENTORY_PATH = "/api/v1/inventory/add-stock";
@@ -520,8 +519,7 @@ async function getApiResponse(
   signal: AbortSignal | undefined,
   fallbackMessage: string,
 ): Promise<unknown> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: await getApiHeaders(),
+  const response = await authenticatedFetch(path, {
     signal,
   });
   const responseBody: unknown = await response.json().catch(() => null);
@@ -539,10 +537,9 @@ async function sendApiRequest(
   body: Record<string, unknown>,
   fallbackMessage: string,
 ): Promise<unknown> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await authenticatedFetch(path, {
     method,
     headers: {
-      ...(await getApiHeaders()),
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
@@ -557,23 +554,13 @@ async function sendApiRequest(
 }
 
 async function deleteApiResource(path: string, fallbackMessage: string) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await authenticatedFetch(path, {
     method: "DELETE",
-    headers: await getApiHeaders(),
   });
   if (!response.ok) {
     const responseBody: unknown = await response.json().catch(() => null);
     throw new Error(getApiErrorMessage(responseBody, fallbackMessage));
   }
-}
-
-async function getApiHeaders() {
-  const accessToken = await getAccessToken();
-
-  return {
-    Accept: "application/json",
-    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-  };
 }
 
 function parseInventoryItem(value: unknown): InventoryRecord {

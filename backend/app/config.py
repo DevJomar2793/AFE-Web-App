@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     jwt_secret_key: SecretStr
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_hours: int = 8
+    jwt_refresh_token_expire_days: int = 30
     cors_allowed_origins: str = (
         "http://localhost:3000,http://127.0.0.1:3000,"
         "http://localhost:8081,http://127.0.0.1:8081,"

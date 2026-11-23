@@ -28,6 +28,8 @@ from Git history.
 Set `JWT_SECRET_KEY` to a long, random value that only the backend can read.
 It signs login tokens, so never put it in frontend or mobile environment files.
 `JWT_ACCESS_TOKEN_EXPIRE_HOURS` defaults to `8`.
+`JWT_REFRESH_TOKEN_EXPIRE_DAYS` defaults to `30` and controls the absolute
+Remember Me session lifetime.
 
 Keep `DATABASE_SSL=false` for local PostgreSQL. Set it to `true` when using a
 hosted database such as Supabase so database traffic is encrypted.
@@ -54,6 +56,8 @@ The canonical routes are:
 GET  /api/v1/health
 POST /api/v1/auth/register
 POST /api/v1/auth/login
+POST /api/v1/auth/refresh
+POST /api/v1/auth/logout
 GET  /api/v1/auth/me
 GET  /api/v1/inventory/get-item
 GET  /api/v1/inventory/price-history
@@ -91,6 +95,11 @@ curl -X POST http://127.0.0.1:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"owner@example.com","password":"my-password"}'
 ```
+
+Set `"remember_me": true` in the login body to also receive a refresh token.
+Refresh tokens are rotated by `POST /api/v1/auth/refresh`, are stored as hashes
+in PostgreSQL, and expire 30 days after the original login. Send the current
+refresh token to `POST /api/v1/auth/logout` to revoke that device's session.
 
 Send the returned `access_token` with every inventory, sales, returns, and
 customer-details request. For example:

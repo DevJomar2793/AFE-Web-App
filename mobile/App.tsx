@@ -26,8 +26,9 @@ import { LoginScreen } from "./components/login-screen";
 import { MoreScreen } from "./components/more-screen";
 import { RegisterScreen } from "./components/register-screen";
 import {
-  clearAccessToken,
   getCurrentUser,
+  logout,
+  setSessionExpiredHandler,
   type UserAccount,
 } from "./lib/auth";
 import { OverviewScreen } from "./components/overview-screen";
@@ -59,6 +60,16 @@ export default function App() {
     null,
   );
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  useEffect(() => {
+    setSessionExpiredHandler(() => {
+      setAccount(null);
+      setActiveTab("home");
+      setCurrentScreen("login");
+    });
+
+    return () => setSessionExpiredHandler(null);
+  }, []);
 
   useEffect(() => {
     if (!hasNativeSplashHidden) return;
@@ -168,7 +179,7 @@ export default function App() {
     setIsLoggingOut(true);
 
     try {
-      await clearAccessToken();
+      await logout();
       setAccount(null);
       setActiveTab("home");
       setCurrentScreen("login");

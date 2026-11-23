@@ -206,6 +206,7 @@ export type CreateReturnInput = {
 export type LoginInput = {
   email: string;
   password: string;
+  rememberMe: boolean;
 };
 
 export type RegisterInput = {
@@ -252,7 +253,7 @@ const API_BASE_URL = (process.env.NEXT_API_URL ?? DEFAULT_API_BASE_URL).replace(
 );
 
 export async function registerUser(input: RegisterInput): Promise<void> {
-  await apiRequest(
+  await publicApiRequest(
     "/api/v1/auth/register",
     {
       method: "POST",
@@ -263,11 +264,15 @@ export async function registerUser(input: RegisterInput): Promise<void> {
 }
 
 export async function loginUser(input: LoginInput): Promise<LoginResponse> {
-  const response = await apiRequest(
-    "/api/v1/auth/login",
+  const response = await browserAuthRequest(
+    "/api/auth/login",
     {
       method: "POST",
-      body: JSON.stringify(input),
+      body: JSON.stringify({
+        email: input.email,
+        password: input.password,
+        remember_me: input.rememberMe,
+      }),
     },
     "Unable to sign in. Please try again.",
   );
@@ -295,6 +300,22 @@ export function getAccessToken() {
 
 export function clearAccessToken() {
   window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+}
+
+export async function restoreAccessToken(): Promise<boolean> {
+  if (getAccessToken()) return true;
+  return Boolean(await refreshAccessToken());
+}
+
+export async function logoutUser(): Promise<void> {
+  try {
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      cache: "no-store",
+    });
+  } finally {
+    clearAccessToken();
+  }
 }
 
 export async function getCurrentUser(
@@ -663,8 +684,8 @@ async function apiRequest(
   options: RequestInit,
   fallbackMessage: string,
 ): Promise<unknown> {
-  const accessToken = getAccessToken();
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  let accessToken = getAccessToken();
+  let response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     cache: "no-store",
     headers: {
@@ -674,8 +695,118 @@ async function apiRequest(
       ...options.headers,
     },
   });
+
+  if (response.status === 401) {
+    accessToken = await refreshAccessToken();
+    if (accessToken) {
+      response = await fetch(`${API_BASE_URL}${path}`, {
+        ...options,
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+          ...(options.body ? { "Content-Type": "application/json" } : {}),
+          Authorization: `Bearer ${accessToken}`,
+          ...options.headers,
+        },
+      });
+    }
+  }
+
   const responseBody: unknown =
-    response.status === 204 ? null : await response.json();
+    response.status === 204 ? null : await response.json().catch(() => null);
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      clearAccessToken();
+      if (window.location.pathname !== "/login") {
+        window.location.replace("/login");
+      }
+    }
+    throw new ApiRequestError(
+      getApiErrorMessage(responseBody, fallbackMessage),
+      response.status,
+    );
+  }
+
+  return responseBody;
+}
+
+let refreshRequest: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (refreshRequest) return refreshRequest;
+
+  refreshRequest = (async () => {
+    try {
+      const response = await fetch("/api/auth/refresh", {
+        method: "POST",
+        cache: "no-store",
+      });
+      const responseBody: unknown = await response.json().catch(() => null);
+      if (
+        !response.ok ||
+        !isRecord(responseBody) ||
+        typeof responseBody.access_token !== "string" ||
+        !responseBody.access_token
+      ) {
+        clearAccessToken();
+        return null;
+      }
+
+      saveAccessToken(responseBody.access_token);
+      return responseBody.access_token;
+    } catch {
+      clearAccessToken();
+      return null;
+    } finally {
+      refreshRequest = null;
+    }
+  })();
+
+  return refreshRequest;
+}
+
+async function browserAuthRequest(
+  path: string,
+  options: RequestInit,
+  fallbackMessage: string,
+): Promise<unknown> {
+  const response = await fetch(path, {
+    ...options,
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...options.headers,
+    },
+  });
+  const responseBody: unknown = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new ApiRequestError(
+      getApiErrorMessage(responseBody, fallbackMessage),
+      response.status,
+    );
+  }
+
+  return responseBody;
+}
+
+async function publicApiRequest(
+  path: string,
+  options: RequestInit,
+  fallbackMessage: string,
+): Promise<unknown> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...options.headers,
+    },
+  });
+  const responseBody: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
     throw new ApiRequestError(

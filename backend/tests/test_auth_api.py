@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import jwt
@@ -7,8 +8,8 @@ from sqlalchemy import delete, select
 
 from app.database import async_session_factory
 from app.config import settings
-from app.models import User
-from app.security import verify_password
+from app.models import AuthSession, User
+from app.security import hash_refresh_token, verify_password
 
 
 async def activate_user(email: str) -> None:
@@ -119,6 +120,177 @@ async def test_login_and_current_user_profile(
     assert profile_response.status_code == 200
     assert profile_response.json()["email"] == email
     assert profile_response.json()["is_admin"] is False
+
+
+@pytest.mark.asyncio
+async def test_login_without_remember_me_does_not_create_refresh_session(
+    unauthenticated_client: AsyncClient,
+    registered_user: tuple[str, str],
+) -> None:
+    email, password = registered_user
+    await unauthenticated_client.post(
+        "/api/v1/auth/register",
+        json={"email": email, "password": password},
+    )
+    await activate_user(email)
+
+    response = await unauthenticated_client.post(
+        "/api/v1/auth/login",
+        json={"email": email, "password": password},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["refresh_token"] is None
+    assert response.json()["refresh_token_expires_at"] is None
+
+    async with async_session_factory() as session:
+        user = await session.scalar(select(User).where(User.email == email))
+        assert user is not None
+        auth_session = await session.scalar(
+            select(AuthSession).where(AuthSession.user_id == user.id),
+        )
+    assert auth_session is None
+
+
+@pytest.mark.asyncio
+async def test_remembered_session_refreshes_rotates_and_logs_out(
+    unauthenticated_client: AsyncClient,
+    registered_user: tuple[str, str],
+) -> None:
+    email, password = registered_user
+    await unauthenticated_client.post(
+        "/api/v1/auth/register",
+        json={"email": email, "password": password},
+    )
+    await activate_user(email)
+
+    login_response = await unauthenticated_client.post(
+        "/api/v1/auth/login",
+        json={"email": email, "password": password, "remember_me": True},
+    )
+    login_data = login_response.json()
+    refresh_token = login_data["refresh_token"]
+    original_expiration = login_data["refresh_token_expires_at"]
+
+    assert login_response.status_code == 200
+    assert isinstance(refresh_token, str)
+    assert refresh_token
+    expiration = datetime.fromisoformat(original_expiration)
+    assert expiration > datetime.now(timezone.utc) + timedelta(days=29)
+    assert expiration <= datetime.now(timezone.utc) + timedelta(days=30, minutes=1)
+
+    async with async_session_factory() as session:
+        auth_session = await session.scalar(
+            select(AuthSession).where(
+                AuthSession.token_hash == hash_refresh_token(refresh_token),
+            ),
+        )
+    assert auth_session is not None
+    assert auth_session.token_hash != refresh_token
+
+    refresh_response = await unauthenticated_client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": refresh_token},
+    )
+    refreshed_data = refresh_response.json()
+    rotated_refresh_token = refreshed_data["refresh_token"]
+
+    assert refresh_response.status_code == 200
+    assert rotated_refresh_token != refresh_token
+    assert refreshed_data["refresh_token_expires_at"] == original_expiration
+
+    reused_response = await unauthenticated_client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": refresh_token},
+    )
+    assert reused_response.status_code == 401
+
+    logout_response = await unauthenticated_client.post(
+        "/api/v1/auth/logout",
+        json={"refresh_token": rotated_refresh_token},
+    )
+    after_logout_response = await unauthenticated_client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": rotated_refresh_token},
+    )
+
+    assert logout_response.status_code == 204
+    assert after_logout_response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_expired_remembered_session_is_rejected(
+    unauthenticated_client: AsyncClient,
+    registered_user: tuple[str, str],
+) -> None:
+    email, password = registered_user
+    await unauthenticated_client.post(
+        "/api/v1/auth/register",
+        json={"email": email, "password": password},
+    )
+    await activate_user(email)
+    login_response = await unauthenticated_client.post(
+        "/api/v1/auth/login",
+        json={"email": email, "password": password, "remember_me": True},
+    )
+    refresh_token = login_response.json()["refresh_token"]
+
+    async with async_session_factory() as session:
+        auth_session = await session.scalar(
+            select(AuthSession).where(
+                AuthSession.token_hash == hash_refresh_token(refresh_token),
+            ),
+        )
+        assert auth_session is not None
+        auth_session.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+        await session.commit()
+
+    response = await unauthenticated_client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": refresh_token},
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_logout_only_revokes_the_current_device_session(
+    unauthenticated_client: AsyncClient,
+    registered_user: tuple[str, str],
+) -> None:
+    email, password = registered_user
+    await unauthenticated_client.post(
+        "/api/v1/auth/register",
+        json={"email": email, "password": password},
+    )
+    await activate_user(email)
+
+    first_login = await unauthenticated_client.post(
+        "/api/v1/auth/login",
+        json={"email": email, "password": password, "remember_me": True},
+    )
+    second_login = await unauthenticated_client.post(
+        "/api/v1/auth/login",
+        json={"email": email, "password": password, "remember_me": True},
+    )
+    first_token = first_login.json()["refresh_token"]
+    second_token = second_login.json()["refresh_token"]
+
+    await unauthenticated_client.post(
+        "/api/v1/auth/logout",
+        json={"refresh_token": first_token},
+    )
+
+    first_refresh = await unauthenticated_client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": first_token},
+    )
+    second_refresh = await unauthenticated_client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": second_token},
+    )
+
+    assert first_refresh.status_code == 401
+    assert second_refresh.status_code == 200
 
 
 @pytest.mark.asyncio

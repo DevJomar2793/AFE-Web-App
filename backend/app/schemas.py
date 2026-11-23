@@ -40,6 +40,7 @@ class UserRegister(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
+    remember_me: bool = False
 
     @field_validator("email", mode="after")
     @classmethod
@@ -60,6 +61,12 @@ class UserResponse(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    refresh_token: str | None = None
+    refresh_token_expires_at: datetime | None = None
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str = Field(min_length=32, max_length=512)
 
 
 class ActivityLogResponse(BaseModel):
