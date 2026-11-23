@@ -6,7 +6,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -14,6 +13,7 @@ import {
 } from "react-native";
 import { login } from "../lib/auth";
 import { AppFooter } from "./app-footer";
+import { KeyboardAwareScrollView } from "./keyboard-aware-scroll-view";
 
 interface LoginScreenProps {
   onRegister: () => void;
@@ -52,11 +52,13 @@ export function LoginScreen({ onRegister, onSignIn }: LoginScreenProps) {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
-      <ScrollView
+      <KeyboardAwareScrollView
+        automaticallyAdjustKeyboardInsets
         contentContainerStyle={styles.content}
+        keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -171,7 +173,7 @@ export function LoginScreen({ onRegister, onSignIn }: LoginScreenProps) {
 
           <AppFooter style={styles.footer} />
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
   );
 }

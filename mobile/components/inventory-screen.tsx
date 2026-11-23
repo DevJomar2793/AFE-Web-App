@@ -296,6 +296,7 @@ export function InventoryScreen({
   return (
     <View style={[styles.screen, isTablet && styles.tabletScreen]}>
       <FlatList
+        automaticallyAdjustKeyboardInsets
         data={isLoading || error ? [] : filteredItems}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={[
@@ -303,6 +304,7 @@ export function InventoryScreen({
           isTablet && styles.tabletContent,
         ]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl

@@ -6,7 +6,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,6 +16,7 @@ import {
   formatCustomerName,
   sanitizeCustomerNumber,
 } from "../lib/customer-format";
+import { KeyboardAwareScrollView } from "./keyboard-aware-scroll-view";
 
 export interface CustomerFormValues {
   name: string;
@@ -120,8 +120,10 @@ export function AddCustomerModal({
             </Pressable>
           </View>
 
-          <ScrollView
+          <KeyboardAwareScrollView
+            automaticallyAdjustKeyboardInsets
             contentContainerStyle={styles.formContent}
+            keyboardDismissMode="on-drag"
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
@@ -200,7 +202,7 @@ export function AddCustomerModal({
                 )}
               </Pressable>
             </View>
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>

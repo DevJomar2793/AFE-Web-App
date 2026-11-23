@@ -3,7 +3,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -21,6 +23,7 @@ import {
 } from "../lib/api";
 import type { InventoryRecord } from "../types/inventory";
 import { AuthenticatedScreenHeader } from "./authenticated-screen-header";
+import { KeyboardAwareScrollView } from "./keyboard-aware-scroll-view";
 
 interface ReturnsScreenProps {
   onShowSuccess: (title: string, message: string) => void;
@@ -82,9 +85,12 @@ export function ReturnsScreen({ onShowSuccess }: ReturnsScreenProps) {
   return (
     <View style={styles.screen}>
       <FlatList
+        automaticallyAdjustKeyboardInsets
         data={isLoading || error ? [] : filteredReturns}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.content}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -226,14 +232,22 @@ function ReturnModal({
         if (!isSubmitting) onClose();
       }}
     >
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.overlay}
+      >
         <Pressable
           style={styles.backdrop}
           disabled={isSubmitting}
           onPress={onClose}
         />
         <View style={styles.modalCard}>
-          <ScrollView keyboardShouldPersistTaps="handled">
+          <KeyboardAwareScrollView
+            automaticallyAdjustKeyboardInsets
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.modalHeader}>
               <View style={styles.headerText}>
                 <Text style={styles.modalTitle}>Record product return</Text>
@@ -298,9 +312,9 @@ function ReturnModal({
                 {isSubmitting ? "Saving..." : "Save return"}
               </Text>
             </Pressable>
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

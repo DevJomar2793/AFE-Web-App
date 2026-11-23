@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,6 +14,7 @@ import {
 } from "react-native";
 import { register as registerUser } from "../lib/auth";
 import { AppFooter } from "./app-footer";
+import { KeyboardAwareScrollView } from "./keyboard-aware-scroll-view";
 
 interface RegisterScreenProps {
   onSignIn: () => void;
@@ -61,11 +61,13 @@ export function RegisterScreen({ onSignIn }: RegisterScreenProps) {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
-      <ScrollView
+      <KeyboardAwareScrollView
+        automaticallyAdjustKeyboardInsets
         contentContainerStyle={styles.content}
+        keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -167,7 +169,7 @@ export function RegisterScreen({ onSignIn }: RegisterScreenProps) {
 
           <AppFooter style={styles.footer} />
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </KeyboardAvoidingView>
   );
 }

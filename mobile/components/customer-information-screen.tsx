@@ -133,8 +133,10 @@ export function CustomerInformationScreen({
   return (
     <View style={styles.screen}>
       <FlatList
+        automaticallyAdjustKeyboardInsets
         data={visibleCustomers}
         keyExtractor={(customer) => customer.id.toString()}
+        keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl

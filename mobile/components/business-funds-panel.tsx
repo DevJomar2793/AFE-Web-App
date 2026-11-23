@@ -2,9 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,6 +18,7 @@ import {
   initializeBusinessFunds,
   type BusinessFundsRecord,
 } from "../lib/api";
+import { KeyboardAwareScrollView } from "./keyboard-aware-scroll-view";
 
 interface BusinessFundsPanelProps {
   refreshKey: number;
@@ -198,10 +200,18 @@ function FundsModal({
         if (!isSubmitting) onClose();
       }}
     >
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.overlay}
+      >
         <Pressable style={styles.backdrop} disabled={isSubmitting} onPress={onClose} />
         <View style={styles.modalCard}>
-          <ScrollView keyboardShouldPersistTaps="handled">
+          <KeyboardAwareScrollView
+            automaticallyAdjustKeyboardInsets
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.modalHeader}>
               <View style={styles.details}>
                 <Text style={styles.modalTitle}>
@@ -287,9 +297,9 @@ function FundsModal({
                 {isSubmitting ? "Saving..." : "Save"}
               </Text>
             </Pressable>
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

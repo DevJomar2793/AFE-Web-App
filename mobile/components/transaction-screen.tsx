@@ -3,7 +3,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -30,6 +32,7 @@ import {
 } from "../lib/api";
 import type { InventoryRecord } from "../types/inventory";
 import { AuthenticatedScreenHeader } from "./authenticated-screen-header";
+import { KeyboardAwareScrollView } from "./keyboard-aware-scroll-view";
 import {
   OfficialReceiptView,
   type OfficialReceiptDisplayData,
@@ -479,11 +482,17 @@ function SaleEditorModal({
             receipt={receiptPreview}
           />
         ) : (
-          <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalOverlay}
+          >
             <View style={styles.formModal}>
-              <ScrollView
+              <KeyboardAwareScrollView
+                automaticallyAdjustKeyboardInsets
                 contentContainerStyle={styles.formContent}
+                keyboardDismissMode="on-drag"
                 keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
               >
                 <View style={styles.modalHeader}>
                   <View>
@@ -825,9 +834,9 @@ function SaleEditorModal({
                     </Text>
                   </Pressable>
                 </View>
-              </ScrollView>
+              </KeyboardAwareScrollView>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         )}
       </Modal>
     </>
@@ -957,7 +966,10 @@ export function TransactionScreen({
   return (
     <View style={styles.screen}>
       <ScrollView
+        automaticallyAdjustKeyboardInsets
         contentContainerStyle={styles.content}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
