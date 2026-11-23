@@ -140,7 +140,7 @@ export function InventoryList({
         <input
           value={query}
           onChange={(event) => handleQueryChange(event.target.value)}
-          className="inventory-field pl-11"
+          className="inventory-field !pl-12"
           placeholder="Search item"
           aria-label="Search inventory"
         />
