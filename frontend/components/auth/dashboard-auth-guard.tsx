@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getAccessToken } from "@/lib/api";
+import { restoreAccessToken } from "@/lib/api";
 
 interface DashboardAuthGuardProps {
   children: ReactNode;
@@ -14,12 +14,20 @@ export function DashboardAuthGuard({ children }: DashboardAuthGuardProps) {
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
-    if (getAccessToken()) {
-      const timeout = window.setTimeout(() => setIsAuthorized(true), 0);
-      return () => window.clearTimeout(timeout);
-    } else {
-      router.replace("/login");
+    let isMounted = true;
+
+    async function restoreSession() {
+      const hasSession = await restoreAccessToken();
+      if (!isMounted) return;
+
+      if (hasSession) setIsAuthorized(true);
+      else router.replace("/login");
     }
+
+    void restoreSession();
+    return () => {
+      isMounted = false;
+    };
   }, [router]);
 
   if (!isAuthorized) return null;

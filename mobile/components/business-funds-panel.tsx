@@ -2,9 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,6 +18,7 @@ import {
   initializeBusinessFunds,
   type BusinessFundsRecord,
 } from "../lib/api";
+import { KeyboardAwareScrollView } from "./keyboard-aware-scroll-view";
 
 interface BusinessFundsPanelProps {
   refreshKey: number;
@@ -198,10 +200,18 @@ function FundsModal({
         if (!isSubmitting) onClose();
       }}
     >
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.overlay}
+      >
         <Pressable style={styles.backdrop} disabled={isSubmitting} onPress={onClose} />
         <View style={styles.modalCard}>
-          <ScrollView keyboardShouldPersistTaps="handled">
+          <KeyboardAwareScrollView
+            automaticallyAdjustKeyboardInsets
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.modalHeader}>
               <View style={styles.details}>
                 <Text style={styles.modalTitle}>
@@ -287,9 +297,9 @@ function FundsModal({
                 {isSubmitting ? "Saving..." : "Save"}
               </Text>
             </Pressable>
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -297,11 +307,11 @@ function FundsModal({
 const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
-    borderColor: "#dce5da",
-    borderRadius: 18,
+    borderColor: "#d8e0d6",
+    borderRadius: 22,
     backgroundColor: "#ffffff",
     marginTop: 22,
-    padding: 18,
+    padding: 16,
   },
   negativeCard: { borderColor: "#e8c5bc", backgroundColor: "#fff9f7" },
   row: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
@@ -319,13 +329,13 @@ const styles = StyleSheet.create({
   negativeText: { color: "#9b431f" },
   caption: { color: "#758078", fontSize: 13, lineHeight: 19, marginTop: 3 },
   button: {
-    height: 46,
+    minHeight: 52,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 7,
-    borderRadius: 12,
-    backgroundColor: "#173b24",
+    borderRadius: 13,
+    backgroundColor: "#125326",
     marginTop: 16,
   },
   buttonText: { color: "#ffffff", fontSize: 14, fontWeight: "800" },
@@ -335,7 +345,7 @@ const styles = StyleSheet.create({
   retryText: { color: "#173b24", fontSize: 13, fontWeight: "800", marginTop: 8 },
   overlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(13,36,23,0.55)" },
   backdrop: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
-  modalCard: { maxHeight: "90%", borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: "#ffffff", padding: 22 },
+  modalCard: { width: "100%", maxWidth: 600, maxHeight: "90%", alignSelf: "center", borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: "#ffffff", padding: 22, paddingBottom: 30 },
   modalHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   modalTitle: { color: "#17281b", fontSize: 22, fontWeight: "800" },
   typeRow: { flexDirection: "row", gap: 10, marginTop: 22 },

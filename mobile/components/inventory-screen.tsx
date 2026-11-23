@@ -15,6 +15,7 @@ import {
 
 import { deleteInventoryItem, getInventoryItems } from "../lib/api";
 import type { InventoryRecord, InventoryStatus } from "../types/inventory";
+import { AuthenticatedScreenHeader } from "./authenticated-screen-header";
 import { BusinessFundsPanel } from "./business-funds-panel";
 
 interface InventoryScreenProps {
@@ -295,6 +296,7 @@ export function InventoryScreen({
   return (
     <View style={[styles.screen, isTablet && styles.tabletScreen]}>
       <FlatList
+        automaticallyAdjustKeyboardInsets
         data={isLoading || error ? [] : filteredItems}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={[
@@ -302,6 +304,7 @@ export function InventoryScreen({
           isTablet && styles.tabletContent,
         ]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -313,13 +316,11 @@ export function InventoryScreen({
         }
         ListHeaderComponent={
           <>
+            <AuthenticatedScreenHeader
+              subtitle="Live inventory records from the database."
+              title="All Inventory"
+            />
             <View style={[styles.header, isTablet && styles.tabletHeader]}>
-              <View style={styles.headerText}>
-                <Text style={styles.title}>All inventory</Text>
-                <Text style={styles.subtitle}>
-                  Live inventory records from the database.
-                </Text>
-              </View>
               <View style={styles.headerActions}>
                 <Pressable
                   accessibilityRole="button"
@@ -478,20 +479,25 @@ const styles = StyleSheet.create({
     backgroundColor: "#f4f6f1",
   },
   tabletScreen: { maxWidth: 1120 },
-  content: { padding: 18, paddingBottom: 28 },
+  content: { padding: 16, paddingBottom: 36 },
   tabletContent: { padding: 28, paddingBottom: 36 },
-  header: { gap: 16 },
+  header: {
+    borderWidth: 1,
+    borderColor: "#d8e0d6",
+    borderRadius: 22,
+    backgroundColor: "#ffffff",
+    gap: 16,
+    marginTop: 22,
+    padding: 16,
+  },
   tabletHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  headerText: { flex: 1, minWidth: 0 },
-  title: { color: "#18251a", fontSize: 24, fontWeight: "800" },
-  subtitle: { color: "#768178", fontSize: 14, marginTop: 4 },
-  headerActions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  headerActions: { width: "100%", flexDirection: "row", flexWrap: "wrap", gap: 10 },
   historyButton: {
-    height: 44,
+    minHeight: 52,
     flexBasis: "100%",
     flexDirection: "row",
     alignItems: "center",
@@ -504,7 +510,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   addStockButton: {
-    height: 44,
+    minHeight: 52,
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
@@ -518,7 +524,7 @@ const styles = StyleSheet.create({
   },
   addStockText: { color: "#173b24", fontSize: 14, fontWeight: "800" },
   returnButton: {
-    height: 44,
+    minHeight: 52,
     flex: 1,
     flexDirection: "row",
     alignItems: "center",

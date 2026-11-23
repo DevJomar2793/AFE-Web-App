@@ -28,7 +28,7 @@ function NavigationItem({
   isActive = false,
   onPress,
 }: NavigationItemProps) {
-  const color = isActive ? "#2f8c48" : "#7c8996";
+  const color = isActive ? "#125326" : "#748078";
 
   return (
     <Pressable
@@ -92,10 +92,10 @@ export function BottomNavigation({
 
 const styles = StyleSheet.create({
   navigation: {
-    minHeight: 78,
+    minHeight: 76,
     alignItems: "center",
     borderTopWidth: 1,
-    borderTopColor: "#e4e9e5",
+    borderTopColor: "#dce3da",
     backgroundColor: "#ffffff",
     paddingHorizontal: 8,
     paddingTop: 8,
@@ -108,12 +108,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-around",
   },
-  navigationItem: { flex: 1, alignItems: "center", gap: 3 },
+  navigationItem: {
+    minHeight: 54,
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+  },
   activeIcon: {
     borderRadius: 12,
-    backgroundColor: "#eaf7eb",
+    backgroundColor: "#e5f3e4",
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  navigationLabel: { fontSize: 10 },
+  navigationLabel: { fontSize: 10, fontWeight: "700" },
 });

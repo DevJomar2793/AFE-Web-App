@@ -102,7 +102,7 @@ export function SiteFooter() {
             </span>
             Adamos Fresh Eggs
           </a>
-          <p>
+          <p className="break-words">
             © {currentYear} Adamos Fresh Eggs. Pasture raised and locally packed.
             <span className="ml-2 font-semibold text-white">DevJomar</span>
           </p>

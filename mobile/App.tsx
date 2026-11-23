@@ -26,8 +26,9 @@ import { LoginScreen } from "./components/login-screen";
 import { MoreScreen } from "./components/more-screen";
 import { RegisterScreen } from "./components/register-screen";
 import {
-  clearAccessToken,
   getCurrentUser,
+  logout,
+  setSessionExpiredHandler,
   type UserAccount,
 } from "./lib/auth";
 import { OverviewScreen } from "./components/overview-screen";
@@ -48,6 +49,7 @@ export default function App() {
     "login" | "register" | "dashboard"
   >("login");
   const [activeTab, setActiveTab] = useState<MobileTab>("home");
+  const [moreScreenResetKey, setMoreScreenResetKey] = useState(0);
   const [isPriceHistoryOpen, setIsPriceHistoryOpen] = useState(false);
   const [isAddStockModalVisible, setIsAddStockModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryRecord | null>(null);
@@ -58,6 +60,16 @@ export default function App() {
     null,
   );
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  useEffect(() => {
+    setSessionExpiredHandler(() => {
+      setAccount(null);
+      setActiveTab("home");
+      setCurrentScreen("login");
+    });
+
+    return () => setSessionExpiredHandler(null);
+  }, []);
 
   useEffect(() => {
     if (!hasNativeSplashHidden) return;
@@ -153,6 +165,10 @@ export default function App() {
   }
 
   function changeTab(tab: MobileTab) {
+    if (tab === "more") {
+      setMoreScreenResetKey((currentKey) => currentKey + 1);
+    }
+
     setActiveTab(tab);
     setIsPriceHistoryOpen(false);
   }
@@ -163,7 +179,7 @@ export default function App() {
     setIsLoggingOut(true);
 
     try {
-      await clearAccessToken();
+      await logout();
       setAccount(null);
       setActiveTab("home");
       setCurrentScreen("login");
@@ -239,6 +255,7 @@ export default function App() {
             />
           ) : (
             <MoreScreen
+              key={moreScreenResetKey}
               isAdmin={account?.isAdmin === true}
               onShowSuccess={showTransactionSuccess}
             />
@@ -318,13 +335,15 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    backgroundColor: "#eef2f5",
+    backgroundColor: "#f4f6f1",
     paddingTop: Platform.OS === "android" ? NativeStatusBar.currentHeight : 0,
   },
   footer: {
     alignItems: "center",
     backgroundColor: "#ffffff",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#e1e7e0",
     paddingTop: 8,
-    paddingBottom: 2,
+    paddingBottom: 4,
   },
 });

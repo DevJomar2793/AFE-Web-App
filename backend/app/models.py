@@ -57,6 +57,33 @@ class User(Base):
     )
 
 
+class AuthSession(Base):
+    __tablename__ = "auth_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    token_hash: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+
 class ActivityLog(Base):
     __tablename__ = "activity_logs"
     __table_args__ = (
@@ -303,10 +330,23 @@ class Sale(Base):
             "char_length(trim(customer_name)) > 0",
             name="ck_sales_customer_name_not_blank",
         ),
+        CheckConstraint(
+            "payment_method IS NULL OR payment_method IN ('gcash', 'cod')",
+            name="ck_sales_payment_method",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    customer_id: Mapped[int | None] = mapped_column(
+        ForeignKey("customers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     customer_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    customer_number: Mapped[str | None] = mapped_column(String(11), nullable=True)
+    customer_address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    customer_landmark: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    payment_method: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -323,6 +363,15 @@ class Sale(Base):
         cascade="all, delete-orphan",
         order_by="SaleItem.id",
     )
+    official_receipt: Mapped["OfficialReceipt | None"] = relationship(
+        back_populates="sale",
+        cascade="all, delete-orphan",
+        uselist=False,
+    )
+
+    @property
+    def has_official_receipt(self) -> bool:
+        return self.official_receipt is not None
 
 
 class SaleItem(Base):
@@ -356,6 +405,86 @@ class SaleItem(Base):
 
     sale: Mapped[Sale] = relationship(back_populates="items")
     item: Mapped[Inventory] = relationship(back_populates="sale_items")
+
+
+class OfficialReceipt(Base):
+    __tablename__ = "official_receipts"
+    __table_args__ = (
+        CheckConstraint(
+            "payment_method IS NULL OR payment_method IN ('gcash', 'cod')",
+            name="ck_official_receipts_payment_method",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    sale_id: Mapped[int] = mapped_column(
+        ForeignKey("sales.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    customer_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    customer_number: Mapped[str | None] = mapped_column(String(11), nullable=True)
+    customer_address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    customer_landmark: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    payment_method: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    sale: Mapped[Sale] = relationship(back_populates="official_receipt")
+    items: Mapped[list["OfficialReceiptItem"]] = relationship(
+        back_populates="receipt",
+        cascade="all, delete-orphan",
+        order_by="OfficialReceiptItem.id",
+    )
+
+    @property
+    def total_amount(self) -> Decimal:
+        return sum((item.subtotal for item in self.items), start=Decimal("0.00"))
+
+
+class OfficialReceiptItem(Base):
+    __tablename__ = "official_receipt_items"
+    __table_args__ = (
+        CheckConstraint(
+            "item_category IN ('eggs', 'oil')",
+            name="ck_official_receipt_items_category",
+        ),
+        CheckConstraint(
+            "quantity > 0",
+            name="ck_official_receipt_items_quantity_positive",
+        ),
+        CheckConstraint(
+            "unit_price >= 0",
+            name="ck_official_receipt_items_price_non_negative",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    receipt_id: Mapped[int] = mapped_column(
+        ForeignKey("official_receipts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    item_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    item_category: Mapped[str] = mapped_column(String(10), nullable=False)
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+
+    receipt: Mapped[OfficialReceipt] = relationship(back_populates="items")
+
+    @property
+    def subtotal(self) -> Decimal:
+        return self.unit_price * self.quantity
 
 
 class Return(Base):

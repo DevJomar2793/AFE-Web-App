@@ -40,6 +40,7 @@ class UserRegister(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=128)
+    remember_me: bool = False
 
     @field_validator("email", mode="after")
     @classmethod
@@ -60,6 +61,12 @@ class UserResponse(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    refresh_token: str | None = None
+    refresh_token_expires_at: datetime | None = None
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str = Field(min_length=32, max_length=512)
 
 
 class ActivityLogResponse(BaseModel):
@@ -207,6 +214,9 @@ class SaleCreate(BaseModel):
     inventory_id: int = Field(gt=0, strict=True)
     quantity: int = Field(gt=0, strict=True)
     customer_name: str = Field(min_length=1, max_length=255)
+    customer_id: int | None = Field(default=None, gt=0, strict=True)
+    payment_method: Literal["gcash", "cod"] | None = None
+    generate_official_receipt: bool = False
 
     @field_validator("customer_name", mode="before")
     @classmethod
@@ -221,6 +231,9 @@ class SaleBatchItemCreate(BaseModel):
 
 class SaleBatchCreate(BaseModel):
     customer_name: str = Field(min_length=1, max_length=255)
+    customer_id: int | None = Field(default=None, gt=0, strict=True)
+    payment_method: Literal["gcash", "cod"] | None = None
+    generate_official_receipt: bool = False
     items: list[SaleBatchItemCreate] = Field(min_length=1)
 
     @field_validator("customer_name", mode="before")
@@ -280,11 +293,41 @@ class SaleItemResponse(BaseModel):
     price: Decimal
 
 
+class OfficialReceiptItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    item_name: str
+    item_category: Literal["eggs", "oil"]
+    quantity: int
+    unit_price: Decimal
+    subtotal: Decimal
+
+
+class OfficialReceiptResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    sale_id: int
+    customer_name: str
+    customer_number: str | None
+    customer_address: str | None
+    customer_landmark: str | None
+    payment_method: Literal["gcash", "cod"] | None
+    items: list[OfficialReceiptItemResponse]
+    total_amount: Decimal
+    generated_at: datetime
+    updated_at: datetime
+
+
 class SaleResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     customer_name: str
+    customer_number: str | None
+    payment_method: Literal["gcash", "cod"] | None
+    has_official_receipt: bool
     items: list[SaleItemResponse]
     created_at: datetime
     updated_at: datetime

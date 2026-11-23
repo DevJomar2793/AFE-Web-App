@@ -6,7 +6,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -20,6 +19,7 @@ import type {
   ProductCategory,
   SuccessNotice,
 } from "../types/inventory";
+import { KeyboardAwareScrollView } from "./keyboard-aware-scroll-view";
 
 interface AddStockModalProps {
   onClose: () => void;
@@ -166,7 +166,7 @@ function ModalLayout({
       }}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.overlay}
       >
         <Pressable
@@ -177,13 +177,15 @@ function ModalLayout({
           style={styles.backdrop}
         />
         <View accessibilityViewIsModal style={styles.formCard}>
-          <ScrollView
+          <KeyboardAwareScrollView
+            automaticallyAdjustKeyboardInsets
             contentContainerStyle={styles.formContent}
+            keyboardDismissMode="on-drag"
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
             {children}
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>

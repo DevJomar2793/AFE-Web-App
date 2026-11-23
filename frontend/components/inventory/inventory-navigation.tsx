@@ -21,10 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { BrandMark } from "@/components/storefront/brand-mark";
-import {
-  clearAccessToken,
-  type UserAccount,
-} from "@/lib/api";
+import { logoutUser, type UserAccount } from "@/lib/api";
 
 export type InventoryViewName =
   | "overview"
@@ -67,14 +64,15 @@ export function InventorySidebar({
     setIsLogoutConfirmationOpen(true);
   }
 
-  function confirmLogout() {
+  async function confirmLogout() {
     if (isLoggingOut) return;
 
     setIsLoggingOut(true);
-    window.setTimeout(() => {
-      clearAccessToken();
+    try {
+      await logoutUser();
+    } finally {
       router.replace("/login");
-    }, 200);
+    }
   }
 
   return (
@@ -140,7 +138,7 @@ export function InventorySidebar({
           onMouseDown={onCloseMenu}
         >
           <aside
-            className="h-full w-72 bg-white p-5 shadow-2xl"
+            className="h-full w-[min(86vw,18rem)] overflow-y-auto bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl"
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -176,7 +174,7 @@ export function InventorySidebar({
           onClose={() => {
             if (!isLoggingOut) setIsLogoutConfirmationOpen(false);
           }}
-          onConfirm={confirmLogout}
+          onConfirm={() => void confirmLogout()}
         />
       )}
     </>
@@ -542,10 +540,10 @@ function BottomNavButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex flex-col items-center gap-1 py-1 text-[11px] font-black ${active ? "text-[#173b24]" : "text-[#8a938c]"}`}
+      className={`min-w-0 flex flex-col items-center gap-1 py-1 text-[10px] font-black leading-tight ${active ? "text-[#173b24]" : "text-[#8a938c]"}`}
     >
       {icon}
-      {label}
+      <span className="max-w-full truncate">{label}</span>
     </button>
   );
 }

@@ -1,13 +1,21 @@
 import asyncio
 from collections.abc import AsyncIterator
 from decimal import Decimal
+from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import delete, select
 
 from app.database import async_session_factory
-from app.models import Inventory, InventoryStatus, Sale, SaleItem
+from app.models import (
+    Customer,
+    Inventory,
+    InventoryStatus,
+    OfficialReceipt,
+    Sale,
+    SaleItem,
+)
 
 
 @pytest.fixture
@@ -56,6 +64,175 @@ async def remove_inventory_test_data(inventory_id: int) -> None:
             await session.execute(delete(Sale).where(Sale.id.in_(stored_sale_ids)))
         await session.execute(delete(Inventory).where(Inventory.id == inventory_id))
         await session.commit()
+
+
+@pytest.fixture
+async def sale_customer() -> AsyncIterator[Customer]:
+    customer = Customer(
+        name="Receipt Customer",
+        number=str(uuid4().int)[-11:],
+        address="123 Test Street",
+        landmark="Near Test Market",
+    )
+    async with async_session_factory() as session:
+        session.add(customer)
+        await session.commit()
+        await session.refresh(customer)
+
+    yield customer
+
+    async with async_session_factory() as session:
+        stored_customer = await session.get(Customer, customer.id)
+        if stored_customer is not None:
+            await session.delete(stored_customer)
+            await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_create_sale_with_official_receipt_saves_one_report(
+    client: AsyncClient,
+    inventory_item: Inventory,
+    sale_customer: Customer,
+) -> None:
+    response = await client.post(
+        "/api/v1/sales/add-sales-batch",
+        json={
+            "customer_id": sale_customer.id,
+            "customer_name": "Client value is replaced by the saved customer",
+            "payment_method": "gcash",
+            "generate_official_receipt": True,
+            "items": [{"inventory_id": inventory_item.id, "quantity": 2}],
+        },
+    )
+
+    assert response.status_code == 201
+    sale_data = response.json()
+    assert sale_data["customer_name"] == sale_customer.name
+    assert sale_data["customer_number"] == sale_customer.number
+    assert sale_data["payment_method"] == "gcash"
+    assert sale_data["has_official_receipt"] is True
+
+    receipt_response = await client.get(
+        f"/api/v1/sales/{sale_data['id']}/official-receipt",
+    )
+    assert receipt_response.status_code == 200
+    receipt_data = receipt_response.json()
+    assert receipt_data["sale_id"] == sale_data["id"]
+    assert receipt_data["customer_number"] == sale_customer.number
+    assert receipt_data["customer_address"] == sale_customer.address
+    assert receipt_data["payment_method"] == "gcash"
+    assert receipt_data["items"][0]["item_name"] == inventory_item.item
+    assert receipt_data["items"][0]["quantity"] == 2
+    assert Decimal(receipt_data["items"][0]["subtotal"]) == Decimal("500.00")
+    assert Decimal(receipt_data["total_amount"]) == Decimal("500.00")
+
+    async with async_session_factory() as session:
+        receipts = list(
+            (
+                await session.scalars(
+                    select(OfficialReceipt).where(
+                        OfficialReceipt.sale_id == sale_data["id"],
+                    ),
+                )
+            ).all(),
+        )
+    assert len(receipts) == 1
+
+
+@pytest.mark.asyncio
+async def test_edit_sale_updates_existing_official_receipt_without_duplicate(
+    client: AsyncClient,
+    inventory_item: Inventory,
+    sale_customer: Customer,
+) -> None:
+    create_response = await client.post(
+        "/api/v1/sales/add-sales-batch",
+        json={
+            "customer_id": sale_customer.id,
+            "customer_name": sale_customer.name,
+            "payment_method": "cod",
+            "generate_official_receipt": True,
+            "items": [{"inventory_id": inventory_item.id, "quantity": 1}],
+        },
+    )
+    assert create_response.status_code == 201
+    sale_data = create_response.json()
+    original_receipt_response = await client.get(
+        f"/api/v1/sales/{sale_data['id']}/official-receipt",
+    )
+    assert original_receipt_response.status_code == 200
+    original_receipt_id = original_receipt_response.json()["id"]
+
+    update_response = await client.patch(
+        f"/api/v1/sales/{sale_data['id']}",
+        json={"items": [{"id": sale_data["items"][0]["id"], "quantity": 3}]},
+    )
+    assert update_response.status_code == 200
+
+    receipt_response = await client.get(
+        f"/api/v1/sales/{sale_data['id']}/official-receipt",
+    )
+    assert receipt_response.status_code == 200
+    receipt_data = receipt_response.json()
+    assert receipt_data["id"] == original_receipt_id
+    assert receipt_data["payment_method"] == "cod"
+    assert receipt_data["items"][0]["quantity"] == 3
+    assert Decimal(receipt_data["items"][0]["unit_price"]) == Decimal("250.00")
+
+    async with async_session_factory() as session:
+        receipts = list(
+            (
+                await session.scalars(
+                    select(OfficialReceipt).where(
+                        OfficialReceipt.sale_id == sale_data["id"],
+                    ),
+                )
+            ).all(),
+        )
+    assert len(receipts) == 1
+
+
+@pytest.mark.asyncio
+async def test_create_sale_rejects_invalid_payment_method(
+    client: AsyncClient,
+    inventory_item: Inventory,
+) -> None:
+    response = await client.post(
+        "/api/v1/sales/add-sales",
+        json={
+            "inventory_id": inventory_item.id,
+            "quantity": 1,
+            "customer_name": "Invalid Payment Customer",
+            "payment_method": "bank_transfer",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_sale_without_saved_receipt_returns_not_found(
+    client: AsyncClient,
+    inventory_item: Inventory,
+) -> None:
+    create_response = await client.post(
+        "/api/v1/sales/add-sales",
+        json={
+            "inventory_id": inventory_item.id,
+            "quantity": 1,
+            "customer_name": "Legacy Customer",
+        },
+    )
+    assert create_response.status_code == 201
+    sale_data = create_response.json()
+    assert sale_data["payment_method"] is None
+    assert sale_data["has_official_receipt"] is False
+
+    receipt_response = await client.get(
+        f"/api/v1/sales/{sale_data['id']}/official-receipt",
+    )
+    assert receipt_response.status_code == 404
+    assert receipt_response.json() == {"detail": "Official receipt not found"}
 
 
 @pytest.mark.asyncio

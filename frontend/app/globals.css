@@ -194,6 +194,36 @@ html {
   color: #fffaf0;
 }
 
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .official-receipt-print-root,
+  .official-receipt-print-root * {
+    visibility: visible;
+  }
+
+  .official-receipt-print-root {
+    background: white;
+    display: block;
+    inset: 0;
+    padding: 0;
+    position: absolute;
+  }
+
+  .official-receipt-print-root section {
+    box-shadow: none;
+    max-height: none;
+    max-width: none;
+    overflow: visible;
+  }
+
+  .official-receipt-print-actions {
+    display: none;
+  }
+}
+
 .fade-in {
   opacity: 0;
   transform: translateY(24px);
@@ -266,22 +296,6 @@ html {
 
 .mobile-nav-link[aria-current="location"] svg {
   color: #a85620;
-}
-
-.login-card {
-  transform: scale(0.8);
-}
-
-@media (max-height: 900px) {
-  .login-card {
-    transform: scale(0.72);
-  }
-}
-
-@media (max-height: 750px) {
-  .login-card {
-    transform: scale(0.62);
-  }
 }
 
 @media (hover: hover) {

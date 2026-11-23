@@ -100,16 +100,20 @@ function CarouselPagination({
         return (
           <button
             type="button"
-            className={`h-2.5 transition-all ${
-              isCurrentPage
-                ? "w-8 bg-[#f5bd78]"
-                : "w-2.5 bg-white/35 hover:bg-white/65"
-            }`}
+            className="group grid size-11 place-items-center"
             aria-label={`Go to order page ${page + 1}`}
             aria-current={isCurrentPage ? "true" : undefined}
             onClick={() => onPageChange(page)}
             key={page}
-          />
+          >
+            <span
+              className={`h-2.5 transition-all ${
+                isCurrentPage
+                  ? "w-8 bg-[#f5bd78]"
+                  : "w-2.5 bg-white/35 group-hover:bg-white/65"
+              }`}
+            />
+          </button>
         );
       })}
     </div>

@@ -327,7 +327,7 @@ export function InventoryDashboard() {
           onTransactionRangeChange={setTransactionRange}
         />
 
-        <main className="mx-auto min-h-0 w-full max-w-375 flex-1 overflow-y-auto px-4 pb-20 pt-3 sm:px-7 lg:px-10 lg:pb-3 lg:pt-4">
+        <main className="mx-auto min-h-0 w-full max-w-375 flex-1 overflow-x-hidden overflow-y-auto px-4 pb-24 pt-3 sm:px-7 lg:px-10 lg:pb-3 lg:pt-4">
           {currentView === "overview" && (
             <InventoryOverview
               error={overviewError}

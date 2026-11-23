@@ -11,8 +11,19 @@ from sqlalchemy.orm import selectinload
 
 from app.database import get_database_session
 from app.funds import record_fund_transaction
-from app.models import ActivityLog, Inventory, InventoryStatus, Sale, SaleItem, User
+from app.models import (
+    ActivityLog,
+    Customer,
+    Inventory,
+    InventoryStatus,
+    OfficialReceipt,
+    OfficialReceiptItem,
+    Sale,
+    SaleItem,
+    User,
+)
 from app.schemas import (
+    OfficialReceiptResponse,
     SaleBatchCreate,
     SaleBatchItemCreate,
     SaleCreate,
@@ -44,6 +55,7 @@ async def get_sales(session: DatabaseSession) -> list[Sale]:
             select(Sale)
             .options(
                 selectinload(Sale.items).selectinload(SaleItem.item),
+                selectinload(Sale.official_receipt),
             )
             .order_by(Sale.created_at.desc(), Sale.id.desc())
         )
@@ -88,6 +100,9 @@ async def create_sale(
         requested_items,
         session,
         current_user.email,
+        customer_id=sale_data.customer_id,
+        payment_method=sale_data.payment_method,
+        generate_official_receipt=sale_data.generate_official_receipt,
     )
 
 
@@ -118,6 +133,9 @@ async def create_sale_batch(
         sale_data.items,
         session,
         current_user.email,
+        customer_id=sale_data.customer_id,
+        payment_method=sale_data.payment_method,
+        generate_official_receipt=sale_data.generate_official_receipt,
     )
 
 
@@ -126,8 +144,20 @@ async def create_sale_transaction(
     requested_items: list[SaleBatchItemCreate],
     session: AsyncSession,
     admin_email: str,
+    customer_id: int | None = None,
+    payment_method: str | None = None,
+    generate_official_receipt: bool = False,
 ) -> Sale:
     try:
+        customer = None
+        if customer_id is not None:
+            customer = await session.get(Customer, customer_id)
+            if customer is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Customer not found",
+                )
+
         requested_inventory_ids = [item.inventory_id for item in requested_items]
         statement = (
             select(Inventory)
@@ -155,7 +185,16 @@ async def create_sale_transaction(
                     ),
                 )
 
-        sale = Sale(customer_name=customer_name, items=[])
+        sale = Sale(
+            customer_id=customer.id if customer else None,
+            customer_name=customer.name if customer else customer_name,
+            customer_number=customer.number if customer else None,
+            customer_address=customer.address if customer else None,
+            customer_landmark=customer.landmark if customer else None,
+            payment_method=payment_method,
+            items=[],
+            official_receipt=None,
+        )
 
         for requested_item in requested_items:
             inventory_item = inventory_by_id[requested_item.inventory_id]
@@ -174,6 +213,12 @@ async def create_sale_transaction(
 
         session.add(sale)
         await session.flush()
+        if generate_official_receipt:
+            sync_official_receipt(
+                sale,
+                sale.items,
+                inventory_by_id,
+            )
         sale_total = sum(
             (item.price * item.quantity for item in sale.items),
             start=Decimal("0.00"),
@@ -233,7 +278,14 @@ async def update_sale(
 ) -> Sale:
     try:
         sale = await session.scalar(
-            select(Sale).where(Sale.id == sale_id).with_for_update(),
+            select(Sale)
+            .where(Sale.id == sale_id)
+            .options(
+                selectinload(Sale.official_receipt).selectinload(
+                    OfficialReceipt.items,
+                ),
+            )
+            .with_for_update(),
         )
         if sale is None:
             raise HTTPException(
@@ -305,6 +357,9 @@ async def update_sale(
                 inventory_item,
                 requested_item.quantity,
             )
+
+        if sale.official_receipt is not None:
+            sync_official_receipt(sale, sale_items, inventory_by_id)
 
         updated_total = sum(
             (item.price * item.quantity for item in sale_items),
@@ -437,6 +492,7 @@ async def load_sale(sale_id: int, session: AsyncSession) -> Sale:
         .where(Sale.id == sale_id)
         .options(
             selectinload(Sale.items).selectinload(SaleItem.item),
+            selectinload(Sale.official_receipt),
         ),
     )
     if sale is None:
@@ -445,6 +501,73 @@ async def load_sale(sale_id: int, session: AsyncSession) -> Sale:
             detail="Sale not found",
         )
     return sale
+
+
+@router.get(
+    "/{sale_id}/official-receipt",
+    response_model=OfficialReceiptResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get a sale's saved official receipt",
+)
+async def get_official_receipt(
+    sale_id: int,
+    session: DatabaseSession,
+) -> OfficialReceipt:
+    return await load_official_receipt(sale_id, session)
+
+
+async def load_official_receipt(
+    sale_id: int,
+    session: AsyncSession,
+) -> OfficialReceipt:
+    receipt = await session.scalar(
+        select(OfficialReceipt)
+        .where(OfficialReceipt.sale_id == sale_id)
+        .options(selectinload(OfficialReceipt.items)),
+    )
+    if receipt is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Official receipt not found",
+        )
+    return receipt
+
+
+def sync_official_receipt(
+    sale: Sale,
+    sale_items: list[SaleItem],
+    inventory_by_id: dict[int, Inventory],
+) -> OfficialReceipt:
+    receipt = sale.official_receipt
+    if receipt is None:
+        receipt = OfficialReceipt(
+            customer_name=sale.customer_name,
+            customer_number=sale.customer_number,
+            customer_address=sale.customer_address,
+            customer_landmark=sale.customer_landmark,
+            payment_method=sale.payment_method,
+            items=[],
+        )
+        sale.official_receipt = receipt
+    else:
+        receipt.customer_name = sale.customer_name
+        receipt.customer_number = sale.customer_number
+        receipt.customer_address = sale.customer_address
+        receipt.customer_landmark = sale.customer_landmark
+        receipt.payment_method = sale.payment_method
+        receipt.updated_at = datetime.now(timezone.utc)
+        receipt.items.clear()
+
+    receipt.items.extend(
+        OfficialReceiptItem(
+            item_name=inventory_by_id[item.inventory_id].item,
+            item_category=inventory_by_id[item.inventory_id].category,
+            quantity=item.quantity,
+            unit_price=item.price,
+        )
+        for item in sale_items
+    )
+    return receipt
 
 
 def update_inventory_status(inventory_item: Inventory) -> None:

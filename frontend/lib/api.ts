@@ -57,9 +57,52 @@ export type InventoryPriceHistory = {
 export type Sale = {
   id: number;
   customerName: string;
+  customerNumber: string | null;
+  paymentMethod: PaymentMethod | null;
+  hasOfficialReceipt: boolean;
   items: SaleItem[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type OfficialReceipt = {
+  id: number;
+  saleId: number;
+  customerName: string;
+  customerNumber: string | null;
+  customerAddress: string | null;
+  customerLandmark: string | null;
+  paymentMethod: PaymentMethod | null;
+  items: OfficialReceiptItem[];
+  totalAmount: number;
+  generatedAt: string;
+  updatedAt: string;
+};
+
+export type PaymentMethod = "gcash" | "cod";
+
+export const paymentMethodOptions: {
+  value: PaymentMethod;
+  label: string;
+}[] = [
+  { value: "gcash", label: "GCash Payment" },
+  { value: "cod", label: "Cash on Delivery (COD)" },
+];
+
+export function formatPaymentMethod(paymentMethod: PaymentMethod | null) {
+  return (
+    paymentMethodOptions.find((option) => option.value === paymentMethod)
+      ?.label ?? "Not recorded"
+  );
+}
+
+export type OfficialReceiptItem = {
+  id: number;
+  itemName: string;
+  itemCategory: ProductCategory;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
 };
 
 export type SaleItem = {
@@ -130,10 +173,16 @@ export type CreateSaleInput = {
   inventoryId: number;
   quantity: number;
   customerName: string;
+  customerId?: number;
+  paymentMethod?: PaymentMethod;
+  generateOfficialReceipt?: boolean;
 };
 
 export type CreateSaleBatchInput = {
   customerName: string;
+  customerId?: number;
+  paymentMethod?: PaymentMethod;
+  generateOfficialReceipt?: boolean;
   items: {
     inventoryId: number;
     quantity: number;
@@ -157,6 +206,7 @@ export type CreateReturnInput = {
 export type LoginInput = {
   email: string;
   password: string;
+  rememberMe: boolean;
 };
 
 export type RegisterInput = {
@@ -203,7 +253,7 @@ const API_BASE_URL = (process.env.NEXT_API_URL ?? DEFAULT_API_BASE_URL).replace(
 );
 
 export async function registerUser(input: RegisterInput): Promise<void> {
-  await apiRequest(
+  await publicApiRequest(
     "/api/v1/auth/register",
     {
       method: "POST",
@@ -214,11 +264,15 @@ export async function registerUser(input: RegisterInput): Promise<void> {
 }
 
 export async function loginUser(input: LoginInput): Promise<LoginResponse> {
-  const response = await apiRequest(
-    "/api/v1/auth/login",
+  const response = await browserAuthRequest(
+    "/api/auth/login",
     {
       method: "POST",
-      body: JSON.stringify(input),
+      body: JSON.stringify({
+        email: input.email,
+        password: input.password,
+        remember_me: input.rememberMe,
+      }),
     },
     "Unable to sign in. Please try again.",
   );
@@ -246,6 +300,22 @@ export function getAccessToken() {
 
 export function clearAccessToken() {
   window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+}
+
+export async function restoreAccessToken(): Promise<boolean> {
+  if (getAccessToken()) return true;
+  return Boolean(await refreshAccessToken());
+}
+
+export async function logoutUser(): Promise<void> {
+  try {
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      cache: "no-store",
+    });
+  } finally {
+    clearAccessToken();
+  }
 }
 
 export async function getCurrentUser(
@@ -458,6 +528,9 @@ export async function createSale(input: CreateSaleInput): Promise<Sale> {
         inventory_id: input.inventoryId,
         quantity: input.quantity,
         customer_name: input.customerName,
+        customer_id: input.customerId,
+        payment_method: input.paymentMethod,
+        generate_official_receipt: input.generateOfficialReceipt ?? false,
       }),
     },
     "The sale could not be saved.",
@@ -474,6 +547,9 @@ export async function createSaleBatch(
       method: "POST",
       body: JSON.stringify({
         customer_name: input.customerName,
+        customer_id: input.customerId,
+        payment_method: input.paymentMethod,
+        generate_official_receipt: input.generateOfficialReceipt ?? false,
         items: input.items.map((item) => ({
           inventory_id: item.inventoryId,
           quantity: item.quantity,
@@ -503,6 +579,17 @@ export async function deleteSale(saleId: number): Promise<void> {
     { method: "DELETE" },
     "The sale could not be removed.",
   );
+}
+
+export async function getOfficialReceipt(
+  saleId: number,
+): Promise<OfficialReceipt> {
+  const response = await apiRequest(
+    `/api/v1/sales/${saleId}/official-receipt`,
+    {},
+    "The official receipt could not be loaded.",
+  );
+  return parseOfficialReceipt(response);
 }
 
 export async function getReturns(
@@ -597,8 +684,8 @@ async function apiRequest(
   options: RequestInit,
   fallbackMessage: string,
 ): Promise<unknown> {
-  const accessToken = getAccessToken();
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  let accessToken = getAccessToken();
+  let response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     cache: "no-store",
     headers: {
@@ -608,8 +695,118 @@ async function apiRequest(
       ...options.headers,
     },
   });
+
+  if (response.status === 401) {
+    accessToken = await refreshAccessToken();
+    if (accessToken) {
+      response = await fetch(`${API_BASE_URL}${path}`, {
+        ...options,
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+          ...(options.body ? { "Content-Type": "application/json" } : {}),
+          Authorization: `Bearer ${accessToken}`,
+          ...options.headers,
+        },
+      });
+    }
+  }
+
   const responseBody: unknown =
-    response.status === 204 ? null : await response.json();
+    response.status === 204 ? null : await response.json().catch(() => null);
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      clearAccessToken();
+      if (window.location.pathname !== "/login") {
+        window.location.replace("/login");
+      }
+    }
+    throw new ApiRequestError(
+      getApiErrorMessage(responseBody, fallbackMessage),
+      response.status,
+    );
+  }
+
+  return responseBody;
+}
+
+let refreshRequest: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (refreshRequest) return refreshRequest;
+
+  refreshRequest = (async () => {
+    try {
+      const response = await fetch("/api/auth/refresh", {
+        method: "POST",
+        cache: "no-store",
+      });
+      const responseBody: unknown = await response.json().catch(() => null);
+      if (
+        !response.ok ||
+        !isRecord(responseBody) ||
+        typeof responseBody.access_token !== "string" ||
+        !responseBody.access_token
+      ) {
+        clearAccessToken();
+        return null;
+      }
+
+      saveAccessToken(responseBody.access_token);
+      return responseBody.access_token;
+    } catch {
+      clearAccessToken();
+      return null;
+    } finally {
+      refreshRequest = null;
+    }
+  })();
+
+  return refreshRequest;
+}
+
+async function browserAuthRequest(
+  path: string,
+  options: RequestInit,
+  fallbackMessage: string,
+): Promise<unknown> {
+  const response = await fetch(path, {
+    ...options,
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...options.headers,
+    },
+  });
+  const responseBody: unknown = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new ApiRequestError(
+      getApiErrorMessage(responseBody, fallbackMessage),
+      response.status,
+    );
+  }
+
+  return responseBody;
+}
+
+async function publicApiRequest(
+  path: string,
+  options: RequestInit,
+  fallbackMessage: string,
+): Promise<unknown> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    cache: "no-store",
+    headers: {
+      Accept: "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...options.headers,
+    },
+  });
+  const responseBody: unknown = await response.json().catch(() => null);
 
   if (!response.ok) {
     throw new ApiRequestError(
@@ -839,9 +1036,88 @@ function parseSale(value: unknown): Sale {
   return {
     id: value.id,
     customerName: value.customer_name,
+    customerNumber:
+      typeof value.customer_number === "string" ? value.customer_number : null,
+    paymentMethod: parsePaymentMethod(value.payment_method),
+    hasOfficialReceipt: value.has_official_receipt === true,
     items: value.items.map(parseSaleItem),
     createdAt: value.created_at,
     updatedAt: value.updated_at,
+  };
+}
+
+function parseOfficialReceipt(value: unknown): OfficialReceipt {
+  if (!isRecord(value) || !Array.isArray(value.items)) {
+    throw new Error("Invalid official receipt");
+  }
+  const totalAmount = parsePrice(value.total_amount);
+
+  if (
+    !isPositiveInteger(value.id) ||
+    !isPositiveInteger(value.sale_id) ||
+    typeof value.customer_name !== "string" ||
+    !value.customer_name.trim() ||
+    (value.customer_number !== null &&
+      typeof value.customer_number !== "string") ||
+    (value.customer_address !== null &&
+      typeof value.customer_address !== "string") ||
+    (value.customer_landmark !== null &&
+      typeof value.customer_landmark !== "string") ||
+    !Number.isFinite(totalAmount) ||
+    totalAmount < 0 ||
+    !isValidDate(value.generated_at) ||
+    !isValidDate(value.updated_at)
+  ) {
+    throw new Error("Invalid official receipt");
+  }
+
+  return {
+    id: value.id,
+    saleId: value.sale_id,
+    customerName: value.customer_name,
+    customerNumber: value.customer_number,
+    customerAddress: value.customer_address,
+    customerLandmark: value.customer_landmark,
+    paymentMethod: parsePaymentMethod(value.payment_method),
+    items: value.items.map(parseOfficialReceiptItem),
+    totalAmount,
+    generatedAt: value.generated_at,
+    updatedAt: value.updated_at,
+  };
+}
+
+function parsePaymentMethod(value: unknown): PaymentMethod | null {
+  if (value === null || value === undefined) return null;
+  if (value === "gcash" || value === "cod") return value;
+  throw new Error("Invalid payment method");
+}
+
+function parseOfficialReceiptItem(value: unknown): OfficialReceiptItem {
+  if (!isRecord(value)) throw new Error("Invalid official receipt item");
+  const unitPrice = parsePrice(value.unit_price);
+  const subtotal = parsePrice(value.subtotal);
+
+  if (
+    !isPositiveInteger(value.id) ||
+    typeof value.item_name !== "string" ||
+    !value.item_name.trim() ||
+    !isProductCategory(value.item_category) ||
+    !isPositiveInteger(value.quantity) ||
+    !Number.isFinite(unitPrice) ||
+    unitPrice < 0 ||
+    !Number.isFinite(subtotal) ||
+    subtotal < 0
+  ) {
+    throw new Error("Invalid official receipt item");
+  }
+
+  return {
+    id: value.id,
+    itemName: value.item_name,
+    itemCategory: value.item_category,
+    quantity: value.quantity,
+    unitPrice,
+    subtotal,
   };
 }
 

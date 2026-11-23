@@ -3,7 +3,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -16,16 +18,26 @@ import {
 import {
   createSaleBatch,
   deleteSale,
+  formatPaymentMethod,
   getCustomerDetails,
   getInventoryItems,
   getFundTransactions,
   getSales,
+  paymentMethodOptions,
   updateSale,
   type CustomerDetailsRecord,
   type SaleRecord,
   type FundTransactionRecord,
+  type PaymentMethod,
 } from "../lib/api";
 import type { InventoryRecord } from "../types/inventory";
+import { AuthenticatedScreenHeader } from "./authenticated-screen-header";
+import { KeyboardAwareScrollView } from "./keyboard-aware-scroll-view";
+import {
+  OfficialReceiptView,
+  type OfficialReceiptDisplayData,
+} from "./official-receipt-modal";
+import { SaleDetailsModal } from "./sale-details-modal";
 
 interface TransactionScreenProps {
   onBack: () => void;
@@ -40,9 +52,6 @@ type SaleLine = {
   inventoryId: number;
   quantity: string;
 };
-
-const futureOrMessage =
-  "Official Receipt (OR) generation is for future development.";
 
 const currency = new Intl.NumberFormat("en-PH", {
   style: "currency",
@@ -103,16 +112,23 @@ function automaticUnitPrice(item: InventoryRecord, quantity: number) {
 
 function SaleRow({
   sale,
+  onView,
   onEdit,
   onRemove,
 }: {
   sale: SaleRecord;
+  onView: () => void;
   onEdit: () => void;
   onRemove: () => void;
 }) {
   const quantity = sale.items.reduce((total, item) => total + item.quantity, 0);
   return (
-    <View style={styles.saleRow}>
+    <Pressable
+      accessibilityHint="Opens the saved sale details"
+      accessibilityRole="button"
+      onPress={onView}
+      style={styles.saleRow}
+    >
       <View style={styles.saleIcon}>
         <Ionicons name="arrow-up-outline" size={19} color="#2f7043" />
       </View>
@@ -142,15 +158,31 @@ function SaleRow({
           })}
         </Text>
         <View style={styles.rowActions}>
-          <Pressable onPress={onEdit} style={styles.iconAction}>
+          <Pressable
+            accessibilityLabel="Edit sale"
+            accessibilityRole="button"
+            onPress={(event) => {
+              event.stopPropagation();
+              onEdit();
+            }}
+            style={styles.iconAction}
+          >
             <Ionicons name="pencil-outline" size={16} color="#173b24" />
           </Pressable>
-          <Pressable onPress={onRemove} style={styles.iconAction}>
+          <Pressable
+            accessibilityLabel="Remove sale"
+            accessibilityRole="button"
+            onPress={(event) => {
+              event.stopPropagation();
+              onRemove();
+            }}
+            style={styles.iconAction}
+          >
             <Ionicons name="trash-outline" size={16} color="#9b431f" />
           </Pressable>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -220,20 +252,25 @@ function SaleEditorModal({
   const [customerQuery, setCustomerQuery] = useState("");
   const [selectedCustomer, setSelectedCustomer] =
     useState<CustomerDetailsRecord | null>(null);
-  const [showCustomerSuggestions, setShowCustomerSuggestions] =
-    useState(false);
+  const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [isPaymentMethodOpen, setIsPaymentMethodOpen] = useState(false);
   const [customersLoading, setCustomersLoading] = useState(false);
   const [customerError, setCustomerError] = useState("");
   const [customerRequestVersion, setCustomerRequestVersion] = useState(0);
   const [lines, setLines] = useState<SaleLine[]>([]);
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [receiptPreview, setReceiptPreview] =
+    useState<OfficialReceiptDisplayData | null>(null);
 
   useEffect(() => {
     if (!visible) return;
     setCustomerQuery(sale?.customerName ?? "");
     setSelectedCustomer(null);
     setShowCustomerSuggestions(false);
+    setPaymentMethod(null);
+    setIsPaymentMethodOpen(false);
     setLines(
       sale
         ? sale.items.map((item) => ({
@@ -251,6 +288,7 @@ function SaleEditorModal({
             })),
     );
     setError("");
+    setReceiptPreview(null);
   }, [visible, sale, inventory]);
 
   useEffect(() => {
@@ -307,9 +345,69 @@ function SaleEditorModal({
       setLines((current) => current.filter((line) => line.id !== id));
   }
 
+  function openReceiptPreview() {
+    if (!selectedCustomer) {
+      setError("Select an existing customer before viewing the receipt.");
+      return;
+    }
+    if (!paymentMethod) {
+      setError("Select a payment method before viewing the receipt.");
+      return;
+    }
+
+    const previewItems: OfficialReceiptDisplayData["items"] = [];
+    for (const line of lines) {
+      const quantity = Number(line.quantity);
+      const item = inventory.find((entry) => entry.id === line.inventoryId);
+      if (!Number.isInteger(quantity) || quantity < 1) {
+        setError("Each quantity must be at least one.");
+        return;
+      }
+      if (!item || quantity > item.quantity) {
+        setError(`Not enough stock for ${item?.item ?? "the selected item"}.`);
+        return;
+      }
+
+      previewItems.push({
+        id: line.id,
+        itemName: item.item,
+        itemCategory: item.category,
+        quantity,
+        unitPrice: automaticUnitPrice(item, quantity),
+      });
+    }
+
+    if (!previewItems.length) {
+      setError("Add at least one item before viewing the receipt.");
+      return;
+    }
+
+    setError("");
+    const totalAmount = previewItems.reduce(
+      (sum, item) => sum + item.unitPrice * item.quantity,
+      0,
+    );
+    setReceiptPreview({
+      transactionId: null,
+      orderDate: new Date(),
+      customerName: selectedCustomer.name,
+      customerNumber: selectedCustomer.number,
+      customerAddress: selectedCustomer.address,
+      customerLandmark: selectedCustomer.landmark,
+      paymentMethod,
+      totalAmount,
+      items: previewItems,
+      status: "PREVIEW",
+    });
+  }
+
   async function save() {
     if (!isEdit && !selectedCustomer) {
       setError("Select an existing customer from the suggestions.");
+      return;
+    }
+    if (!isEdit && !paymentMethod) {
+      setError("Select a payment method before saving the sale.");
       return;
     }
     const normalized = [] as {
@@ -347,6 +445,9 @@ function SaleEditorModal({
       else
         await createSaleBatch({
           customerName: selectedCustomer!.name,
+          customerId: selectedCustomer!.id,
+          paymentMethod: paymentMethod!,
+          generateOfficialReceipt: true,
           items: normalized.map((line) => ({
             inventoryId: line.inventoryId,
             quantity: line.quantity,
@@ -365,265 +466,380 @@ function SaleEditorModal({
   }
 
   return (
-    <Modal
-      transparent
-      animationType="fade"
-      visible={visible}
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.formModal}>
-          <ScrollView
-            contentContainerStyle={styles.formContent}
-            keyboardShouldPersistTaps="handled"
+    <>
+      <Modal
+        transparent
+        animationType="fade"
+        visible={visible}
+        onRequestClose={() => {
+          if (receiptPreview) setReceiptPreview(null);
+          else onClose();
+        }}
+      >
+        {receiptPreview ? (
+          <OfficialReceiptView
+            onClose={() => setReceiptPreview(null)}
+            receipt={receiptPreview}
+          />
+        ) : (
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalOverlay}
           >
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalEyebrow}>
-                  Transaction{sale ? ` #${sale.id}` : ""}
-                </Text>
-                <Text style={styles.modalTitle}>
-                  {isEdit ? "Edit sale" : "Record new sale"}
-                </Text>
-                <Text style={styles.modalSubtitle}>
-                  {isEdit
-                    ? "Update each sale line."
-                    : "Stock is deducted when the sale is saved."}
-                </Text>
-              </View>
-              <Pressable disabled={isSaving} onPress={onClose}>
-                <Ionicons name="close" size={24} color="#173b24" />
-              </Pressable>
-            </View>
-            {!isEdit && (
-              <>
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.label}>Customer</Text>
-                  <View style={styles.customerSearchBox}>
-                    <Ionicons name="search-outline" size={20} color="#6f7b73" />
-                    <TextInput
-                      value={customerQuery}
-                      onChangeText={(value) => {
-                        setCustomerQuery(value);
-                        setSelectedCustomer(null);
-                        setShowCustomerSuggestions(true);
-                        setError("");
-                      }}
-                      onFocus={() => setShowCustomerSuggestions(true)}
-                      editable={!isSaving && !customersLoading}
-                      autoCapitalize="words"
-                      autoCorrect={false}
-                      placeholder={
-                        customersLoading
-                          ? "Loading customers..."
-                          : "Search customer name"
-                      }
-                      placeholderTextColor="#7a857d"
-                      style={styles.customerSearchInput}
-                    />
-                  </View>
-
-                  {showCustomerSuggestions &&
-                  !customersLoading &&
-                  !customerError ? (
-                    <View style={styles.customerSuggestions}>
-                      {matchingCustomers.length ? (
-                        <ScrollView
-                          keyboardShouldPersistTaps="handled"
-                          nestedScrollEnabled
-                          style={styles.customerSuggestionList}
-                        >
-                          {matchingCustomers.map((customer) => (
-                            <Pressable
-                              accessibilityRole="button"
-                              key={customer.id}
-                              onPress={() => {
-                                setSelectedCustomer(customer);
-                                setCustomerQuery(customer.name);
-                                setShowCustomerSuggestions(false);
-                                setError("");
-                              }}
-                              style={styles.customerSuggestion}
-                            >
-                              <Text style={styles.customerSuggestionName}>
-                                {customer.name}
-                              </Text>
-                              <Text style={styles.customerSuggestionNumber}>
-                                {customer.number}
-                              </Text>
-                            </Pressable>
-                          ))}
-                        </ScrollView>
-                      ) : (
-                        <Text style={styles.noCustomerText}>
-                          No matching customers found.
-                        </Text>
-                      )}
-                    </View>
-                  ) : null}
-
-                  {customerError ? (
-                    <View style={styles.customerErrorBox}>
-                      <Text style={styles.customerErrorText}>
-                        {customerError}
-                      </Text>
-                      <Pressable
-                        onPress={() =>
-                          setCustomerRequestVersion((version) => version + 1)
-                        }
-                      >
-                        <Text style={styles.customerRetryText}>Retry</Text>
-                      </Pressable>
-                    </View>
-                  ) : null}
-                </View>
-
-                <View style={styles.fieldGroupCompact}>
-                  <Text style={styles.label}>Contact Number</Text>
-                  <View style={[styles.field, styles.readOnlyField]}>
-                    <Ionicons name="call-outline" size={19} color="#6f7b73" />
-                    <TextInput
-                      editable={false}
-                      value={selectedCustomer?.number ?? ""}
-                      placeholder="Select a customer first"
-                      placeholderTextColor="#7a857d"
-                      style={styles.readOnlyInput}
-                    />
-                  </View>
-                </View>
-              </>
-            )}
-            {lines.map((line, index) => {
-              const item = inventory.find(
-                (entry) => entry.id === line.inventoryId,
-              );
-              const quantity = Number(line.quantity);
-              const unitPrice = item
-                ? automaticUnitPrice(item, quantity)
-                : null;
-              return (
-                <View style={styles.lineCard} key={line.id}>
-                  <View style={styles.lineHeader}>
-                    <Text style={styles.lineTitle}>
-                      {item?.item ?? "Item"}{" "}
+            <View style={styles.formModal}>
+              <KeyboardAwareScrollView
+                automaticallyAdjustKeyboardInsets
+                contentContainerStyle={styles.formContent}
+                keyboardDismissMode="on-drag"
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.modalHeader}>
+                  <View>
+                    <Text style={styles.modalEyebrow}>
+                      Transaction{sale ? ` #${sale.id}` : ""}
                     </Text>
-                    {!isEdit && lines.length > 1 && (
-                      <Pressable onPress={() => removeLine(line.id)}>
-                        <Text style={styles.removeText}>Remove</Text>
-                      </Pressable>
-                    )}
+                    <Text style={styles.modalTitle}>
+                      {isEdit ? "Edit sale" : "Record new sale"}
+                    </Text>
+                    <Text style={styles.modalSubtitle}>
+                      {isEdit
+                        ? "Update each sale line."
+                        : "Stock is deducted when the sale is saved."}
+                    </Text>
                   </View>
-                  {!isEdit && (
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.productChoices}
-                    >
-                      {inventory
-                        .filter(
-                          (entry) =>
-                            entry.quantity > 0 &&
-                            (entry.id === line.inventoryId ||
-                              !selectedIds.has(entry.id)),
-                        )
-                        .map((entry) => (
-                          <Pressable
-                            key={entry.id}
-                            onPress={() =>
-                              updateLine(line.id, {
-                                inventoryId: entry.id,
-                                quantity: "1",
-                              })
-                            }
-                            style={[
-                              styles.productChoice,
-                              entry.id === line.inventoryId &&
-                                styles.selectedProductChoice,
-                            ]}
-                          >
-                            <Text style={styles.productChoiceText}>
-                              {entry.item}
+                  <Pressable disabled={isSaving} onPress={onClose}>
+                    <Ionicons name="close" size={24} color="#173b24" />
+                  </Pressable>
+                </View>
+                {!isEdit && (
+                  <>
+                    <View style={styles.fieldGroup}>
+                      <Text style={styles.label}>Customer</Text>
+                      <View style={styles.customerSearchBox}>
+                        <Ionicons
+                          name="search-outline"
+                          size={20}
+                          color="#6f7b73"
+                        />
+                        <TextInput
+                          value={customerQuery}
+                          onChangeText={(value) => {
+                            setCustomerQuery(value);
+                            setSelectedCustomer(null);
+                            setShowCustomerSuggestions(true);
+                            setIsPaymentMethodOpen(false);
+                            setError("");
+                          }}
+                          onFocus={() => {
+                            setShowCustomerSuggestions(true);
+                            setIsPaymentMethodOpen(false);
+                          }}
+                          editable={!isSaving && !customersLoading}
+                          autoCapitalize="words"
+                          autoCorrect={false}
+                          placeholder={
+                            customersLoading
+                              ? "Loading customers..."
+                              : "Search customer name"
+                          }
+                          placeholderTextColor="#7a857d"
+                          style={styles.customerSearchInput}
+                        />
+                      </View>
+
+                      {showCustomerSuggestions &&
+                      !customersLoading &&
+                      !customerError ? (
+                        <View style={styles.customerSuggestions}>
+                          {matchingCustomers.length ? (
+                            <ScrollView
+                              keyboardShouldPersistTaps="handled"
+                              nestedScrollEnabled
+                              showsVerticalScrollIndicator={
+                                matchingCustomers.length > 3
+                              }
+                              style={styles.customerSuggestionList}
+                            >
+                              {matchingCustomers.map((customer) => (
+                                <Pressable
+                                  accessibilityRole="button"
+                                  key={customer.id}
+                                  onPress={() => {
+                                    setSelectedCustomer(customer);
+                                    setCustomerQuery(customer.name);
+                                    setShowCustomerSuggestions(false);
+                                    setError("");
+                                  }}
+                                  style={styles.customerSuggestion}
+                                >
+                                  <Text
+                                    numberOfLines={1}
+                                    style={styles.customerSuggestionName}
+                                  >
+                                    {customer.name}
+                                  </Text>
+                                  <Text
+                                    numberOfLines={1}
+                                    style={styles.customerSuggestionNumber}
+                                  >
+                                    {customer.number}
+                                  </Text>
+                                </Pressable>
+                              ))}
+                            </ScrollView>
+                          ) : (
+                            <Text style={styles.noCustomerText}>
+                              No matching customers found.
                             </Text>
+                          )}
+                        </View>
+                      ) : null}
+
+                      {customerError ? (
+                        <View style={styles.customerErrorBox}>
+                          <Text style={styles.customerErrorText}>
+                            {customerError}
+                          </Text>
+                          <Pressable
+                            onPress={() =>
+                              setCustomerRequestVersion(
+                                (version) => version + 1,
+                              )
+                            }
+                          >
+                            <Text style={styles.customerRetryText}>Retry</Text>
                           </Pressable>
-                        ))}
-                    </ScrollView>
-                  )}
-                  <View style={styles.lineFields}>
-                    <View style={styles.smallField}>
-                      <Text style={styles.label}>Quantity</Text>
-                      <TextInput
-                        value={line.quantity}
-                        onChangeText={(value) =>
-                          updateLine(line.id, { quantity: value })
-                        }
-                        editable={!isSaving}
-                        keyboardType="number-pad"
-                        style={styles.field}
-                      />
+                        </View>
+                      ) : null}
                     </View>
-                    <View style={styles.smallField}>
-                      <Text style={styles.label}>Automatic price</Text>
-                      <View style={[styles.field, styles.priceField]}>
-                        <Text style={styles.priceFieldText}>
-                          {unitPrice === null
-                            ? "Unavailable"
-                            : `${currency.format(unitPrice)} each`}
-                        </Text>
+
+                    <View style={styles.fieldGroupCompact}>
+                      <Text style={styles.label}>Contact Number</Text>
+                      <View style={[styles.field, styles.readOnlyField]}>
+                        <Ionicons
+                          name="call-outline"
+                          size={19}
+                          color="#6f7b73"
+                        />
+                        <TextInput
+                          editable={false}
+                          value={selectedCustomer?.number ?? ""}
+                          placeholder="Select a customer first"
+                          placeholderTextColor="#7a857d"
+                          style={styles.readOnlyInput}
+                        />
                       </View>
                     </View>
-                  </View>
-                </View>
-              );
-            })}
-            {!isEdit && (
-              <Pressable
-                disabled={
-                  isSaving ||
-                  selectedIds.size >=
-                    inventory.filter((item) => item.quantity > 0).length
-                }
-                onPress={addLine}
-                style={styles.addLineButton}
-              >
-                <Ionicons name="add" size={17} color="#173b24" />
-                <Text style={styles.addLineText}>Add another item</Text>
-              </Pressable>
-            )}
-            {error ? <Text style={styles.formError}>{error}</Text> : null}
-            <View style={styles.saleFormActions}>
-              {!isEdit ? (
-                <Pressable
-                  disabled={isSaving}
-                  onPress={() => Alert.alert("Generate OR", futureOrMessage)}
-                  style={styles.generateOrButton}
-                >
-                  <Ionicons name="receipt-outline" size={19} color="#173b24" />
-                  <Text style={styles.generateOrText}>Generate OR</Text>
-                </Pressable>
-              ) : null}
-              <Pressable
-                disabled={isSaving || !lines.length}
-                onPress={() => void save()}
-                style={[styles.saveButton, !isEdit && styles.halfActionButton]}
-              >
-                {isSaving ? (
-                  <ActivityIndicator color="#ffffff" />
-                ) : (
-                  <Ionicons
-                    name={isEdit ? "save-outline" : "add"}
-                    size={19}
-                    color="#ffffff"
-                  />
+
+                    <View style={styles.fieldGroupCompact}>
+                      <Text style={styles.label}>Payment Method</Text>
+                      <Pressable
+                        accessibilityLabel="Select payment method"
+                        accessibilityRole="button"
+                        disabled={isSaving}
+                        onPress={() => {
+                          setShowCustomerSuggestions(false);
+                          setIsPaymentMethodOpen((isOpen) => !isOpen);
+                        }}
+                        style={styles.paymentSelect}
+                      >
+                        <Text
+                          style={[
+                            styles.paymentSelectText,
+                            !paymentMethod && styles.paymentPlaceholder,
+                          ]}
+                        >
+                          {paymentMethod
+                            ? formatPaymentMethod(paymentMethod)
+                            : "Select payment method"}
+                        </Text>
+                        <Ionicons
+                          name={
+                            isPaymentMethodOpen ? "chevron-up" : "chevron-down"
+                          }
+                          size={19}
+                          color="#173b24"
+                        />
+                      </Pressable>
+                      {isPaymentMethodOpen ? (
+                        <View style={styles.paymentOptions}>
+                          {paymentMethodOptions.map((option) => (
+                            <Pressable
+                              accessibilityRole="button"
+                              key={option.value}
+                              onPress={() => {
+                                setPaymentMethod(option.value);
+                                setIsPaymentMethodOpen(false);
+                                setError("");
+                              }}
+                              style={[
+                                styles.paymentOption,
+                                paymentMethod === option.value &&
+                                  styles.selectedPaymentOption,
+                              ]}
+                            >
+                              <Text style={styles.paymentOptionText}>
+                                {option.label}
+                              </Text>
+                              {paymentMethod === option.value ? (
+                                <Ionicons
+                                  name="checkmark-circle"
+                                  size={19}
+                                  color="#258143"
+                                />
+                              ) : null}
+                            </Pressable>
+                          ))}
+                        </View>
+                      ) : null}
+                    </View>
+                  </>
                 )}
-                <Text style={styles.saveButtonText}>
-                  {isSaving ? "Saving..." : isEdit ? "Update sale" : "Save sale"}
-                </Text>
-              </Pressable>
+                {lines.map((line, index) => {
+                  const item = inventory.find(
+                    (entry) => entry.id === line.inventoryId,
+                  );
+                  const quantity = Number(line.quantity);
+                  const unitPrice = item
+                    ? automaticUnitPrice(item, quantity)
+                    : null;
+                  return (
+                    <View style={styles.lineCard} key={line.id}>
+                      <View style={styles.lineHeader}>
+                        <Text style={styles.lineTitle}>
+                          {item?.item ?? "Item"}{" "}
+                        </Text>
+                        {!isEdit && lines.length > 1 && (
+                          <Pressable onPress={() => removeLine(line.id)}>
+                            <Text style={styles.removeText}>Remove</Text>
+                          </Pressable>
+                        )}
+                      </View>
+                      {!isEdit && (
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={styles.productChoices}
+                        >
+                          {inventory
+                            .filter(
+                              (entry) =>
+                                entry.quantity > 0 &&
+                                (entry.id === line.inventoryId ||
+                                  !selectedIds.has(entry.id)),
+                            )
+                            .map((entry) => (
+                              <Pressable
+                                key={entry.id}
+                                onPress={() =>
+                                  updateLine(line.id, {
+                                    inventoryId: entry.id,
+                                    quantity: "1",
+                                  })
+                                }
+                                style={[
+                                  styles.productChoice,
+                                  entry.id === line.inventoryId &&
+                                    styles.selectedProductChoice,
+                                ]}
+                              >
+                                <Text style={styles.productChoiceText}>
+                                  {entry.item}
+                                </Text>
+                              </Pressable>
+                            ))}
+                        </ScrollView>
+                      )}
+                      <View style={styles.lineFields}>
+                        <View style={styles.smallField}>
+                          <Text style={styles.label}>Quantity</Text>
+                          <TextInput
+                            value={line.quantity}
+                            onChangeText={(value) =>
+                              updateLine(line.id, { quantity: value })
+                            }
+                            editable={!isSaving}
+                            keyboardType="number-pad"
+                            style={styles.field}
+                          />
+                        </View>
+                        <View style={styles.smallField}>
+                          <Text style={styles.label}>Automatic price</Text>
+                          <View style={[styles.field, styles.priceField]}>
+                            <Text style={styles.priceFieldText}>
+                              {unitPrice === null
+                                ? "Unavailable"
+                                : `${currency.format(unitPrice)} each`}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
+                {!isEdit && (
+                  <Pressable
+                    disabled={
+                      isSaving ||
+                      selectedIds.size >=
+                        inventory.filter((item) => item.quantity > 0).length
+                    }
+                    onPress={addLine}
+                    style={styles.addLineButton}
+                  >
+                    <Ionicons name="add" size={17} color="#173b24" />
+                    <Text style={styles.addLineText}>Add another item</Text>
+                  </Pressable>
+                )}
+                {error ? <Text style={styles.formError}>{error}</Text> : null}
+                <View style={styles.saleFormActions}>
+                  {!isEdit ? (
+                    <Pressable
+                      disabled={isSaving}
+                      onPress={openReceiptPreview}
+                      style={styles.generateOrButton}
+                    >
+                      <Ionicons
+                        name="receipt-outline"
+                        size={19}
+                        color="#173b24"
+                      />
+                      <Text style={styles.generateOrText}>View OR</Text>
+                    </Pressable>
+                  ) : null}
+                  <Pressable
+                    disabled={isSaving || !lines.length}
+                    onPress={() => void save()}
+                    style={[
+                      styles.saveButton,
+                      !isEdit && styles.halfActionButton,
+                    ]}
+                  >
+                    {isSaving ? (
+                      <ActivityIndicator color="#ffffff" />
+                    ) : (
+                      <Ionicons
+                        name={isEdit ? "save-outline" : "add"}
+                        size={19}
+                        color="#ffffff"
+                      />
+                    )}
+                    <Text style={styles.saveButtonText}>
+                      {isSaving
+                        ? "Saving..."
+                        : isEdit
+                          ? "Update sale"
+                          : "Save sale"}
+                    </Text>
+                  </Pressable>
+                </View>
+              </KeyboardAwareScrollView>
             </View>
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
+          </KeyboardAvoidingView>
+        )}
+      </Modal>
+    </>
   );
 }
 
@@ -636,7 +852,9 @@ export function TransactionScreen({
   const today = manilaDateKey(new Date());
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [inventory, setInventory] = useState<InventoryRecord[]>([]);
-  const [fundTransactions, setFundTransactions] = useState<FundTransactionRecord[]>([]);
+  const [fundTransactions, setFundTransactions] = useState<
+    FundTransactionRecord[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -648,30 +866,35 @@ export function TransactionScreen({
   const [editingSale, setEditingSale] = useState<SaleRecord | null | undefined>(
     undefined,
   );
-  const loadData = useCallback(async (refresh = false) => {
-    if (refresh) setRefreshing(true);
-    else setLoading(true);
-    setError("");
-    try {
-      const [nextSales, nextInventory, nextFundTransactions] = await Promise.all([
-        getSales(),
-        getInventoryItems(),
-        isAdmin ? getFundTransactions() : Promise.resolve([]),
-      ]);
-      setSales(nextSales);
-      setInventory(nextInventory);
-      setFundTransactions(nextFundTransactions);
-    } catch (loadError) {
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : "Sales could not be loaded.",
-      );
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [isAdmin]);
+  const [selectedSale, setSelectedSale] = useState<SaleRecord | null>(null);
+  const loadData = useCallback(
+    async (refresh = false) => {
+      if (refresh) setRefreshing(true);
+      else setLoading(true);
+      setError("");
+      try {
+        const [nextSales, nextInventory, nextFundTransactions] =
+          await Promise.all([
+            getSales(),
+            getInventoryItems(),
+            isAdmin ? getFundTransactions() : Promise.resolve([]),
+          ]);
+        setSales(nextSales);
+        setInventory(nextInventory);
+        setFundTransactions(nextFundTransactions);
+      } catch (loadError) {
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Sales could not be loaded.",
+        );
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [isAdmin],
+  );
   useEffect(() => {
     void loadData();
   }, [loadData, fundsRefreshKey]);
@@ -743,7 +966,10 @@ export function TransactionScreen({
   return (
     <View style={styles.screen}>
       <ScrollView
+        automaticallyAdjustKeyboardInsets
         contentContainerStyle={styles.content}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -752,18 +978,12 @@ export function TransactionScreen({
           />
         }
       >
-        <Pressable onPress={onBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#111b14" />
-        </Pressable>
-        <Text style={styles.currentDate}>
-          {new Date().toLocaleDateString("en-PH", {
-            weekday: "long",
-            month: "long",
-            day: "numeric",
-          })}
-        </Text>
-        <Text style={styles.title}>Transaction activity</Text>
-        <Text style={styles.subtitle}>Sales recorded in the database.</Text>
+        <AuthenticatedScreenHeader
+          backAccessibilityLabel="Back to Overview"
+          onBack={onBack}
+          subtitle="Sales recorded in the database."
+          title="Transaction Activity"
+        />
         <View style={styles.rangeToggle}>
           {(["daily", "weekly"] as DateRange[]).map((value) => (
             <Pressable
@@ -790,6 +1010,8 @@ export function TransactionScreen({
             <Text style={styles.sectionTitle}>Sales by Date (Last 7 Days)</Text>
             <View style={styles.weekButtons}>
               <Pressable
+                accessibilityLabel="Show previous week"
+                accessibilityRole="button"
                 onPress={() => {
                   setRangeEndDate((date) => shiftDate(date, -7));
                   setSelectedDate(null);
@@ -799,6 +1021,8 @@ export function TransactionScreen({
                 <Ionicons name="arrow-back" size={19} color="#173b24" />
               </Pressable>
               <Pressable
+                accessibilityLabel="Show next week"
+                accessibilityRole="button"
                 onPress={() => {
                   setRangeEndDate((date) => shiftDate(date, 7));
                   setSelectedDate(null);
@@ -853,15 +1077,20 @@ export function TransactionScreen({
               style={styles.dateButton}
             >
               <Ionicons name="calendar-outline" size={20} color="#173b24" />
-              <Text style={styles.dateButtonText}>
+              <Text numberOfLines={1} style={styles.dateButtonText}>
                 {selectedDate ? displayDate(selectedDate, true) : "Select date"}
               </Text>
             </Pressable>
             <Pressable
+              accessibilityLabel="Add a new sale"
+              accessibilityRole="button"
               onPress={() => setEditingSale(null)}
-              style={styles.addSaleButton}
+              style={({ pressed }) => [
+                styles.addSaleButton,
+                pressed && styles.addSaleButtonPressed,
+              ]}
             >
-              <Ionicons name="add" size={23} color="#ffffff" />
+              <Ionicons name="add" size={22} color="#ffffff" />
               <Text style={styles.addSaleText}>Add sale</Text>
             </Pressable>
           </View>
@@ -901,6 +1130,7 @@ export function TransactionScreen({
                 <SaleRow
                   key={sale.id}
                   sale={sale}
+                  onView={() => setSelectedSale(sale)}
                   onEdit={() => setEditingSale(sale)}
                   onRemove={() => removeSale(sale)}
                 />
@@ -950,6 +1180,11 @@ export function TransactionScreen({
         onClose={() => setEditingSale(undefined)}
         onSaved={savedSale}
       />
+      <SaleDetailsModal
+        key={selectedSale?.id ?? "closed"}
+        onClose={() => setSelectedSale(null)}
+        sale={selectedSale}
+      />
     </View>
   );
 }
@@ -995,7 +1230,9 @@ function FundHistory({
                   {currency.format(transaction.amount)}
                 </Text>
               </View>
-              <Text style={styles.fundDescription}>{transaction.description}</Text>
+              <Text style={styles.fundDescription}>
+                {transaction.description}
+              </Text>
               <Text style={styles.fundDate}>
                 {new Date(transaction.createdAt).toLocaleString("en-PH", {
                   month: "short",
@@ -1017,17 +1254,8 @@ function FundHistory({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#f8faf7" },
-  content: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 36 },
-  backButton: { width: 40, height: 40, justifyContent: "center" },
-  currentDate: {
-    color: "#69746d",
-    fontSize: 14,
-    fontWeight: "600",
-    marginTop: 4,
-  },
-  title: { color: "#101813", fontSize: 28, fontWeight: "800", marginTop: 3 },
-  subtitle: { color: "#66716a", fontSize: 16, marginTop: 5 },
+  screen: { flex: 1, backgroundColor: "#f4f6f1" },
+  content: { padding: 16, paddingBottom: 36 },
   rangeToggle: { flexDirection: "row", gap: 4, marginTop: 17 },
   rangeButton: {
     flex: 1,
@@ -1050,12 +1278,12 @@ const styles = StyleSheet.create({
     marginTop: 18,
     padding: 14,
   },
-  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  sectionHeader: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   sectionTitle: { flex: 1, color: "#111a14", fontSize: 18, fontWeight: "800" },
   weekButtons: { flexDirection: "row", gap: 8 },
   weekButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -1100,6 +1328,7 @@ const styles = StyleSheet.create({
   controlRow: { flexDirection: "row", gap: 10, marginTop: 14 },
   dateButton: {
     flex: 1.25,
+    minWidth: 0,
     height: 52,
     flexDirection: "row",
     alignItems: "center",
@@ -1111,12 +1340,14 @@ const styles = StyleSheet.create({
   },
   dateButtonText: {
     flex: 1,
+    minWidth: 0,
     color: "#173b24",
     fontSize: 13,
     fontWeight: "800",
   },
   addSaleButton: {
-    flex: 1,
+    flex: 0.95,
+    minWidth: 118,
     height: 52,
     flexDirection: "row",
     alignItems: "center",
@@ -1125,6 +1356,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "#173b24",
   },
+  addSaleButtonPressed: { backgroundColor: "#245334", opacity: 0.92 },
   addSaleText: { color: "#ffffff", fontSize: 15, fontWeight: "800" },
   state: {
     minHeight: 120,
@@ -1200,10 +1432,10 @@ const styles = StyleSheet.create({
     marginTop: 3,
     textAlign: "right",
   },
-  rowActions: { flexDirection: "row", gap: 6, marginTop: 7 },
+  rowActions: { flexDirection: "row", gap: 8, marginTop: 7 },
   iconAction: {
-    width: 28,
-    height: 28,
+    width: 44,
+    height: 44,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -1234,7 +1466,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "#e1f1df",
   },
-  totalDetails: { flex: 1 },
+  totalDetails: { flex: 1, minWidth: 0 },
   totalLabel: { color: "#66736c", fontSize: 13 },
   totalValue: {
     color: "#17281b",
@@ -1242,7 +1474,12 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginTop: 2,
   },
-  totalCount: { color: "#566259", fontSize: 13 },
+  totalCount: {
+    flexShrink: 1,
+    color: "#566259",
+    fontSize: 13,
+    textAlign: "right",
+  },
   modalOverlay: {
     flex: 1,
     alignItems: "center",
@@ -1251,6 +1488,7 @@ const styles = StyleSheet.create({
   },
   dateModal: {
     width: "100%",
+    maxWidth: 600,
     maxHeight: "70%",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -1259,6 +1497,7 @@ const styles = StyleSheet.create({
   },
   formModal: {
     width: "100%",
+    maxWidth: 600,
     maxHeight: "92%",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -1322,8 +1561,9 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     backgroundColor: "#ffffff",
   },
-  customerSuggestionList: { maxHeight: 190 },
+  customerSuggestionList: { maxHeight: 132 },
   customerSuggestion: {
+    height: 44,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -1331,7 +1571,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#edf0eb",
     paddingHorizontal: 12,
-    paddingVertical: 12,
   },
   customerSuggestionName: {
     flex: 1,
@@ -1371,6 +1610,49 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "900",
     textDecorationLine: "underline",
+  },
+  paymentSelect: {
+    height: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    borderWidth: 1,
+    borderColor: "#d7ded5",
+    borderRadius: 10,
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 12,
+  },
+  paymentSelectText: {
+    flex: 1,
+    color: "#173b24",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  paymentPlaceholder: { color: "#7a857d", fontWeight: "500" },
+  paymentOptions: {
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#d7ded5",
+    borderRadius: 10,
+    backgroundColor: "#ffffff",
+  },
+  paymentOption: {
+    minHeight: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#edf0eb",
+    paddingHorizontal: 12,
+  },
+  selectedPaymentOption: { backgroundColor: "#eaf2e9" },
+  paymentOptionText: {
+    flex: 1,
+    color: "#173b24",
+    fontSize: 14,
+    fontWeight: "700",
   },
   lineCard: {
     borderWidth: 1,
@@ -1481,14 +1763,35 @@ const styles = StyleSheet.create({
     marginTop: 18,
     paddingTop: 17,
   },
-  fundTitle: { color: "#18251a", fontSize: 18, fontWeight: "800", paddingHorizontal: 16 },
-  fundSubtitle: { color: "#768178", fontSize: 13, marginTop: 4, paddingHorizontal: 16, paddingBottom: 12 },
+  fundTitle: {
+    color: "#18251a",
+    fontSize: 18,
+    fontWeight: "800",
+    paddingHorizontal: 16,
+  },
+  fundSubtitle: {
+    color: "#768178",
+    fontSize: 13,
+    marginTop: 4,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
   fundRow: { borderTopWidth: 1, borderTopColor: "#edf0eb", padding: 16 },
-  fundRowHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  fundRowHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
   fundType: { fontSize: 12, fontWeight: "800" },
   fundAmount: { fontSize: 15, fontWeight: "800" },
   incomeText: { color: "#28643c" },
   expenseText: { color: "#9b431f" },
-  fundDescription: { color: "#35453a", fontSize: 13, fontWeight: "700", marginTop: 7 },
+  fundDescription: {
+    color: "#35453a",
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 7,
+  },
   fundDate: { color: "#89928b", fontSize: 11, marginTop: 5 },
 });

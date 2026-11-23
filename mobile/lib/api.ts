@@ -4,8 +4,7 @@ import type {
   OilSize,
   ProductCategory,
 } from "../types/inventory";
-import { getAccessToken } from "./auth";
-import { API_BASE_URL } from "./config";
+import { authenticatedFetch } from "./auth";
 
 const INVENTORY_PATH = "/api/v1/inventory/get-item";
 const ADD_INVENTORY_PATH = "/api/v1/inventory/add-stock";
@@ -15,9 +14,52 @@ const RETURNS_PATH = "/api/v1/returns/get-returns";
 export interface SaleRecord {
   id: number;
   customerName: string;
+  customerNumber: string | null;
+  paymentMethod: PaymentMethod | null;
+  hasOfficialReceipt: boolean;
   items: SaleItemRecord[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface OfficialReceiptRecord {
+  id: number;
+  saleId: number;
+  customerName: string;
+  customerNumber: string | null;
+  customerAddress: string | null;
+  customerLandmark: string | null;
+  paymentMethod: PaymentMethod | null;
+  items: OfficialReceiptItemRecord[];
+  totalAmount: number;
+  generatedAt: string;
+  updatedAt: string;
+}
+
+export interface OfficialReceiptItemRecord {
+  id: number;
+  itemName: string;
+  itemCategory: ProductCategory;
+  quantity: number;
+  unitPrice: number;
+  subtotal: number;
+}
+
+export type PaymentMethod = "gcash" | "cod";
+
+export const paymentMethodOptions: {
+  value: PaymentMethod;
+  label: string;
+}[] = [
+  { value: "gcash", label: "GCash Payment" },
+  { value: "cod", label: "Cash on Delivery (COD)" },
+];
+
+export function formatPaymentMethod(paymentMethod: PaymentMethod | null) {
+  return (
+    paymentMethodOptions.find((option) => option.value === paymentMethod)
+      ?.label ?? "Not recorded"
+  );
 }
 
 export interface SaleItemRecord {
@@ -130,6 +172,9 @@ export interface UpdateInventoryItemInput {
 
 export interface CreateSaleBatchInput {
   customerName: string;
+  customerId: number;
+  paymentMethod: PaymentMethod;
+  generateOfficialReceipt: boolean;
   items: { inventoryId: number; quantity: number }[];
 }
 
@@ -244,6 +289,9 @@ export async function createSaleBatch(
     "POST",
     {
       customer_name: input.customerName,
+      customer_id: input.customerId,
+      payment_method: input.paymentMethod,
+      generate_official_receipt: input.generateOfficialReceipt,
       items: input.items.map((item) => ({
         inventory_id: item.inventoryId,
         quantity: item.quantity,
@@ -253,6 +301,18 @@ export async function createSaleBatch(
   );
 
   return parseSale(responseBody);
+}
+
+export async function getOfficialReceipt(
+  saleId: number,
+): Promise<OfficialReceiptRecord> {
+  const responseBody = await getApiResponse(
+    `/api/v1/sales/${saleId}/official-receipt`,
+    undefined,
+    "The official receipt could not be loaded.",
+  );
+
+  return parseOfficialReceipt(responseBody);
 }
 
 export async function updateSale(
@@ -459,8 +519,7 @@ async function getApiResponse(
   signal: AbortSignal | undefined,
   fallbackMessage: string,
 ): Promise<unknown> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: await getApiHeaders(),
+  const response = await authenticatedFetch(path, {
     signal,
   });
   const responseBody: unknown = await response.json().catch(() => null);
@@ -478,10 +537,9 @@ async function sendApiRequest(
   body: Record<string, unknown>,
   fallbackMessage: string,
 ): Promise<unknown> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await authenticatedFetch(path, {
     method,
     headers: {
-      ...(await getApiHeaders()),
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
@@ -496,23 +554,13 @@ async function sendApiRequest(
 }
 
 async function deleteApiResource(path: string, fallbackMessage: string) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await authenticatedFetch(path, {
     method: "DELETE",
-    headers: await getApiHeaders(),
   });
   if (!response.ok) {
     const responseBody: unknown = await response.json().catch(() => null);
     throw new Error(getApiErrorMessage(responseBody, fallbackMessage));
   }
-}
-
-async function getApiHeaders() {
-  const accessToken = await getAccessToken();
-
-  return {
-    Accept: "application/json",
-    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-  };
 }
 
 function parseInventoryItem(value: unknown): InventoryRecord {
@@ -733,9 +781,87 @@ function parseSale(value: unknown): SaleRecord {
   return {
     id: value.id,
     customerName: value.customer_name,
+    customerNumber:
+      typeof value.customer_number === "string" ? value.customer_number : null,
+    paymentMethod: parsePaymentMethod(value.payment_method),
+    hasOfficialReceipt: value.has_official_receipt === true,
     items: value.items.map(parseSaleItem),
     createdAt: value.created_at,
     updatedAt: value.updated_at,
+  };
+}
+
+function parseOfficialReceipt(value: unknown): OfficialReceiptRecord {
+  if (!isRecord(value) || !Array.isArray(value.items)) {
+    throw new Error("The official receipt API returned an invalid receipt.");
+  }
+
+  const totalAmount = parsePrice(value.total_amount);
+  if (
+    !isPositiveInteger(value.id) ||
+    !isPositiveInteger(value.sale_id) ||
+    typeof value.customer_name !== "string" ||
+    !value.customer_name.trim() ||
+    (value.customer_number !== null &&
+      typeof value.customer_number !== "string") ||
+    (value.customer_address !== null &&
+      typeof value.customer_address !== "string") ||
+    (value.customer_landmark !== null &&
+      typeof value.customer_landmark !== "string") ||
+    totalAmount === null ||
+    !isValidDate(value.generated_at) ||
+    !isValidDate(value.updated_at)
+  ) {
+    throw new Error("The official receipt API returned an invalid receipt.");
+  }
+
+  return {
+    id: value.id,
+    saleId: value.sale_id,
+    customerName: value.customer_name,
+    customerNumber: value.customer_number,
+    customerAddress: value.customer_address,
+    customerLandmark: value.customer_landmark,
+    paymentMethod: parsePaymentMethod(value.payment_method),
+    items: value.items.map(parseOfficialReceiptItem),
+    totalAmount,
+    generatedAt: value.generated_at,
+    updatedAt: value.updated_at,
+  };
+}
+
+function parsePaymentMethod(value: unknown): PaymentMethod | null {
+  if (value === null || value === undefined) return null;
+  if (value === "gcash" || value === "cod") return value;
+  throw new Error("The API returned an invalid payment method.");
+}
+
+function parseOfficialReceiptItem(value: unknown): OfficialReceiptItemRecord {
+  if (!isRecord(value)) {
+    throw new Error("The official receipt API returned an invalid item.");
+  }
+
+  const unitPrice = parsePrice(value.unit_price);
+  const subtotal = parsePrice(value.subtotal);
+  if (
+    !isPositiveInteger(value.id) ||
+    typeof value.item_name !== "string" ||
+    !value.item_name.trim() ||
+    !isProductCategory(value.item_category) ||
+    !isPositiveInteger(value.quantity) ||
+    unitPrice === null ||
+    subtotal === null
+  ) {
+    throw new Error("The official receipt API returned an invalid item.");
+  }
+
+  return {
+    id: value.id,
+    itemName: value.item_name,
+    itemCategory: value.item_category,
+    quantity: value.quantity,
+    unitPrice,
+    subtotal,
   };
 }
 

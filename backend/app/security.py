@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta, timezone
+import hashlib
+import secrets
 from typing import Annotated
 
 import jwt
@@ -24,6 +26,14 @@ def hash_password(password: str) -> str:
 
 def verify_password(password: str, stored_password_hash: str) -> bool:
     return password_hash.verify(password, stored_password_hash)
+
+
+def create_refresh_token() -> str:
+    return secrets.token_urlsafe(48)
+
+
+def hash_refresh_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 def create_access_token(user: User) -> str:

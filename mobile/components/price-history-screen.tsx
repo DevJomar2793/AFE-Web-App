@@ -15,6 +15,7 @@ import {
   type InventoryPriceHistoryRecord,
   type PriceChangeDirection,
 } from "../lib/api";
+import { AuthenticatedScreenHeader } from "./authenticated-screen-header";
 
 interface PriceHistoryScreenProps {
   onBack: () => void;
@@ -92,22 +93,12 @@ export function PriceHistoryScreen({ onBack }: PriceHistoryScreenProps) {
           />
         }
         ListHeaderComponent={
-          <View style={styles.header}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Back to Inventory"
-              onPress={onBack}
-              style={styles.backButton}
-            >
-              <Ionicons name="arrow-back" size={19} color="#173b24" />
-            </Pressable>
-            <View style={styles.headerText}>
-              <Text style={styles.title}>Price History</Text>
-              <Text style={styles.subtitle}>
-                Compare recorded inventory purchase costs.
-              </Text>
-            </View>
-          </View>
+          <AuthenticatedScreenHeader
+            backAccessibilityLabel="Back to Inventory"
+            onBack={onBack}
+            subtitle="Compare recorded inventory purchase costs."
+            title="Price History"
+          />
         }
         ListEmptyComponent={
           isLoading ? (
@@ -244,21 +235,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     backgroundColor: "#f4f6f1",
   },
-  content: { padding: 16, paddingBottom: 28, gap: 12 },
-  header: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 4 },
-  backButton: {
-    width: 42,
-    height: 42,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#cfd8cd",
-    backgroundColor: "#ffffff",
-  },
-  headerText: { flex: 1 },
-  title: { fontSize: 24, fontWeight: "900", color: "#17281b" },
-  subtitle: { marginTop: 2, fontSize: 13, color: "#768178" },
+  content: { padding: 16, paddingBottom: 36, gap: 12 },
   card: {
     borderRadius: 18,
     borderWidth: 1,
@@ -298,6 +275,7 @@ const styles = StyleSheet.create({
   errorBox: { alignItems: "center", paddingVertical: 50, gap: 14 },
   errorText: { textAlign: "center", fontSize: 13, fontWeight: "700", color: "#9b3f3f" },
   retryButton: {
+    minHeight: 44,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,

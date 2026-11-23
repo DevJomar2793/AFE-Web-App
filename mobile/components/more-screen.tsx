@@ -5,6 +5,7 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -18,6 +19,7 @@ import {
   type PendingAccountRecord,
 } from "../lib/api";
 import { CustomerInformationScreen } from "./customer-information-screen";
+import { AuthenticatedScreenHeader } from "./authenticated-screen-header";
 
 type MoreView = "menu" | "logs" | "accounts" | "customers";
 
@@ -47,30 +49,37 @@ export function MoreScreen({
 
   return (
     <View style={styles.screen}>
-      <View style={styles.content}>
-        <Text style={styles.title}>More</Text>
-        <Text style={styles.subtitle}>Administrative records and tools.</Text>
-        <MenuButton
-          icon="people-outline"
-          title="Customers"
-          description="View and manage customer contact and delivery details."
-          onPress={() => setView("customers")}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <AuthenticatedScreenHeader
+          subtitle="Administrative records and tools."
+          title="More"
         />
-        <MenuButton
-          icon="time-outline"
-          title="Activity Logs"
-          description="Review successful changes made in the dashboard."
-          onPress={() => setView("logs")}
-        />
-        {isAdmin ? (
+        <View style={styles.menuList}>
           <MenuButton
-            icon="person-add-outline"
-            title="Account Approval"
-            description="Review and approve newly registered accounts."
-            onPress={() => setView("accounts")}
+            icon="people-outline"
+            title="Customers"
+            description="View and manage customer contact and delivery details."
+            onPress={() => setView("customers")}
           />
-        ) : null}
-      </View>
+          <MenuButton
+            icon="time-outline"
+            title="Activity Logs"
+            description="Review successful changes made in the dashboard."
+            onPress={() => setView("logs")}
+          />
+          {isAdmin ? (
+            <MenuButton
+              icon="person-add-outline"
+              title="Account Approval"
+              description="Review and approve newly registered accounts."
+              onPress={() => setView("accounts")}
+            />
+          ) : null}
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -102,12 +111,7 @@ function MenuButton({
 
 function ScreenHeader({ title, onBack }: { title: string; onBack: () => void }) {
   return (
-    <View style={styles.header}>
-      <Pressable accessibilityLabel="Go back" onPress={onBack} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={22} color="#173b24" />
-      </Pressable>
-      <Text style={styles.headerTitle}>{title}</Text>
-    </View>
+    <AuthenticatedScreenHeader onBack={onBack} title={title} />
   );
 }
 
@@ -316,7 +320,11 @@ function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) 
   return (
     <View style={styles.errorBox}>
       <Text style={styles.errorText}>{error}</Text>
-      <Pressable onPress={onRetry} style={styles.retryButton}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onRetry}
+        style={styles.retryButton}
+      >
         <Text style={styles.retryText}>Retry</Text>
       </Pressable>
     </View>
@@ -336,26 +344,22 @@ function formatDate(value: string) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#f4f6f1" },
-  content: { width: "100%", maxWidth: 720, alignSelf: "center", padding: 18 },
-  listContent: { width: "100%", maxWidth: 720, alignSelf: "center", padding: 18, paddingBottom: 40 },
-  title: { color: "#18251a", fontSize: 28, fontWeight: "800" },
-  subtitle: { color: "#768178", fontSize: 14, marginTop: 5, marginBottom: 20 },
+  content: { width: "100%", maxWidth: 720, alignSelf: "center", padding: 16 },
+  listContent: { width: "100%", maxWidth: 720, alignSelf: "center", padding: 16, paddingBottom: 40 },
+  menuList: { marginTop: 22 },
   menuCard: { flexDirection: "row", alignItems: "center", gap: 13, borderWidth: 1, borderColor: "#dce3da", borderRadius: 16, backgroundColor: "#ffffff", marginBottom: 12, padding: 16 },
   menuIcon: { width: 44, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 12, backgroundColor: "#e7f2e6" },
   menuDetails: { flex: 1 },
   menuTitle: { color: "#24362a", fontSize: 16, fontWeight: "800" },
   menuDescription: { color: "#758078", fontSize: 13, lineHeight: 18, marginTop: 3 },
-  header: { flexDirection: "row", alignItems: "center", gap: 10 },
-  backButton: { width: 42, height: 42, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#dce3da", borderRadius: 12, backgroundColor: "#ffffff" },
-  headerTitle: { color: "#18251a", fontSize: 24, fontWeight: "800" },
   sectionSubtitle: { color: "#768178", fontSize: 14, marginTop: 12, marginBottom: 12 },
   recordCard: { borderWidth: 1, borderColor: "#dce3da", borderRadius: 15, backgroundColor: "#ffffff", marginTop: 10, padding: 16 },
-  recordHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 },
+  recordHeader: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 10 },
   actionBadge: { borderRadius: 999, overflow: "hidden", fontSize: 11, fontWeight: "800", paddingHorizontal: 10, paddingVertical: 5 },
   dateText: { color: "#768178", fontSize: 11 },
   recordTitle: { color: "#24362a", fontSize: 15, fontWeight: "800", marginTop: 10 },
   recordDetail: { color: "#66736c", fontSize: 13, marginTop: 5 },
-  approveButton: { height: 43, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, borderRadius: 11, backgroundColor: "#173b24", marginTop: 14 },
+  approveButton: { minHeight: 52, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, borderRadius: 13, backgroundColor: "#125326", marginTop: 14 },
   approveText: { color: "#ffffff", fontSize: 14, fontWeight: "800" },
   disabled: { opacity: 0.55 },
   state: { flexDirection: "row", justifyContent: "center", gap: 9, padding: 28 },
@@ -364,7 +368,7 @@ const styles = StyleSheet.create({
   errorText: { color: "#8f421f", fontSize: 13, fontWeight: "700" },
   inlineError: { borderRadius: 10, backgroundColor: "#fff0e8", color: "#8f421f", fontSize: 13, fontWeight: "700", marginTop: 8, padding: 12 },
   successText: { borderRadius: 10, backgroundColor: "#e9f4e8", color: "#28643c", fontSize: 13, fontWeight: "700", marginTop: 8, padding: 12 },
-  retryButton: { alignSelf: "flex-start", borderRadius: 8, backgroundColor: "#ffffff", marginTop: 10, paddingHorizontal: 13, paddingVertical: 8 },
+  retryButton: { minHeight: 44, alignSelf: "flex-start", justifyContent: "center", borderRadius: 8, backgroundColor: "#ffffff", marginTop: 10, paddingHorizontal: 13, paddingVertical: 8 },
   retryText: { color: "#173b24", fontSize: 13, fontWeight: "800" },
   emptyText: { color: "#7c867e", fontSize: 14, fontWeight: "600", padding: 40, textAlign: "center" },
 });

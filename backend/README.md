@@ -28,6 +28,8 @@ from Git history.
 Set `JWT_SECRET_KEY` to a long, random value that only the backend can read.
 It signs login tokens, so never put it in frontend or mobile environment files.
 `JWT_ACCESS_TOKEN_EXPIRE_HOURS` defaults to `8`.
+`JWT_REFRESH_TOKEN_EXPIRE_DAYS` defaults to `30` and controls the absolute
+Remember Me session lifetime.
 
 Keep `DATABASE_SSL=false` for local PostgreSQL. Set it to `true` when using a
 hosted database such as Supabase so database traffic is encrypted.
@@ -54,6 +56,8 @@ The canonical routes are:
 GET  /api/v1/health
 POST /api/v1/auth/register
 POST /api/v1/auth/login
+POST /api/v1/auth/refresh
+POST /api/v1/auth/logout
 GET  /api/v1/auth/me
 GET  /api/v1/inventory/get-item
 GET  /api/v1/inventory/price-history
@@ -63,6 +67,7 @@ GET  /api/v1/sales/get-sales
 POST /api/v1/sales/add-sales
 POST /api/v1/sales/add-sales-batch
 PATCH /api/v1/sales/{sale_id}
+GET  /api/v1/sales/{sale_id}/official-receipt
 GET  /api/v1/returns/get-returns
 POST /api/v1/returns/add-returns
 GET  /api/v1/activity-logs
@@ -90,6 +95,11 @@ curl -X POST http://127.0.0.1:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"owner@example.com","password":"my-password"}'
 ```
+
+Set `"remember_me": true` in the login body to also receive a refresh token.
+Refresh tokens are rotated by `POST /api/v1/auth/refresh`, are stored as hashes
+in PostgreSQL, and expire 30 days after the original login. Send the current
+refresh token to `POST /api/v1/auth/logout` to revoke that device's session.
 
 Send the returned `access_token` with every inventory, sales, returns, and
 customer-details request. For example:
@@ -164,12 +174,18 @@ Create one sale containing multiple inventory items:
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/sales/add-sales-batch \
   -H "Content-Type: application/json" \
-  -d '{"customer_name":"Maria Santos","items":[{"inventory_id":1,"quantity":2},{"inventory_id":2,"quantity":3}]}'
+  -d '{"customer_name":"Maria Santos","payment_method":"gcash","items":[{"inventory_id":1,"quantity":2},{"inventory_id":2,"quantity":3}]}'
 ```
 
 The batch endpoint creates one sale transaction with multiple item rows. If any
 item is missing or does not have enough stock, neither the sale nor any
 inventory deductions are saved. Each inventory item may appear only once.
+Clients may send `payment_method` as `gcash` or `cod`. Web and Mobile require a
+selection for new sales, while the API keeps the field optional for older clients
+and records. Clients may also send `customer_id` and set
+`generate_official_receipt` to `true`. The API snapshots the saved customer and
+payment method, then creates one receipt in the same transaction as the sale.
+Older clients may continue sending only `customer_name`.
 
 List sales, newest first, with:
 
@@ -189,6 +205,11 @@ Products cannot be added, removed, or replaced while editing. Quantity changes
 adjust each linked inventory item by the difference, and price changes update
 that inventory item's current regular price. The API returns `409` if an
 additional quantity is unavailable and rolls back every change.
+
+Retrieve an existing receipt with `GET /api/v1/sales/{sale_id}/official-receipt`.
+Receipts are created only with their original sale. Editing a sale updates that
+sale's existing receipt without creating a duplicate. A sale without a saved
+receipt returns `404` rather than generating a replacement.
 
 Create a return with the related inventory ID, a positive whole quantity, a
 customer name, and a reason:
