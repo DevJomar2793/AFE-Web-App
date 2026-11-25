@@ -140,7 +140,7 @@ export function InventoryList({
         <input
           value={query}
           onChange={(event) => handleQueryChange(event.target.value)}
-          className="inventory-field !pl-12"
+          className="inventory-field pl-121"
           placeholder="Search item"
           aria-label="Search inventory"
         />
@@ -172,7 +172,9 @@ export function InventoryList({
       </div>
       {!isLoading && !error && pageCount > 1 && (
         <div className="mt-2 flex items-center justify-between text-sm">
-          <span>Page {currentPage + 1} of {pageCount}</span>
+          <span>
+            Page {currentPage + 1} of {pageCount}
+          </span>
           <div className="flex gap-2">
             <button
               type="button"
